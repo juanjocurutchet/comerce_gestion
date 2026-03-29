@@ -6,6 +6,7 @@ import {
   ventasDB, stockDB, cajaDB, configDB, reportesDB
 } from './db/index.js'
 import { setupPrint } from './print.js'
+import { setupBackup } from './backup.js'
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -43,6 +44,7 @@ app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.comercio.gestion')
   app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window))
   setupPrint()
+  setupBackup()
   createWindow()
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })
 })

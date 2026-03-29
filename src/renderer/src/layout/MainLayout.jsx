@@ -6,7 +6,7 @@ import {
   ShoppingCartOutlined, TeamOutlined, WalletOutlined,
   BarChartOutlined, UserOutlined, LogoutOutlined,
   MenuFoldOutlined, MenuUnfoldOutlined, BellOutlined,
-  ShopOutlined, SettingOutlined
+  ShopOutlined, SettingOutlined, CloudUploadOutlined
 } from '@ant-design/icons'
 import { useAuthStore } from '../store/authStore'
 
@@ -25,6 +25,7 @@ const menuItems = [
   { key: '/reportes', icon: <BarChartOutlined />, label: 'Reportes' },
   { key: '/usuarios', icon: <UserOutlined />, label: 'Usuarios' },
   { type: 'divider' },
+  { key: '/backup', icon: <CloudUploadOutlined />, label: 'Backup' },
   { key: '/configuracion', icon: <SettingOutlined />, label: 'Configuración' }
 ]
 

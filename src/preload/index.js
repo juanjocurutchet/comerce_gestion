@@ -59,6 +59,14 @@ contextBridge.exposeInMainWorld('api', {
     cerrar: (id) => invoke('caja:cerrar', id),
     addMovimiento: (d) => invoke('caja:addMovimiento', d)
   },
+  // Backup
+  backup: {
+    run: () => invoke('backup:run'),
+    getList: () => invoke('backup:getList'),
+    chooseDir: () => invoke('backup:chooseDir'),
+    restore: (path) => invoke('backup:restore', path),
+    delete: (path) => invoke('backup:delete', path)
+  },
   // Configuración
   config: {
     getAll: () => invoke('config:getAll'),
