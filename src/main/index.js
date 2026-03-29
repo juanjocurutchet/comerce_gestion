@@ -7,6 +7,7 @@ import {
 } from './db/index.js'
 import { setupPrint } from './print.js'
 import { setupBackup } from './backup.js'
+import { setupSeed } from './seed.js'
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -45,6 +46,7 @@ app.whenReady().then(() => {
   app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window))
   setupPrint()
   setupBackup()
+  setupSeed()
   createWindow()
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })
 })

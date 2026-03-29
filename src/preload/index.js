@@ -61,6 +61,11 @@ contextBridge.exposeInMainWorld('api', {
     cerrar: (id) => invoke('caja:cerrar', id),
     addMovimiento: (d) => invoke('caja:addMovimiento', d)
   },
+  // Seed / datos de prueba
+  seed: {
+    run: (usuarioId) => invoke('seed:run', usuarioId),
+    clear: () => invoke('seed:clear')
+  },
   // Backup
   backup: {
     run: () => invoke('backup:run'),
