@@ -6,7 +6,7 @@ import {
 } from 'antd'
 import {
   WalletOutlined, LockOutlined, PlusCircleOutlined,
-  MinusCircleOutlined, HistoryOutlined
+  MinusCircleOutlined, HistoryOutlined, PrinterOutlined, EyeOutlined
 } from '@ant-design/icons'
 import { useAuthStore } from '../store/authStore'
 import dayjs from 'dayjs'
@@ -21,6 +21,9 @@ export default function Caja() {
   const [modalApertura, setModalApertura] = useState(false)
   const [modalMovimiento, setModalMovimiento] = useState({ open: false, tipo: 'ingreso' })
   const [modalCierre, setModalCierre] = useState(false)
+  const [modalDetalle, setModalDetalle] = useState({ open: false, caja: null })
+  const [movDetalle, setMovDetalle] = useState([])
+  const [loadingDetalle, setLoadingDetalle] = useState(false)
   const [formApertura] = Form.useForm()
   const [formMovimiento] = Form.useForm()
   const user = useAuthStore(s => s.user)
@@ -77,6 +80,116 @@ export default function Caja() {
     } else message.error(res.error)
   }
 
+  async function verDetalleCaja(caja) {
+    setLoadingDetalle(true)
+    setModalDetalle({ open: true, caja })
+    const res = await window.api.caja.getMovimientos(caja.id)
+    setMovDetalle(res.data || [])
+    setLoadingDetalle(false)
+  }
+
+  function imprimirDetalle(caja, movs) {
+    const ventas = movs.filter(m => m.tipo === 'venta')
+    const ingresos = movs.filter(m => m.tipo === 'ingreso')
+    const egresos = movs.filter(m => m.tipo === 'egreso')
+
+    // Agrupar ventas por método de pago
+    const porMetodo = ventas.reduce((acc, m) => {
+      const k = m.metodo_pago || 'otro'
+      if (!acc[k]) acc[k] = { metodo: k, cantidad: 0, total: 0 }
+      acc[k].cantidad += 1
+      acc[k].total += m.monto
+      return acc
+    }, {})
+    const metodos = Object.values(porMetodo)
+
+    const totalVentas  = ventas.reduce((a, m) => a + m.monto, 0)
+    const totalIngresos = ingresos.reduce((a, m) => a + m.monto, 0)
+    const totalEgresos  = egresos.reduce((a, m) => a + m.monto, 0)
+
+    const fmt = v => `$${Number(v).toFixed(2)}`
+    const fmtFecha = v => v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '-'
+
+    const rowStyle = 'padding:4px 8px; border-bottom:1px solid #eee;'
+    const thStyle  = 'padding:4px 8px; background:#f5f5f5; font-weight:600; text-align:left;'
+
+    const movRows = movs.map(m => `
+      <tr>
+        <td style="${rowStyle}">${fmtFecha(m.fecha)}</td>
+        <td style="${rowStyle}">${m.tipo.toUpperCase()}</td>
+        <td style="${rowStyle}">${m.descripcion || '-'}</td>
+        <td style="${rowStyle}">${m.metodo_pago || '-'}</td>
+        <td style="${rowStyle}; text-align:right; color:${m.tipo === 'egreso' ? '#cc0000' : '#007700'}">
+          ${m.tipo === 'egreso' ? '-' : '+'}${fmt(m.monto)}
+        </td>
+      </tr>`).join('')
+
+    const metodoRows = metodos.map(m => `
+      <tr>
+        <td style="${rowStyle}">${m.metodo}</td>
+        <td style="${rowStyle}; text-align:center;">${m.cantidad}</td>
+        <td style="${rowStyle}; text-align:right; font-weight:600;">${fmt(m.total)}</td>
+      </tr>`).join('')
+
+    const html = `
+      <html><head><meta charset="utf-8">
+      <style>
+        body { font-family: Arial, sans-serif; font-size: 13px; margin: 24px; color: #222; }
+        h2 { margin-bottom: 4px; }
+        h3 { margin: 20px 0 8px; border-bottom: 2px solid #222; padding-bottom: 4px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+        .resumen td { padding: 5px 8px; }
+        .resumen td:first-child { font-weight: 600; width: 180px; }
+        .resumen td:last-child { text-align: right; }
+        .total-row td { font-weight: 700; font-size: 14px; border-top: 2px solid #222; padding-top: 6px; }
+        @media print { button { display: none; } }
+      </style></head><body>
+      <h2>Cierre de Caja #${caja.id}</h2>
+      <p style="color:#555; margin:0 0 16px">
+        Responsable: <b>${caja.usuario_nombre || '-'}</b> &nbsp;|&nbsp;
+        Apertura: <b>${fmtFecha(caja.fecha_apertura)}</b> &nbsp;|&nbsp;
+        Cierre: <b>${fmtFecha(caja.fecha_cierre)}</b>
+      </p>
+
+      <h3>Resumen</h3>
+      <table class="resumen">
+        <tr><td>Saldo inicial</td><td>${fmt(caja.saldo_inicial)}</td></tr>
+        <tr><td>Total ventas</td><td>${fmt(totalVentas)}</td></tr>
+        <tr><td>Ingresos manuales</td><td>${fmt(totalIngresos)}</td></tr>
+        <tr><td>Egresos</td><td style="color:#cc0000">-${fmt(totalEgresos)}</td></tr>
+        <tr class="total-row"><td>Saldo final</td><td>${fmt(caja.saldo_final ?? (caja.saldo_inicial + totalVentas + totalIngresos - totalEgresos))}</td></tr>
+      </table>
+
+      <h3>Ventas por Método de Pago</h3>
+      <table>
+        <thead><tr>
+          <th style="${thStyle}">Método</th>
+          <th style="${thStyle}; text-align:center;">Cant.</th>
+          <th style="${thStyle}; text-align:right;">Total</th>
+        </tr></thead>
+        <tbody>${metodoRows || '<tr><td colspan="3" style="padding:8px">Sin ventas</td></tr>'}</tbody>
+        <tfoot><tr>
+          <td colspan="2" style="padding:6px 8px; font-weight:700; border-top:2px solid #222;">TOTAL VENTAS</td>
+          <td style="padding:6px 8px; text-align:right; font-weight:700; border-top:2px solid #222;">${fmt(totalVentas)}</td>
+        </tr></tfoot>
+      </table>
+
+      <h3>Detalle de Movimientos</h3>
+      <table>
+        <thead><tr>
+          <th style="${thStyle}">Fecha/Hora</th>
+          <th style="${thStyle}">Tipo</th>
+          <th style="${thStyle}">Descripción</th>
+          <th style="${thStyle}">Método</th>
+          <th style="${thStyle}; text-align:right;">Monto</th>
+        </tr></thead>
+        <tbody>${movRows || '<tr><td colspan="5" style="padding:8px">Sin movimientos</td></tr>'}</tbody>
+      </table>
+      </body></html>`
+
+    window.api.print.ticket(html, { silent: false })
+  }
+
   const totalVentas = movimientos.filter(m => m.tipo === 'venta').reduce((a, m) => a + m.monto, 0)
   const totalIngresos = movimientos.filter(m => m.tipo === 'ingreso').reduce((a, m) => a + m.monto, 0)
   const totalEgresos = movimientos.filter(m => m.tipo === 'egreso').reduce((a, m) => a + m.monto, 0)
@@ -109,6 +222,12 @@ export default function Caja() {
     {
       title: 'Estado', dataIndex: 'estado',
       render: v => <Tag color={v === 'abierta' ? 'success' : 'default'}>{v}</Tag>
+    },
+    {
+      key: 'acc', width: 60, align: 'center',
+      render: (_, r) => (
+        <Button size="small" icon={<EyeOutlined />} onClick={() => verDetalleCaja(r)} />
+      )
     }
   ]
 
@@ -213,6 +332,128 @@ export default function Caja() {
             ]} />
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* Modal detalle de caja */}
+      <Modal
+        title={`Detalle Caja #${modalDetalle.caja?.id}`}
+        open={modalDetalle.open}
+        onCancel={() => setModalDetalle({ open: false, caja: null })}
+        width={780}
+        footer={
+          <Space>
+            <Button
+              icon={<PrinterOutlined />}
+              type="primary"
+              onClick={() => imprimirDetalle(modalDetalle.caja, movDetalle)}
+              disabled={loadingDetalle}
+            >
+              Imprimir / Guardar PDF
+            </Button>
+            <Button onClick={() => setModalDetalle({ open: false, caja: null })}>Cerrar</Button>
+          </Space>
+        }
+        destroyOnClose
+      >
+        {modalDetalle.caja && (() => {
+          const caja = modalDetalle.caja
+          const ventas   = movDetalle.filter(m => m.tipo === 'venta')
+          const ingresos = movDetalle.filter(m => m.tipo === 'ingreso')
+          const egresos  = movDetalle.filter(m => m.tipo === 'egreso')
+          const totalV = ventas.reduce((a, m) => a + m.monto, 0)
+          const totalI = ingresos.reduce((a, m) => a + m.monto, 0)
+          const totalE = egresos.reduce((a, m) => a + m.monto, 0)
+          const saldoFinal = caja.saldo_final ?? (caja.saldo_inicial + totalV + totalI - totalE)
+
+          // Ventas agrupadas por método de pago
+          const porMetodo = ventas.reduce((acc, m) => {
+            const k = m.metodo_pago || 'otro'
+            if (!acc[k]) acc[k] = { metodo: k, cantidad: 0, total: 0 }
+            acc[k].cantidad += 1
+            acc[k].total += m.monto
+            return acc
+          }, {})
+
+          return (
+            <>
+              <Descriptions column={2} size="small" bordered style={{ marginBottom: 16 }}>
+                <Descriptions.Item label="Responsable">{caja.usuario_nombre || '-'}</Descriptions.Item>
+                <Descriptions.Item label="Estado">
+                  <Tag color={caja.estado === 'abierta' ? 'success' : 'default'}>{caja.estado}</Tag>
+                </Descriptions.Item>
+                <Descriptions.Item label="Apertura">{dayjs(caja.fecha_apertura).format('DD/MM/YYYY HH:mm')}</Descriptions.Item>
+                <Descriptions.Item label="Cierre">{caja.fecha_cierre ? dayjs(caja.fecha_cierre).format('DD/MM/YYYY HH:mm') : '-'}</Descriptions.Item>
+              </Descriptions>
+
+              <Row gutter={12} style={{ marginBottom: 16 }}>
+                {[
+                  { label: 'Saldo Inicial', value: caja.saldo_inicial, color: undefined },
+                  { label: 'Total Ventas', value: totalV, color: '#1677ff' },
+                  { label: 'Ingresos', value: totalI, color: '#52c41a' },
+                  { label: 'Egresos', value: totalE, color: '#ff4d4f' },
+                  { label: 'Saldo Final', value: saldoFinal, color: '#1677ff', bold: true },
+                ].map(({ label, value, color, bold }) => (
+                  <Col span={4} key={label}>
+                    <Card size="small" styles={{ body: { padding: '8px 10px' } }}>
+                      <div style={{ fontSize: 11, color: '#888', marginBottom: 2 }}>{label}</div>
+                      <div style={{ fontSize: 14, fontWeight: bold ? 700 : 600, color }}>
+                        ${Number(value).toFixed(2)}
+                      </div>
+                    </Card>
+                  </Col>
+                ))}
+              </Row>
+
+              <Divider orientation="left" style={{ margin: '8px 0 12px' }}>Ventas por Método de Pago</Divider>
+              <Table
+                size="small"
+                loading={loadingDetalle}
+                dataSource={Object.values(porMetodo)}
+                rowKey="metodo"
+                pagination={false}
+                style={{ marginBottom: 16 }}
+                columns={[
+                  { title: 'Método', dataIndex: 'metodo', render: v => <Tag>{v}</Tag> },
+                  { title: 'Cantidad', dataIndex: 'cantidad', align: 'center' },
+                  { title: 'Total', dataIndex: 'total', render: v => <Text strong>${Number(v).toFixed(2)}</Text>, align: 'right' },
+                ]}
+                summary={() => (
+                  <Table.Summary.Row>
+                    <Table.Summary.Cell colSpan={2}><Text strong>Total</Text></Table.Summary.Cell>
+                    <Table.Summary.Cell align="right"><Text strong style={{ color: '#1677ff' }}>${totalV.toFixed(2)}</Text></Table.Summary.Cell>
+                  </Table.Summary.Row>
+                )}
+                locale={{ emptyText: 'Sin ventas' }}
+              />
+
+              <Divider orientation="left" style={{ margin: '8px 0 12px' }}>Todos los Movimientos</Divider>
+              <Table
+                size="small"
+                loading={loadingDetalle}
+                dataSource={movDetalle}
+                rowKey="id"
+                pagination={{ pageSize: 10, showTotal: t => `${t} movimientos` }}
+                columns={[
+                  { title: 'Hora', dataIndex: 'fecha', width: 70, render: v => dayjs(v).format('HH:mm') },
+                  {
+                    title: 'Tipo', dataIndex: 'tipo', width: 90,
+                    render: v => <Tag color={v === 'venta' ? 'blue' : v === 'ingreso' ? 'success' : 'error'}>{v.toUpperCase()}</Tag>
+                  },
+                  { title: 'Descripción', dataIndex: 'descripcion', render: v => v || '-' },
+                  { title: 'Método', dataIndex: 'metodo_pago', width: 100, render: v => v || '-' },
+                  {
+                    title: 'Monto', dataIndex: 'monto', align: 'right', width: 100,
+                    render: (v, r) => (
+                      <Text style={{ color: r.tipo === 'egreso' ? '#ff4d4f' : '#52c41a', fontWeight: 600 }}>
+                        {r.tipo === 'egreso' ? '-' : '+'}${Number(v).toFixed(2)}
+                      </Text>
+                    )
+                  }
+                ]}
+              />
+            </>
+          )
+        })()}
       </Modal>
 
       {/* Modal cierre de caja */}
