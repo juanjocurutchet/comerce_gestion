@@ -140,30 +140,51 @@ export const ventasDB = {
   `).all(venta_id),
   create: (venta, items, usuarioId) => {
     const db = getDb()
-    const insertVenta = db.prepare(`
+    const insertVenta    = db.prepare(`
       INSERT INTO ventas (subtotal, descuento, total, metodo_pago, notas, usuario_id)
       VALUES (@subtotal, @descuento, @total, @metodo_pago, @notas, @usuario_id)
     `)
-    const insertItem = db.prepare(`
+    const insertItem     = db.prepare(`
       INSERT INTO venta_items (venta_id, producto_id, cantidad, precio_unitario, subtotal)
       VALUES (@venta_id, @producto_id, @cantidad, @precio_unitario, @subtotal)
     `)
-    const updateStock = db.prepare('UPDATE productos SET stock_actual = stock_actual - ? WHERE id=?')
-    const insertMov = db.prepare(`
+    const updateStock    = db.prepare('UPDATE productos SET stock_actual = stock_actual - ? WHERE id=?')
+    const getStock       = db.prepare('SELECT stock_actual FROM productos WHERE id=?')
+    const insertMovStock = db.prepare(`
       INSERT INTO movimientos_stock (producto_id, tipo, cantidad, stock_anterior, stock_nuevo, motivo, referencia_id, referencia_tipo, usuario_id)
       VALUES (?, 'egreso', ?, ?, ?, 'venta', ?, 'venta', ?)
     `)
+    const getCajaAbierta = db.prepare("SELECT id FROM cajas WHERE estado='abierta' ORDER BY id DESC LIMIT 1")
+    const insertMovCaja  = db.prepare(`
+      INSERT INTO movimientos_caja (caja_id, tipo, monto, descripcion, metodo_pago, referencia_id)
+      VALUES (?, 'venta', ?, ?, ?, ?)
+    `)
 
     return db.transaction(() => {
-      const result = insertVenta.run({ ...venta, usuario_id: usuarioId })
+      const result  = insertVenta.run({ ...venta, usuario_id: usuarioId })
       const ventaId = result.lastInsertRowid
+
+      // Items + movimientos de stock
       for (const item of items) {
         insertItem.run({ ...item, venta_id: ventaId })
-        const prod = db.prepare('SELECT stock_actual FROM productos WHERE id=?').get(item.producto_id)
+        const prod      = getStock.get(item.producto_id)
         const stockNuevo = prod.stock_actual - item.cantidad
         updateStock.run(item.cantidad, item.producto_id)
-        insertMov.run(item.producto_id, item.cantidad, prod.stock_actual, stockNuevo, ventaId, usuarioId)
+        insertMovStock.run(item.producto_id, item.cantidad, prod.stock_actual, stockNuevo, ventaId, usuarioId)
       }
+
+      // Registrar en caja si hay una abierta
+      const caja = getCajaAbierta.get()
+      if (caja) {
+        insertMovCaja.run(
+          caja.id,
+          venta.total,
+          `Venta #${ventaId}`,
+          venta.metodo_pago,
+          ventaId
+        )
+      }
+
       return ventaId
     })()
   },
