@@ -23,9 +23,9 @@ export default function TicketPreview({ open, onClose, venta, items }) {
 
   useEffect(() => {
     if (venta && items) {
-      setHtml(generateReceiptHTML(venta, items, config))
+      setHtml(generateReceiptHTML(venta, items, config, pageSize))
     }
-  }, [venta, items, config])
+  }, [venta, items, config, pageSize])
 
   async function loadConfig() {
     const res = await window.api.config.getAll()
@@ -48,25 +48,30 @@ export default function TicketPreview({ open, onClose, venta, items }) {
     }
   }
 
+  const isWide = pageSize === 'A4' || pageSize === 'A5'
+  const modalTitle = pageSize === '80mm'
+    ? 'Vista Previa — Ticket Térmico'
+    : `Vista Previa — Comprobante ${pageSize}`
+
   return (
     <Modal
-      title={<Space><PrinterOutlined />Vista Previa del Ticket</Space>}
+      title={<Space><PrinterOutlined />{modalTitle}</Space>}
       open={open}
       onCancel={onClose}
-      width={480}
+      width={isWide ? 760 : 480}
       footer={
         <Space style={{ width: '100%', justifyContent: 'space-between' }}>
           <Space>
-            <span style={{ fontSize: 13 }}>Tamaño:</span>
+            <span style={{ fontSize: 13 }}>Formato:</span>
             <Select
               value={pageSize}
               onChange={setPageSize}
               size="small"
-              style={{ width: 120 }}
+              style={{ width: 150 }}
               options={[
-                { value: '80mm', label: 'Térmica 80mm' },
-                { value: 'A4', label: 'A4' },
-                { value: 'A5', label: 'A5' }
+                { value: '80mm', label: 'Ticket Térmico 80mm' },
+                { value: 'A4',   label: 'Comprobante A4' },
+                { value: 'A5',   label: 'Comprobante A5' }
               ]}
             />
           </Space>
@@ -78,21 +83,20 @@ export default function TicketPreview({ open, onClose, venta, items }) {
               loading={printing}
               onClick={handlePrint}
             >
-              Imprimir
+              Imprimir / PDF
             </Button>
           </Space>
         </Space>
       }
       destroyOnClose
     >
-      {/* Vista previa inline usando iframe */}
       {html ? (
         <div style={{
           border: '1px solid #d9d9d9',
           borderRadius: 6,
           overflow: 'hidden',
-          background: '#f5f5f5',
-          padding: 8,
+          background: '#e8e8e8',
+          padding: isWide ? 16 : 8,
           display: 'flex',
           justifyContent: 'center'
         }}>
@@ -100,12 +104,12 @@ export default function TicketPreview({ open, onClose, venta, items }) {
             srcDoc={html}
             style={{
               width: pageSize === '80mm' ? 302 : '100%',
-              height: 500,
+              height: isWide ? 560 : 500,
               border: 'none',
               background: '#fff',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+              boxShadow: '0 2px 12px rgba(0,0,0,0.18)'
             }}
-            title="Vista previa ticket"
+            title="Vista previa"
           />
         </div>
       ) : (
