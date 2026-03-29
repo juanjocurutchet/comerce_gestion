@@ -8,6 +8,11 @@ body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: #f5f5f5;
   -webkit-font-smoothing: antialiased;
+  transition: background 0.25s;
+}
+
+body.dark {
+  background: #141414;
 }
 
 ::-webkit-scrollbar {
@@ -25,19 +30,24 @@ body {
   background: #999;
 }
 
+body.dark ::-webkit-scrollbar-track {
+  background: #1f1f1f;
+}
+body.dark ::-webkit-scrollbar-thumb {
+  background: #444;
+}
+body.dark ::-webkit-scrollbar-thumb:hover {
+  background: #666;
+}
+
 .page-header {
   margin-bottom: 24px;
 }
 
 .stat-card {
   border-radius: 12px !important;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
 }
 
 .ant-table-wrapper .ant-table {
   border-radius: 8px;
-}
-
-.ant-card {
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }

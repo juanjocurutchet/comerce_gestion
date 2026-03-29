@@ -1,14 +1,16 @@
 import React, { useState } from 'react'
-import { Layout, Menu, Avatar, Dropdown, Typography, Badge, Space, Button } from 'antd'
+import { Layout, Menu, Avatar, Dropdown, Typography, Badge, Space, Button, Tooltip, theme as antTheme } from 'antd'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   DashboardOutlined, AppstoreOutlined, InboxOutlined,
   ShoppingCartOutlined, TeamOutlined, WalletOutlined,
   BarChartOutlined, UserOutlined, LogoutOutlined,
   MenuFoldOutlined, MenuUnfoldOutlined, BellOutlined,
-  ShopOutlined, SettingOutlined, CloudUploadOutlined
+  ShopOutlined, SettingOutlined, CloudUploadOutlined,
+  BulbOutlined, BulbFilled
 } from '@ant-design/icons'
 import { useAuthStore } from '../store/authStore'
+import { useThemeStore } from '../store/themeStore'
 
 const { Sider, Header, Content } = Layout
 const { Text } = Typography
@@ -34,6 +36,8 @@ export default function MainLayout({ children }) {
   const navigate = useNavigate()
   const location = useLocation()
   const { user, logout } = useAuthStore()
+  const { dark, toggle } = useThemeStore()
+  const { token } = antTheme.useToken()
 
   const userMenu = {
     items: [
@@ -56,9 +60,7 @@ export default function MainLayout({ children }) {
           overflow: 'auto',
           height: '100vh',
           position: 'fixed',
-          left: 0,
-          top: 0,
-          bottom: 0,
+          left: 0, top: 0, bottom: 0,
           zIndex: 100
         }}
       >
@@ -94,14 +96,17 @@ export default function MainLayout({ children }) {
       <Layout style={{ marginLeft: collapsed ? 80 : 200, transition: 'margin-left 0.2s' }}>
         <Header style={{
           padding: '0 24px',
-          background: '#fff',
+          background: token.colorBgContainer,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
+          boxShadow: dark
+            ? '0 1px 4px rgba(0,0,0,0.4)'
+            : '0 1px 4px rgba(0,0,0,0.1)',
           position: 'sticky',
           top: 0,
-          zIndex: 99
+          zIndex: 99,
+          transition: 'background 0.25s'
         }}>
           <Button
             type="text"
@@ -111,9 +116,23 @@ export default function MainLayout({ children }) {
           />
 
           <Space size={16}>
+            {/* Toggle modo oscuro */}
+            <Tooltip title={dark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}>
+              <Button
+                type="text"
+                onClick={toggle}
+                icon={
+                  dark
+                    ? <BulbFilled style={{ fontSize: 18, color: '#faad14' }} />
+                    : <BulbOutlined style={{ fontSize: 18 }} />
+                }
+              />
+            </Tooltip>
+
             <Badge count={0} size="small">
               <Button type="text" icon={<BellOutlined style={{ fontSize: 18 }} />} />
             </Badge>
+
             <Dropdown menu={userMenu} placement="bottomRight">
               <Space style={{ cursor: 'pointer' }}>
                 <Avatar style={{ background: '#1677ff' }} icon={<UserOutlined />} size="small" />

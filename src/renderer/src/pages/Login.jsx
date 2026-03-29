@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
-import { Form, Input, Button, Card, Typography, Alert, Space } from 'antd'
-import { UserOutlined, LockOutlined, ShopOutlined } from '@ant-design/icons'
+import { Form, Input, Button, Card, Typography, Alert, Space, Tooltip, theme as antTheme } from 'antd'
+import { UserOutlined, LockOutlined, ShopOutlined, BulbOutlined, BulbFilled } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
+import { useThemeStore } from '../store/themeStore'
 
 const { Title, Text } = Typography
 
@@ -11,6 +12,8 @@ export default function Login() {
   const [error, setError] = useState('')
   const setUser = useAuthStore((s) => s.setUser)
   const navigate = useNavigate()
+  const { dark, toggle } = useThemeStore()
+  const { token } = antTheme.useToken()
 
   const onFinish = async ({ username, password }) => {
     setLoading(true)
@@ -28,11 +31,27 @@ export default function Login() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #001529 0%, #003a8c 100%)',
+      background: dark
+        ? 'linear-gradient(135deg, #0a0a0a 0%, #001529 100%)'
+        : 'linear-gradient(135deg, #001529 0%, #003a8c 100%)',
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'center'
+      justifyContent: 'center',
+      position: 'relative'
     }}>
+      {/* Toggle modo oscuro en esquina */}
+      <div style={{ position: 'absolute', top: 16, right: 16 }}>
+        <Tooltip title={dark ? 'Modo claro' : 'Modo oscuro'}>
+          <Button
+            type="text"
+            onClick={toggle}
+            icon={dark
+              ? <BulbFilled style={{ fontSize: 20, color: '#faad14' }} />
+              : <BulbOutlined style={{ fontSize: 20, color: 'rgba(255,255,255,0.7)' }} />
+            }
+          />
+        </Tooltip>
+      </div>
       <Card style={{ width: 380, borderRadius: 16, boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
         <Space direction="vertical" align="center" style={{ width: '100%', marginBottom: 32 }}>
           <div style={{

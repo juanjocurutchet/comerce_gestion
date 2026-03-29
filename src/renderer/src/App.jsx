@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect } from 'react'
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import MainLayout from './layout/MainLayout'
 import Login from './pages/Login'
@@ -13,6 +13,7 @@ import Usuarios from './pages/Usuarios'
 import Configuracion from './pages/Configuracion'
 import Backup from './pages/Backup'
 import { useAuthStore } from './store/authStore'
+import { useThemeStore } from './store/themeStore'
 
 function PrivateRoute({ children }) {
   const user = useAuthStore((s) => s.user)
@@ -20,6 +21,13 @@ function PrivateRoute({ children }) {
 }
 
 export default function App() {
+  const dark = useThemeStore((s) => s.dark)
+
+  // Sincroniza clase CSS en <body> para scrollbars y elementos fuera de Ant Design
+  useEffect(() => {
+    document.body.classList.toggle('dark', dark)
+  }, [dark])
+
   return (
     <HashRouter>
       <Routes>
