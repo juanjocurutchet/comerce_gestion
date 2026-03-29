@@ -188,7 +188,48 @@ export const ventasDB = {
       return ventaId
     })()
   },
-  anular: (id) => getDb().prepare("UPDATE ventas SET estado='anulada' WHERE id=?").run(id),
+  anular: (id, usuarioId) => {
+    const db = getDb()
+    const getVenta       = db.prepare("SELECT * FROM ventas WHERE id=? AND estado='completada'")
+    const getItems       = db.prepare('SELECT * FROM venta_items WHERE venta_id=?')
+    const getStock       = db.prepare('SELECT stock_actual FROM productos WHERE id=?')
+    const updateEstado   = db.prepare("UPDATE ventas SET estado='anulada' WHERE id=?")
+    const restoreStock   = db.prepare('UPDATE productos SET stock_actual = stock_actual + ? WHERE id=?')
+    const insertMovStock = db.prepare(`
+      INSERT INTO movimientos_stock (producto_id, tipo, cantidad, stock_anterior, stock_nuevo, motivo, referencia_id, referencia_tipo, usuario_id)
+      VALUES (?, 'ingreso', ?, ?, ?, 'anulacion_venta', ?, 'venta', ?)
+    `)
+    const getCajaAbierta = db.prepare("SELECT id FROM cajas WHERE estado='abierta' ORDER BY id DESC LIMIT 1")
+    const insertMovCaja  = db.prepare(`
+      INSERT INTO movimientos_caja (caja_id, tipo, monto, descripcion, metodo_pago, referencia_id)
+      VALUES (?, 'egreso', ?, ?, ?, ?)
+    `)
+
+    return db.transaction(() => {
+      const venta = getVenta.get(id)
+      if (!venta) throw new Error('La venta no existe o ya fue anulada')
+
+      // Cambiar estado
+      updateEstado.run(id)
+
+      // Restaurar stock de cada ítem
+      const items = getItems.all(id)
+      for (const item of items) {
+        const prod = getStock.get(item.producto_id)
+        const stockNuevo = prod.stock_actual + item.cantidad
+        restoreStock.run(item.cantidad, item.producto_id)
+        insertMovStock.run(item.producto_id, item.cantidad, prod.stock_actual, stockNuevo, id, usuarioId || null)
+      }
+
+      // Revertir en caja si hay una abierta
+      const caja = getCajaAbierta.get()
+      if (caja) {
+        insertMovCaja.run(caja.id, venta.total, `Anulación Venta #${id}`, venta.metodo_pago, id)
+      }
+
+      return true
+    })()
+  },
   resumenHoy: () => getDb().prepare(`
     SELECT COUNT(*) as cantidad, COALESCE(SUM(total),0) as total
     FROM ventas WHERE date(fecha)=date('now','localtime') AND estado='completada'

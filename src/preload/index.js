@@ -43,7 +43,7 @@ contextBridge.exposeInMainWorld('api', {
     getById: (id) => invoke('ventas:getById', id),
     getItems: (id) => invoke('ventas:getItems', id),
     create: (v, i, u) => invoke('ventas:create', v, i, u),
-    anular: (id) => invoke('ventas:anular', id),
+    anular: (id, usuarioId) => invoke('ventas:anular', id, usuarioId),
     resumenHoy: () => invoke('ventas:resumenHoy'),
     resumenPeriodo: (d, h) => invoke('ventas:resumenPeriodo', d, h)
   },

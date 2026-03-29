@@ -354,6 +354,7 @@ function HistorialVentas() {
   const [detalle, setDetalle] = useState(null)
   const [items, setItems] = useState([])
   const [ticketModal, setTicketModal] = useState({ open: false, venta: null, items: [] })
+  const user = useAuthStore(s => s.user)
 
   useEffect(() => { loadVentas() }, [])
 
@@ -376,7 +377,7 @@ function HistorialVentas() {
   }
 
   async function anularVenta(id) {
-    const res = await window.api.ventas.anular(id)
+    const res = await window.api.ventas.anular(id, user?.id)
     if (res.ok) { message.success('Venta anulada'); loadVentas() }
     else message.error(res.error)
   }

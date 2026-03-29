@@ -100,7 +100,7 @@ handle('ventas:getAll', (d, h) => ventasDB.getAll(d, h))
 handle('ventas:getById', (id) => ventasDB.getById(id))
 handle('ventas:getItems', (id) => ventasDB.getItems(id))
 handle('ventas:create', (v, i, u) => ventasDB.create(v, i, u))
-handle('ventas:anular', (id) => ventasDB.anular(id))
+handle('ventas:anular', (id, usuarioId) => ventasDB.anular(id, usuarioId))
 handle('ventas:resumenHoy', () => ventasDB.resumenHoy())
 handle('ventas:resumenPeriodo', (d, h) => ventasDB.resumenPeriodo(d, h))
 
