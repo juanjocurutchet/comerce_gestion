@@ -1,11 +1,15 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import {
   Table, Button, Space, Typography, Input, Modal, Form,
-  Select, InputNumber, Tag, Popconfirm, message, Row, Col, Card
+  Select, InputNumber, Tag, Popconfirm, message, Row, Col, Card, Tooltip
 } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, BarcodeOutlined } from '@ant-design/icons'
+import {
+  PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined,
+  BarcodeOutlined, ScanOutlined
+} from '@ant-design/icons'
+import { useBarcodeScanner } from '../hooks/useBarcodeScanner'
 
-const { Title } = Typography
+const { Title, Text } = Typography
 
 export default function Productos() {
   const [data, setData] = useState([])
@@ -14,7 +18,9 @@ export default function Productos() {
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [modal, setModal] = useState({ open: false, record: null })
+  const [scanned, setScanned] = useState(false) // feedback visual al escanear
   const [form] = Form.useForm()
+  const codigoInputRef = useRef()
 
   useEffect(() => { loadAll() }, [])
 
@@ -33,12 +39,31 @@ export default function Productos() {
 
   function openModal(record = null) {
     setModal({ open: true, record })
+    setScanned(false)
     if (record) {
       form.setFieldsValue(record)
     } else {
       form.resetFields()
     }
   }
+
+  // Cuando se escanea un código con el modal abierto → autocompleta el campo
+  useBarcodeScanner(
+    (code) => {
+      form.setFieldValue('codigo', code)
+      setScanned(true)
+      setTimeout(() => setScanned(false), 2000)
+      message.success({ content: `Código escaneado: ${code}`, key: 'scan', duration: 2 })
+      // Mover foco al campo Nombre si está vacío
+      const nombre = form.getFieldValue('nombre')
+      if (!nombre) {
+        setTimeout(() => {
+          document.querySelector('input[id$="_nombre"]')?.focus()
+        }, 50)
+      }
+    },
+    { enabled: modal.open, minLength: 3, maxDelay: 50 }
+  )
 
   async function handleSave() {
     const values = await form.validateFields()
@@ -67,7 +92,7 @@ export default function Productos() {
   )
 
   const columns = [
-    { title: 'Código', dataIndex: 'codigo', width: 110, render: v => v || '-' },
+    { title: 'Código', dataIndex: 'codigo', width: 140, render: v => v ? <Text code style={{ fontSize: 12 }}>{v}</Text> : '-' },
     { title: 'Nombre', dataIndex: 'nombre', sorter: (a, b) => a.nombre.localeCompare(b.nombre) },
     { title: 'Categoría', dataIndex: 'categoria_nombre', render: v => v ? <Tag>{v}</Tag> : '-' },
     { title: 'P. Compra', dataIndex: 'precio_compra', render: v => `$${Number(v).toFixed(2)}`, align: 'right' },
@@ -133,7 +158,28 @@ export default function Productos() {
         width={600}
         destroyOnClose
       >
-        <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
+        {/* Indicador de lector activo */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '6px 10px',
+          borderRadius: 6,
+          marginBottom: 16,
+          background: scanned ? '#f6ffed' : 'rgba(22,119,255,0.06)',
+          border: `1px solid ${scanned ? '#b7eb8f' : 'rgba(22,119,255,0.2)'}`,
+          transition: 'all 0.3s'
+        }}>
+          <ScanOutlined style={{ color: scanned ? '#52c41a' : '#1677ff', fontSize: 16 }} />
+          <Text style={{ fontSize: 12 }}>
+            {scanned
+              ? <Text style={{ color: '#52c41a', fontSize: 12 }}>¡Código escaneado! Completá los demás campos.</Text>
+              : <Text type="secondary" style={{ fontSize: 12 }}>Lector USB activo — escaneá el código de barras del producto para completar el campo automáticamente.</Text>
+            }
+          </Text>
+        </div>
+
+        <Form form={form} layout="vertical">
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item name="nombre" label="Nombre" rules={[{ required: true }]}>
@@ -141,20 +187,46 @@ export default function Productos() {
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="codigo" label="Código / Código de barras">
-                <Input placeholder="Ej: 7790001234567" prefix={<BarcodeOutlined />} />
+              <Form.Item
+                name="codigo"
+                label={
+                  <Space size={6}>
+                    Código de barras
+                    <Tooltip title="Podés escribirlo manualmente o escanearlo con el lector USB">
+                      <BarcodeOutlined style={{ color: '#1677ff', cursor: 'help' }} />
+                    </Tooltip>
+                  </Space>
+                }
+              >
+                <Input
+                  ref={codigoInputRef}
+                  placeholder="Escanear o escribir código..."
+                  style={{
+                    borderColor: scanned ? '#52c41a' : undefined,
+                    transition: 'border-color 0.3s'
+                  }}
+                  suffix={scanned ? <Tag color="success" style={{ margin: 0 }}>Escaneado</Tag> : null}
+                />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item name="categoria_id" label="Categoría">
-                <Select placeholder="Seleccionar categoría" allowClear options={categorias.map(c => ({ value: c.id, label: c.nombre }))} />
+                <Select
+                  placeholder="Seleccionar categoría"
+                  allowClear
+                  options={categorias.map(c => ({ value: c.id, label: c.nombre }))}
+                />
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item name="proveedor_id" label="Proveedor">
-                <Select placeholder="Seleccionar proveedor" allowClear options={proveedores.map(p => ({ value: p.id, label: p.nombre }))} />
+                <Select
+                  placeholder="Seleccionar proveedor"
+                  allowClear
+                  options={proveedores.map(p => ({ value: p.id, label: p.nombre }))}
+                />
               </Form.Item>
             </Col>
           </Row>
