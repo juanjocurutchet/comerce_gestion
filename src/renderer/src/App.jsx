@@ -10,6 +10,7 @@ import Proveedores from './pages/Proveedores'
 import Caja from './pages/Caja'
 import Reportes from './pages/Reportes'
 import Usuarios from './pages/Usuarios'
+import Configuracion from './pages/Configuracion'
 import { useAuthStore } from './store/authStore'
 
 function PrivateRoute({ children }) {
@@ -37,6 +38,7 @@ export default function App() {
                   <Route path="/caja" element={<Caja />} />
                   <Route path="/reportes" element={<Reportes />} />
                   <Route path="/usuarios" element={<Usuarios />} />
+                  <Route path="/configuracion" element={<Configuracion />} />
                 </Routes>
               </MainLayout>
             </PrivateRoute>

@@ -194,6 +194,24 @@ export const cajaDB = {
   }
 }
 
+// ─── Configuración ───────────────────────────────────────────────────────────
+
+export const configDB = {
+  getAll: () => {
+    const rows = getDb().prepare('SELECT clave, valor FROM configuracion').all()
+    return rows.reduce((acc, r) => ({ ...acc, [r.clave]: r.valor }), {})
+  },
+  set: (clave, valor) =>
+    getDb().prepare('INSERT INTO configuracion (clave, valor) VALUES (?, ?) ON CONFLICT(clave) DO UPDATE SET valor=excluded.valor').run(clave, valor),
+  setMany: (obj) => {
+    const stmt = getDb().prepare('INSERT INTO configuracion (clave, valor) VALUES (?, ?) ON CONFLICT(clave) DO UPDATE SET valor=excluded.valor')
+    const tx = getDb().transaction((data) => {
+      for (const [k, v] of Object.entries(data)) stmt.run(k, v ?? '')
+    })
+    tx(obj)
+  }
+}
+
 // ─── Reportes ────────────────────────────────────────────────────────────────
 
 export const reportesDB = {

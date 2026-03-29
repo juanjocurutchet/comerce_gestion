@@ -106,6 +106,11 @@ export function initSchema(db) {
       referencia_id INTEGER,
       fecha TEXT DEFAULT (datetime('now','localtime'))
     );
+
+    CREATE TABLE IF NOT EXISTS configuracion (
+      clave TEXT PRIMARY KEY,
+      valor TEXT
+    );
   `)
 
   // Insertar usuario admin por defecto si no existe
@@ -115,6 +120,17 @@ export function initSchema(db) {
       INSERT INTO usuarios (nombre, username, password, rol)
       VALUES ('Administrador', 'admin', 'admin123', 'admin')
     `).run()
+  }
+
+  // Configuración por defecto
+  const configCount = db.prepare("SELECT COUNT(*) as c FROM configuracion").get()
+  if (configCount.c === 0) {
+    const insertConfig = db.prepare("INSERT INTO configuracion (clave, valor) VALUES (?, ?)")
+    insertConfig.run('nombreComercio', 'Mi Comercio')
+    insertConfig.run('direccion', '')
+    insertConfig.run('telefono', '')
+    insertConfig.run('cuit', '')
+    insertConfig.run('ticketFooter', 'Gracias por su compra!')
   }
 
   // Categorías por defecto

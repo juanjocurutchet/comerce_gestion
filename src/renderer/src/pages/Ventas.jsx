@@ -5,10 +5,11 @@ import {
 } from 'antd'
 import {
   DeleteOutlined, ShoppingCartOutlined,
-  CheckOutlined, EyeOutlined, BarcodeOutlined, ScanOutlined
+  CheckOutlined, EyeOutlined, BarcodeOutlined, ScanOutlined, PrinterOutlined
 } from '@ant-design/icons'
 import { useAuthStore } from '../store/authStore'
 import { useBarcodeScanner } from '../hooks/useBarcodeScanner'
+import TicketPreview from '../components/TicketPreview'
 import dayjs from 'dayjs'
 
 const { Title, Text } = Typography
@@ -22,7 +23,8 @@ function POS({ onVentaCreada, active }) {
   const [metodoPago, setMetodoPago] = useState('efectivo')
   const [loading, setLoading] = useState(false)
   const [notas, setNotas] = useState('')
-  const [lastScanned, setLastScanned] = useState(null) // feedback visual del último scan
+  const [lastScanned, setLastScanned] = useState(null)
+  const [ticketModal, setTicketModal] = useState({ open: false, venta: null, items: [] })
   const user = useAuthStore(s => s.user)
   const searchRef = useRef()
 
@@ -127,13 +129,25 @@ function POS({ onVentaCreada, active }) {
     const res = await window.api.ventas.create(venta, items, user?.id)
     setLoading(false)
     if (res.ok) {
-      message.success(`Venta #${res.data} registrada correctamente`)
+      const ventaId = res.data
+      message.success(`Venta #${ventaId} registrada correctamente`)
+      // Armar venta e items para el ticket
+      const ventaObj = {
+        id: ventaId,
+        fecha: new Date().toISOString(),
+        subtotal,
+        descuento,
+        total: totalFinal,
+        metodo_pago: metodoPago,
+        notas,
+        usuario_nombre: user?.nombre
+      }
+      setTicketModal({ open: true, venta: ventaObj, items: carrito.map(i => ({ ...i, producto_nombre: i.nombre })) })
       setCarrito([])
       setDescuento(0)
       setNotas('')
       setLastScanned(null)
       onVentaCreada?.()
-      setTimeout(() => searchRef.current?.focus(), 100)
     } else {
       message.error(res.error || 'Error al registrar venta')
     }
@@ -319,6 +333,16 @@ function POS({ onVentaCreada, active }) {
           </div>
         </Card>
       </Col>
+
+      <TicketPreview
+        open={ticketModal.open}
+        venta={ticketModal.venta}
+        items={ticketModal.items}
+        onClose={() => {
+          setTicketModal({ open: false, venta: null, items: [] })
+          setTimeout(() => searchRef.current?.focus(), 100)
+        }}
+      />
     </Row>
   )
 }
@@ -329,6 +353,7 @@ function HistorialVentas() {
   const [loading, setLoading] = useState(false)
   const [detalle, setDetalle] = useState(null)
   const [items, setItems] = useState([])
+  const [ticketModal, setTicketModal] = useState({ open: false, venta: null, items: [] })
 
   useEffect(() => { loadVentas() }, [])
 
@@ -343,6 +368,11 @@ function HistorialVentas() {
     const res = await window.api.ventas.getItems(venta.id)
     setItems(res.data || [])
     setDetalle(venta)
+  }
+
+  async function imprimirTicket(venta) {
+    const res = await window.api.ventas.getItems(venta.id)
+    setTicketModal({ open: true, venta, items: res.data || [] })
   }
 
   async function anularVenta(id) {
@@ -362,10 +392,11 @@ function HistorialVentas() {
     },
     { title: 'Vendedor', dataIndex: 'usuario_nombre', render: v => v || '-' },
     {
-      key: 'acc', width: 100,
+      key: 'acc', width: 130,
       render: (_, r) => (
         <Space>
           <Button size="small" icon={<EyeOutlined />} onClick={() => verDetalle(r)} />
+          <Button size="small" icon={<PrinterOutlined />} onClick={() => imprimirTicket(r)} />
           {r.estado === 'completada' && (
             <Popconfirm title="¿Anular esta venta?" onConfirm={() => anularVenta(r.id)} okText="Sí" cancelText="No">
               <Button size="small" danger>Anular</Button>
@@ -410,6 +441,13 @@ function HistorialVentas() {
           </>
         )}
       </Modal>
+
+      <TicketPreview
+        open={ticketModal.open}
+        venta={ticketModal.venta}
+        items={ticketModal.items}
+        onClose={() => setTicketModal({ open: false, venta: null, items: [] })}
+      />
     </>
   )
 }

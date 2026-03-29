@@ -59,6 +59,15 @@ contextBridge.exposeInMainWorld('api', {
     cerrar: (id) => invoke('caja:cerrar', id),
     addMovimiento: (d) => invoke('caja:addMovimiento', d)
   },
+  // Configuración
+  config: {
+    getAll: () => invoke('config:getAll'),
+    setMany: (obj) => invoke('config:setMany', obj)
+  },
+  // Impresión
+  print: {
+    ticket: (html, options) => invoke('print:ticket', html, options)
+  },
   // Reportes
   reportes: {
     ventasPorDia: (d, h) => invoke('reportes:ventasPorDia', d, h),

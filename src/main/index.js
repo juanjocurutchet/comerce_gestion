@@ -3,8 +3,9 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import {
   usuariosDB, categoriasDB, proveedoresDB, productosDB,
-  ventasDB, stockDB, cajaDB, reportesDB
+  ventasDB, stockDB, cajaDB, configDB, reportesDB
 } from './db/index.js'
+import { setupPrint } from './print.js'
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -41,6 +42,7 @@ function createWindow() {
 app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.comercio.gestion')
   app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window))
+  setupPrint()
   createWindow()
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })
 })
@@ -107,6 +109,10 @@ handle('caja:getMovimientos', (id) => cajaDB.getMovimientos(id))
 handle('caja:abrir', (s, u) => cajaDB.abrir(s, u))
 handle('caja:cerrar', (id) => cajaDB.cerrar(id))
 handle('caja:addMovimiento', (d) => cajaDB.addMovimiento(d))
+
+// Configuración
+handle('config:getAll', () => configDB.getAll())
+handle('config:setMany', (obj) => configDB.setMany(obj))
 
 // Reportes
 handle('reportes:ventasPorDia', (d, h) => reportesDB.ventasPorDia(d, h))
