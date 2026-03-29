@@ -1,19 +1,20 @@
 import React, { useEffect, useState, useRef } from 'react'
 import {
   Row, Col, Card, Table, Button, Input, InputNumber, Select,
-  Typography, Space, Tag, Divider, Modal, message, Popconfirm, Empty, Tabs
+  Typography, Space, Tag, Divider, Modal, message, Popconfirm, Empty, Tabs, Badge, Tooltip
 } from 'antd'
 import {
-  PlusOutlined, DeleteOutlined, ShoppingCartOutlined,
-  SearchOutlined, CheckOutlined, EyeOutlined
+  DeleteOutlined, ShoppingCartOutlined,
+  CheckOutlined, EyeOutlined, BarcodeOutlined, ScanOutlined
 } from '@ant-design/icons'
 import { useAuthStore } from '../store/authStore'
+import { useBarcodeScanner } from '../hooks/useBarcodeScanner'
 import dayjs from 'dayjs'
 
 const { Title, Text } = Typography
 
 // ── Punto de Venta ───────────────────────────────────────────────────────────
-function POS({ onVentaCreada }) {
+function POS({ onVentaCreada, active }) {
   const [productos, setProductos] = useState([])
   const [carrito, setCarrito] = useState([])
   const [busqueda, setBusqueda] = useState('')
@@ -21,10 +22,18 @@ function POS({ onVentaCreada }) {
   const [metodoPago, setMetodoPago] = useState('efectivo')
   const [loading, setLoading] = useState(false)
   const [notas, setNotas] = useState('')
+  const [lastScanned, setLastScanned] = useState(null) // feedback visual del último scan
   const user = useAuthStore(s => s.user)
   const searchRef = useRef()
 
   useEffect(() => { loadProductos() }, [])
+
+  // Auto-foco al activar la pestaña POS
+  useEffect(() => {
+    if (active) {
+      setTimeout(() => searchRef.current?.focus(), 100)
+    }
+  }, [active])
 
   async function loadProductos() {
     const res = await window.api.productos.getAll()
@@ -32,15 +41,35 @@ function POS({ onVentaCreada }) {
   }
 
   async function buscarPorCodigo(codigo) {
-    if (!codigo) return
-    const res = await window.api.productos.getByCodigo(codigo)
+    const code = codigo?.trim()
+    if (!code) return
+    const res = await window.api.productos.getByCodigo(code)
     if (res.ok && res.data) {
       agregarAlCarrito(res.data)
+      setLastScanned({ code, nombre: res.data.nombre, ok: true })
       setBusqueda('')
     } else {
-      message.warning('Producto no encontrado')
+      // Intentar búsqueda por nombre como fallback
+      const match = productos.find(p =>
+        p.nombre?.toLowerCase().includes(code.toLowerCase()) ||
+        p.codigo === code
+      )
+      if (match) {
+        agregarAlCarrito(match)
+        setLastScanned({ code, nombre: match.nombre, ok: true })
+        setBusqueda('')
+      } else {
+        setLastScanned({ code, ok: false })
+        message.warning({ content: `Código "${code}" no encontrado`, key: 'scan-warn', duration: 2 })
+      }
     }
   }
+
+  // Hook global de lector de código de barras
+  useBarcodeScanner(
+    (code) => buscarPorCodigo(code),
+    { enabled: active, minLength: 3, maxDelay: 50 }
+  )
 
   function agregarAlCarrito(prod) {
     setCarrito(prev => {
@@ -102,7 +131,9 @@ function POS({ onVentaCreada }) {
       setCarrito([])
       setDescuento(0)
       setNotas('')
+      setLastScanned(null)
       onVentaCreada?.()
+      setTimeout(() => searchRef.current?.focus(), 100)
     } else {
       message.error(res.error || 'Error al registrar venta')
     }
@@ -143,20 +174,57 @@ function POS({ onVentaCreada }) {
   ]
 
   return (
-    <Row gutter={16} style={{ height: 'calc(100vh - 180px)' }}>
+    <Row gutter={16} style={{ height: 'calc(100vh - 200px)' }}>
       {/* Panel izquierdo: productos */}
       <Col span={14}>
         <Card style={{ height: '100%', display: 'flex', flexDirection: 'column' }} styles={{ body: { padding: 12, flex: 1, overflow: 'auto' } }}>
-          <Input.Search
-            ref={searchRef}
-            placeholder="Buscar por nombre o escanear código..."
-            value={busqueda}
-            onChange={e => setBusqueda(e.target.value)}
-            onSearch={buscarPorCodigo}
-            enterButton
-            style={{ marginBottom: 12 }}
-            autoFocus
-          />
+          {/* Barra de búsqueda + indicador de scanner */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center' }}>
+            <Input.Search
+              ref={searchRef}
+              placeholder="Buscar producto o escanear código..."
+              value={busqueda}
+              onChange={e => setBusqueda(e.target.value)}
+              onSearch={buscarPorCodigo}
+              enterButton={<><BarcodeOutlined /> Buscar</>}
+              style={{ flex: 1 }}
+            />
+            <Tooltip title="Lector USB activo: apuntá el lector a cualquier código de barras">
+              <Tag
+                icon={<ScanOutlined />}
+                color="blue"
+                style={{ cursor: 'help', userSelect: 'none', padding: '4px 8px' }}
+              >
+                Lector USB
+              </Tag>
+            </Tooltip>
+          </div>
+
+          {/* Último código escaneado */}
+          {lastScanned && (
+            <div style={{
+              marginBottom: 8,
+              padding: '6px 12px',
+              borderRadius: 6,
+              background: lastScanned.ok ? '#f6ffed' : '#fff2f0',
+              border: `1px solid ${lastScanned.ok ? '#b7eb8f' : '#ffccc7'}`,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: 12
+            }}>
+              <BarcodeOutlined style={{ color: lastScanned.ok ? '#52c41a' : '#ff4d4f' }} />
+              <Text style={{ fontSize: 12 }}>
+                <Text code style={{ fontSize: 11 }}>{lastScanned.code}</Text>
+                {lastScanned.ok
+                  ? <Text style={{ color: '#52c41a', marginLeft: 6 }}>→ {lastScanned.nombre} agregado</Text>
+                  : <Text style={{ color: '#ff4d4f', marginLeft: 6 }}>→ no encontrado</Text>
+                }
+              </Text>
+            </div>
+          )}
+
+          {/* Grilla de productos */}
           <Row gutter={[8, 8]}>
             {prodFiltrados.map(p => (
               <Col span={6} key={p.id}>
@@ -168,9 +236,10 @@ function POS({ onVentaCreada }) {
                   styles={{ body: { padding: 8 } }}
                 >
                   <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 2 }} ellipsis>{p.nombre}</Text>
+                  {p.codigo && <Text type="secondary" style={{ fontSize: 10, display: 'block' }}>{p.codigo}</Text>}
                   <Text style={{ color: '#1677ff', fontWeight: 700 }}>${Number(p.precio_venta).toFixed(2)}</Text>
                   <br />
-                  <Tag size="small" color={p.stock_actual <= 0 ? 'error' : 'default'} style={{ fontSize: 10, marginTop: 2 }}>
+                  <Tag color={p.stock_actual <= 0 ? 'error' : 'default'} style={{ fontSize: 10, marginTop: 2 }}>
                     Stock: {p.stock_actual}
                   </Tag>
                 </Card>
@@ -184,7 +253,13 @@ function POS({ onVentaCreada }) {
       {/* Panel derecho: carrito */}
       <Col span={10}>
         <Card
-          title={<Space><ShoppingCartOutlined />Carrito ({carrito.length})</Space>}
+          title={
+            <Space>
+              <ShoppingCartOutlined />
+              <span>Carrito</span>
+              <Badge count={carrito.length} color="#1677ff" />
+            </Space>
+          }
           style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
           styles={{ body: { padding: 12, display: 'flex', flexDirection: 'column', flex: 1 } }}
         >
@@ -340,11 +415,20 @@ function HistorialVentas() {
 }
 
 export default function Ventas() {
+  const [activeTab, setActiveTab] = useState('pos')
   const [refreshKey, setRefreshKey] = useState(0)
 
   const tabItems = [
-    { key: 'pos', label: 'Punto de Venta', children: <POS onVentaCreada={() => setRefreshKey(k => k + 1)} /> },
-    { key: 'historial', label: 'Historial de Ventas', children: <HistorialVentas key={refreshKey} /> }
+    {
+      key: 'pos',
+      label: <Space><ShoppingCartOutlined />Punto de Venta</Space>,
+      children: <POS onVentaCreada={() => setRefreshKey(k => k + 1)} active={activeTab === 'pos'} />
+    },
+    {
+      key: 'historial',
+      label: 'Historial de Ventas',
+      children: <HistorialVentas key={refreshKey} />
+    }
   ]
 
   return (
@@ -353,7 +437,7 @@ export default function Ventas() {
         <Title level={4} style={{ margin: 0 }}>Ventas</Title>
       </div>
       <Card styles={{ body: { padding: '0 16px 16px' } }}>
-        <Tabs items={tabItems} />
+        <Tabs items={tabItems} activeKey={activeTab} onChange={setActiveTab} />
       </Card>
     </div>
   )
