@@ -1,0 +1,9 @@
+node_modules/
+out/
+dist/
+*.db
+*.db-shm
+*.db-wal
+.env
+resources/icon.ico
+resources/icon.png

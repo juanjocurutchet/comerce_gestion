@@ -1,0 +1,48 @@
+import React, { useState } from 'react'
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
+import MainLayout from './layout/MainLayout'
+import Login from './pages/Login'
+import Dashboard from './pages/Dashboard'
+import Productos from './pages/Productos'
+import Stock from './pages/Stock'
+import Ventas from './pages/Ventas'
+import Proveedores from './pages/Proveedores'
+import Caja from './pages/Caja'
+import Reportes from './pages/Reportes'
+import Usuarios from './pages/Usuarios'
+import { useAuthStore } from './store/authStore'
+
+function PrivateRoute({ children }) {
+  const user = useAuthStore((s) => s.user)
+  return user ? children : <Navigate to="/login" replace />
+}
+
+export default function App() {
+  return (
+    <HashRouter>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route
+          path="/*"
+          element={
+            <PrivateRoute>
+              <MainLayout>
+                <Routes>
+                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/productos" element={<Productos />} />
+                  <Route path="/stock" element={<Stock />} />
+                  <Route path="/ventas" element={<Ventas />} />
+                  <Route path="/proveedores" element={<Proveedores />} />
+                  <Route path="/caja" element={<Caja />} />
+                  <Route path="/reportes" element={<Reportes />} />
+                  <Route path="/usuarios" element={<Usuarios />} />
+                </Routes>
+              </MainLayout>
+            </PrivateRoute>
+          }
+        />
+      </Routes>
+    </HashRouter>
+  )
+}
