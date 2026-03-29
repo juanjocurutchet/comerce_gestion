@@ -31,7 +31,9 @@ contextBridge.exposeInMainWorld('api', {
     getAll: () => invoke('productos:getAll'),
     getByCodigo: (c) => invoke('productos:getByCodigo', c),
     getStockBajo: () => invoke('productos:getStockBajo'),
-    create: (d) => invoke('productos:create', d),
+    findDuplicate: (nombre, codigo) => invoke('productos:findDuplicate', nombre, codigo),
+    create: (d, usuarioId) => invoke('productos:create', d, usuarioId),
+    sumarStock: (id, cantidad, usuarioId) => invoke('productos:sumarStock', id, cantidad, usuarioId),
     update: (d) => invoke('productos:update', d),
     delete: (id) => invoke('productos:delete', id)
   },

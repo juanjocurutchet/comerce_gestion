@@ -68,10 +68,53 @@ export const productosDB = {
   getById: (id) => getDb().prepare('SELECT * FROM productos WHERE id=?').get(id),
   getByCodigo: (codigo) => getDb().prepare('SELECT * FROM productos WHERE codigo=? AND activo=1').get(codigo),
   getStockBajo: () => getDb().prepare('SELECT * FROM productos WHERE stock_actual <= stock_minimo AND activo=1').all(),
-  create: (data) => getDb().prepare(`
-    INSERT INTO productos (codigo, nombre, descripcion, categoria_id, proveedor_id, precio_compra, precio_venta, stock_actual, stock_minimo, unidad)
-    VALUES (@codigo, @nombre, @descripcion, @categoria_id, @proveedor_id, @precio_compra, @precio_venta, @stock_actual, @stock_minimo, @unidad)
-  `).run(data),
+
+  // Buscar duplicado por código exacto o nombre exacto (case-insensitive)
+  findDuplicate: (nombre, codigo) => {
+    const db = getDb()
+    if (codigo) {
+      const byCode = db.prepare('SELECT * FROM productos WHERE codigo=? AND activo=1').get(codigo)
+      if (byCode) return { ...byCode, matchBy: 'codigo' }
+    }
+    const byName = db.prepare("SELECT * FROM productos WHERE LOWER(nombre)=LOWER(?) AND activo=1").get(nombre)
+    if (byName) return { ...byName, matchBy: 'nombre' }
+    return null
+  },
+
+  create: (data, usuarioId) => {
+    const db = getDb()
+    return db.transaction(() => {
+      const result = db.prepare(`
+        INSERT INTO productos (codigo, nombre, descripcion, categoria_id, proveedor_id, precio_compra, precio_venta, stock_actual, stock_minimo, unidad)
+        VALUES (@codigo, @nombre, @descripcion, @categoria_id, @proveedor_id, @precio_compra, @precio_venta, @stock_actual, @stock_minimo, @unidad)
+      `).run(data)
+      const id = result.lastInsertRowid
+      // Registrar movimiento de stock inicial si hay stock
+      if (data.stock_actual > 0) {
+        db.prepare(`
+          INSERT INTO movimientos_stock (producto_id, tipo, cantidad, stock_anterior, stock_nuevo, motivo, referencia_tipo, usuario_id)
+          VALUES (?, 'ingreso', ?, 0, ?, 'Stock inicial', 'ajuste', ?)
+        `).run(id, data.stock_actual, data.stock_actual, usuarioId || null)
+      }
+      return id
+    })()
+  },
+
+  // Sumar stock a un producto existente (cuando se detecta duplicado)
+  sumarStock: (id, cantidad, usuarioId) => {
+    const db = getDb()
+    return db.transaction(() => {
+      const prod = db.prepare('SELECT stock_actual FROM productos WHERE id=?').get(id)
+      const stockNuevo = prod.stock_actual + cantidad
+      db.prepare('UPDATE productos SET stock_actual=? WHERE id=?').run(stockNuevo, id)
+      db.prepare(`
+        INSERT INTO movimientos_stock (producto_id, tipo, cantidad, stock_anterior, stock_nuevo, motivo, referencia_tipo, usuario_id)
+        VALUES (?, 'ingreso', ?, ?, ?, 'Reposición de stock', 'ajuste', ?)
+      `).run(id, cantidad, prod.stock_actual, stockNuevo, usuarioId || null)
+      return stockNuevo
+    })()
+  },
+
   update: (data) => getDb().prepare(`
     UPDATE productos SET codigo=@codigo, nombre=@nombre, descripcion=@descripcion,
     categoria_id=@categoria_id, proveedor_id=@proveedor_id, precio_compra=@precio_compra,
