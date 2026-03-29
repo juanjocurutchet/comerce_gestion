@@ -129,14 +129,22 @@ export default function Productos() {
 
     // Si es edición, guardar directo
     if (modal.record) {
-      const res = await window.api.productos.update({ ...values, id: modal.record.id })
-      if (res.ok) {
-        message.success('Producto actualizado')
-        setModal({ open: false, record: null })
-        loadAll()
+      const { _agregarStock, ...rest } = values
+      const res = await window.api.productos.update({ ...rest, id: modal.record.id })
+      if (!res.ok) { message.error(res.error || 'Error al guardar'); return }
+
+      if (_agregarStock > 0) {
+        const r = await window.api.productos.sumarStock(modal.record.id, _agregarStock, user?.id)
+        if (r.ok) {
+          message.success(`Producto actualizado · stock +${_agregarStock} (total: ${r.data})`)
+        } else {
+          message.warning('Datos guardados pero no se pudo sumar stock: ' + r.error)
+        }
       } else {
-        message.error(res.error || 'Error al guardar')
+        message.success('Producto actualizado')
       }
+      setModal({ open: false, record: null })
+      loadAll()
       return
     }
 
@@ -373,7 +381,7 @@ export default function Productos() {
             <Col span={12}>
               <Form.Item
                 name="stock_actual"
-                label={modal.record ? 'Stock Actual (solo lectura)' : 'Stock Inicial'}
+                label={modal.record ? 'Stock Actual' : 'Stock Inicial'}
                 initialValue={0}
               >
                 <InputNumber min={0} style={{ width: '100%' }} disabled={!!modal.record} />
@@ -385,14 +393,19 @@ export default function Productos() {
               </Form.Item>
             </Col>
           </Row>
+          {modal.record && (
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item name="_agregarStock" label="Agregar stock" initialValue={0}
+                  extra="Se suma al stock actual al guardar">
+                  <InputNumber min={0} style={{ width: '100%' }} />
+                </Form.Item>
+              </Col>
+            </Row>
+          )}
           {!modal.record && (
             <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 12 }}>
               El stock inicial quedará registrado en el historial de movimientos.
-            </Text>
-          )}
-          {modal.record && (
-            <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 12 }}>
-              Para modificar el stock usá el módulo <b>Stock → Ingreso/Egreso</b>.
             </Text>
           )}
           <Form.Item name="descripcion" label="Descripción">
