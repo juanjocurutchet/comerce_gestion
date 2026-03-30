@@ -1,7 +1,7 @@
 {
   "clientId": "default",
   "clientName": "Mi Comercio",
-  "isAdmin": false,
+  "isAdmin": true,
   "features": {
     "ventas": true,
     "cotizaciones": true,

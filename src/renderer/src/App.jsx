@@ -15,7 +15,7 @@ import Backup from './pages/Backup'
 import Cotizaciones from './pages/Cotizaciones'
 import Licencias from './pages/Licencias'
 import UpdateNotifier from './components/UpdateNotifier'
-import { LicenseBlock } from './components/LicenseGuard'
+import { LicenseBlock, ActivationScreen } from './components/LicenseGuard'
 import { useAuthStore } from './store/authStore'
 import { useThemeStore } from './store/themeStore'
 import { useClientStore } from './store/clientStore'
@@ -28,7 +28,7 @@ function PrivateRoute({ children }) {
 
 export default function App() {
   const dark = useThemeStore((s) => s.dark)
-  const { features, isAdmin, load: loadClient } = useClientStore()
+  const { features, isAdmin, loaded: clientLoaded, load: loadClient } = useClientStore()
   const { status, checked, check } = useLicenseStore()
 
   useEffect(() => {
@@ -40,10 +40,15 @@ export default function App() {
     check()
   }, [])
 
-  if (!checked) return null
+  if (!checked || !clientLoaded) return null
 
-  if (checked && status && !status.valid) {
-    return <LicenseBlock status={status} />
+  if (!isAdmin) {
+    if (status?.reason === 'no_key') {
+      return <ActivationScreen onActivated={() => check()} />
+    }
+    if (status && !status.valid) {
+      return <LicenseBlock status={status} onRetry={() => check()} />
+    }
   }
 
   return (

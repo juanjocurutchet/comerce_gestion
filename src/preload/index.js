@@ -97,11 +97,12 @@ contextBridge.exposeInMainWorld('api', {
   },
   license: {
     check: () => invoke('license:check'),
+    activate: (key) => invoke('license:activate', key),
+    getStoredKey: () => invoke('license:getStoredKey'),
     getAll: () => invoke('license:getAll'),
     create: (payload) => invoke('license:create', payload),
     update: (id, payload) => invoke('license:update', id, payload),
-    delete: (id) => invoke('license:delete', id),
-    getMachineId: () => invoke('license:getMachineId')
+    delete: (id) => invoke('license:delete', id)
   },
   updater: {
     check: () => invoke('updater:check'),

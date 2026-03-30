@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import {
   Table, Button, Space, Typography, Tag, Card, Modal, Form,
-  Input, DatePicker, Switch, InputNumber, Popconfirm, message, Tooltip, Row, Col, Statistic
+  Input, DatePicker, Switch, InputNumber, Popconfirm, message,
+  Row, Col, Statistic, Alert
 } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, CopyOutlined } from '@ant-design/icons'
+import { PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, CopyOutlined, PlusCircleOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 
 const { Title, Text } = Typography
@@ -16,7 +17,7 @@ function statusTag(row) {
   return <Tag color="green">Activa</Tag>
 }
 
-function daysOfflineTag(row) {
+function lastCheckTag(row) {
   if (!row.last_check) return <Tag color="default">Nunca</Tag>
   const days = Math.floor((Date.now() - new Date(row.last_check).getTime()) / 86400000)
   if (days === 0) return <Tag color="green">Hoy</Tag>
@@ -29,6 +30,7 @@ export default function Licencias() {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(false)
   const [modal, setModal] = useState({ open: false, record: null })
+  const [newKey, setNewKey] = useState(null)
   const [form] = Form.useForm()
 
   useEffect(() => { load() }, [])
@@ -42,13 +44,10 @@ export default function Licencias() {
   }
 
   function openModal(record = null) {
+    setNewKey(null)
     setModal({ open: true, record })
     if (record) {
-      form.setFieldsValue({
-        ...record,
-        vence_en: dayjs(record.vence_en),
-        activo: record.activo
-      })
+      form.setFieldsValue({ ...record, vence_en: dayjs(record.vence_en) })
     } else {
       form.resetFields()
       form.setFieldsValue({ activo: true, grace_days: 15 })
@@ -57,79 +56,82 @@ export default function Licencias() {
 
   async function handleSave() {
     const values = await form.validateFields()
-    const payload = {
-      ...values,
-      vence_en: values.vence_en.format('YYYY-MM-DD')
-    }
+    const payload = { ...values, vence_en: values.vence_en.format('YYYY-MM-DD') }
     const res = modal.record
       ? await window.api.license.update(modal.record.id, payload)
       : await window.api.license.create(payload)
 
     if (res.ok) {
-      message.success(modal.record ? 'Licencia actualizada' : 'Licencia creada')
-      setModal({ open: false, record: null })
+      if (!modal.record) {
+        setNewKey(res.data?.clave)
+      } else {
+        message.success('Licencia actualizada')
+        setModal({ open: false, record: null })
+      }
       load()
     } else {
       message.error(res.error)
     }
+  }
+
+  async function extenderUnMes(record) {
+    const base = new Date(record.vence_en) > new Date() ? new Date(record.vence_en) : new Date()
+    base.setMonth(base.getMonth() + 1)
+    const nuevaFecha = base.toISOString().split('T')[0]
+    const res = await window.api.license.update(record.id, { vence_en: nuevaFecha, activo: true })
+    if (res.ok) { message.success(`Extendida hasta ${dayjs(nuevaFecha).format('DD/MM/YYYY')}`); load() }
+    else message.error(res.error)
   }
 
   async function toggleActivo(record) {
     const res = await window.api.license.update(record.id, { activo: !record.activo })
-    if (res.ok) {
-      message.success(record.activo ? 'Licencia desactivada' : 'Licencia activada')
-      load()
-    } else {
-      message.error(res.error)
-    }
+    if (res.ok) { message.success(record.activo ? 'Desactivada' : 'Activada'); load() }
+    else message.error(res.error)
   }
 
   async function handleDelete(id) {
     const res = await window.api.license.delete(id)
-    if (res.ok) { message.success('Licencia eliminada'); load() }
+    if (res.ok) { message.success('Eliminada'); load() }
     else message.error(res.error)
   }
 
-  const activas = data.filter(r => r.activo && new Date(r.vence_en) > new Date()).length
-  const vencidas = data.filter(r => new Date(r.vence_en) < new Date()).length
-  const desactivadas = data.filter(r => !r.activo).length
+  function copyKey(key) {
+    navigator.clipboard.writeText(key)
+    message.success('Clave copiada')
+  }
+
+  const activas    = data.filter(r => r.activo && new Date(r.vence_en) > new Date()).length
+  const vencidas   = data.filter(r => new Date(r.vence_en) < new Date()).length
+  const desactivas = data.filter(r => !r.activo).length
 
   const columns = [
+    { title: 'Cliente', dataIndex: 'cliente_nombre', sorter: (a, b) => a.cliente_nombre.localeCompare(b.cliente_nombre) },
     {
-      title: 'Cliente', dataIndex: 'cliente_nombre', sorter: (a, b) => a.cliente_nombre.localeCompare(b.cliente_nombre)
-    },
-    {
-      title: 'Machine ID', dataIndex: 'machine_id',
+      title: 'Clave', dataIndex: 'clave',
       render: v => (
         <Space>
-          <Text code style={{ fontSize: 11 }}>{v.slice(0, 16)}…</Text>
-          <Tooltip title="Copiar">
-            <Button size="small" type="text" icon={<CopyOutlined />} onClick={() => { navigator.clipboard.writeText(v); message.success('Copiado') }} />
-          </Tooltip>
+          <Text code style={{ fontSize: 12 }}>{v}</Text>
+          <Button size="small" type="text" icon={<CopyOutlined />} onClick={() => copyKey(v)} />
         </Space>
       )
     },
     { title: 'Estado', render: (_, r) => statusTag(r) },
-    {
-      title: 'Vence', dataIndex: 'vence_en',
-      render: v => dayjs(v).format('DD/MM/YYYY'),
-      sorter: (a, b) => new Date(a.vence_en) - new Date(b.vence_en)
-    },
-    {
-      title: 'Última conexión', dataIndex: 'last_check',
-      render: (v, r) => daysOfflineTag(r)
-    },
+    { title: 'Vence', dataIndex: 'vence_en', render: v => dayjs(v).format('DD/MM/YYYY'), sorter: (a, b) => new Date(a.vence_en) - new Date(b.vence_en) },
+    { title: 'Última conexión', render: (_, r) => lastCheckTag(r) },
     { title: 'Días gracia', dataIndex: 'grace_days', align: 'center' },
+    { title: 'Activa', dataIndex: 'activo', align: 'center', render: (v, r) => <Switch checked={v} size="small" onChange={() => toggleActivo(r)} /> },
     {
-      title: 'Activa', dataIndex: 'activo', align: 'center',
-      render: (v, r) => (
-        <Switch checked={v} size="small" onChange={() => toggleActivo(r)} />
-      )
-    },
-    {
-      title: 'Acciones', key: 'acc', align: 'center', width: 100,
+      title: 'Acciones', key: 'acc', align: 'center', width: 120,
       render: (_, r) => (
         <Space>
+          <Popconfirm
+            title={`¿Extender hasta ${dayjs(new Date(r.vence_en) > new Date() ? r.vence_en : new Date()).add(1, 'month').format('DD/MM/YYYY')}?`}
+            onConfirm={() => extenderUnMes(r)}
+            okText="Sí"
+            cancelText="No"
+          >
+            <Button size="small" type="primary" icon={<PlusCircleOutlined />} title="+1 mes" />
+          </Popconfirm>
           <Button size="small" icon={<EditOutlined />} onClick={() => openModal(r)} />
           <Popconfirm title="¿Eliminar esta licencia?" onConfirm={() => handleDelete(r.id)} okText="Sí" cancelText="No">
             <Button size="small" danger icon={<DeleteOutlined />} />
@@ -150,68 +152,84 @@ export default function Licencias() {
       </div>
 
       <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col span={6}>
-          <Card size="small">
-            <Statistic title="Total" value={data.length} />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card size="small">
-            <Statistic title="Activas" value={activas} valueStyle={{ color: '#52c41a' }} />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card size="small">
-            <Statistic title="Vencidas" value={vencidas} valueStyle={{ color: '#faad14' }} />
-          </Card>
-        </Col>
-        <Col span={6}>
-          <Card size="small">
-            <Statistic title="Desactivadas" value={desactivadas} valueStyle={{ color: '#ff4d4f' }} />
-          </Card>
-        </Col>
+        {[
+          { title: 'Total', value: data.length, color: undefined },
+          { title: 'Activas', value: activas, color: '#52c41a' },
+          { title: 'Vencidas', value: vencidas, color: '#faad14' },
+          { title: 'Desactivadas', value: desactivas, color: '#ff4d4f' }
+        ].map(s => (
+          <Col span={6} key={s.title}>
+            <Card size="small">
+              <Statistic title={s.title} value={s.value} valueStyle={s.color ? { color: s.color } : undefined} />
+            </Card>
+          </Col>
+        ))}
       </Row>
 
       <Card>
-        <Table
-          columns={columns}
-          dataSource={data}
-          rowKey="id"
-          loading={loading}
-          size="small"
-          pagination={{ pageSize: 20 }}
-        />
+        <Table columns={columns} dataSource={data} rowKey="id" loading={loading} size="small" pagination={{ pageSize: 20 }} />
       </Card>
 
       <Modal
         open={modal.open}
         title={modal.record ? 'Editar licencia' : 'Nueva licencia'}
-        onOk={handleSave}
+        onOk={newKey ? () => setModal({ open: false, record: null }) : handleSave}
         onCancel={() => setModal({ open: false, record: null })}
-        okText="Guardar"
-        cancelText="Cancelar"
-        destroyOnClose
+        okText={newKey ? 'Cerrar' : 'Guardar'}
+        cancelButtonProps={newKey ? { style: { display: 'none' } } : undefined}
+        destroyOnHidden
       >
-        <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
-          <Form.Item name="cliente_nombre" label="Nombre del cliente" rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item name="machine_id" label="Machine ID" rules={[{ required: true }]}>
-            <Input placeholder="ID único del equipo del cliente" />
-          </Form.Item>
-          <Form.Item name="vence_en" label="Fecha de vencimiento" rules={[{ required: true }]}>
-            <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
-          </Form.Item>
-          <Form.Item name="grace_days" label="Días de gracia sin conexión">
-            <InputNumber min={0} max={30} style={{ width: '100%' }} />
-          </Form.Item>
-          <Form.Item name="notas" label="Notas">
-            <Input.TextArea rows={2} />
-          </Form.Item>
-          <Form.Item name="activo" label="Activa" valuePropName="checked">
-            <Switch />
-          </Form.Item>
-        </Form>
+        {newKey ? (
+          <Space direction="vertical" style={{ width: '100%', marginTop: 16 }}>
+            <Alert
+              type="success"
+              message="Licencia creada correctamente"
+              description="Enviá esta clave al cliente. Solo se muestra una vez."
+              showIcon
+            />
+            <div style={{ textAlign: 'center', marginTop: 8 }}>
+              <Text code style={{ fontSize: 20, letterSpacing: 3 }}>{newKey}</Text>
+            </div>
+            <Button block icon={<CopyOutlined />} onClick={() => copyKey(newKey)}>
+              Copiar clave
+            </Button>
+          </Space>
+        ) : (
+          <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
+            <Form.Item name="cliente_nombre" label="Nombre del cliente" rules={[{ required: true }]}>
+              <Input placeholder="Ej: Florería Martínez" />
+            </Form.Item>
+            <Form.Item name="vence_en" label="Fecha de vencimiento" rules={[{ required: true }]}>
+              <DatePicker
+                style={{ width: '100%' }}
+                format="DD/MM/YYYY"
+                renderExtraFooter={() => (
+                  <Button
+                    type="link"
+                    size="small"
+                    icon={<PlusCircleOutlined />}
+                    onClick={() => {
+                      const current = form.getFieldValue('vence_en')
+                      const base = current && current.isAfter(dayjs()) ? current : dayjs()
+                      form.setFieldValue('vence_en', base.add(1, 'month'))
+                    }}
+                  >
+                    +1 mes desde hoy / vencimiento
+                  </Button>
+                )}
+              />
+            </Form.Item>
+            <Form.Item name="grace_days" label="Días de gracia sin conexión">
+              <InputNumber min={0} max={30} style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item name="notas" label="Notas">
+              <Input.TextArea rows={2} />
+            </Form.Item>
+            <Form.Item name="activo" label="Activa" valuePropName="checked">
+              <Switch />
+            </Form.Item>
+          </Form>
+        )}
       </Modal>
     </div>
   )
