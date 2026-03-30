@@ -2,12 +2,27 @@ import React, { useEffect, useState } from 'react'
 import {
   Table, Button, Space, Typography, Tag, Card, Modal, Form,
   Input, DatePicker, Switch, InputNumber, Popconfirm, message,
-  Row, Col, Statistic, Alert
+  Row, Col, Statistic, Alert, Checkbox, Divider
 } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, CopyOutlined, PlusCircleOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 
 const { Title, Text } = Typography
+
+const ALL_FEATURES = [
+  { key: 'ventas',        label: 'Ventas' },
+  { key: 'cotizaciones',  label: 'Cotizaciones' },
+  { key: 'productos',     label: 'Productos' },
+  { key: 'stock',         label: 'Stock' },
+  { key: 'proveedores',   label: 'Proveedores' },
+  { key: 'caja',          label: 'Caja' },
+  { key: 'reportes',      label: 'Reportes' },
+  { key: 'usuarios',      label: 'Usuarios' },
+  { key: 'backup',        label: 'Backup' },
+  { key: 'configuracion', label: 'Configuración' }
+]
+
+const DEFAULT_FEATURES = Object.fromEntries(ALL_FEATURES.map(f => [f.key, true]))
 
 function statusTag(row) {
   if (!row.activo) return <Tag color="red">Desactivada</Tag>
@@ -47,16 +62,19 @@ export default function Licencias() {
     setNewKey(null)
     setModal({ open: true, record })
     if (record) {
-      form.setFieldsValue({ ...record, vence_en: dayjs(record.vence_en) })
+      const features = record.features ? Object.keys(record.features).filter(k => record.features[k]) : Object.keys(DEFAULT_FEATURES)
+      form.setFieldsValue({ ...record, vence_en: dayjs(record.vence_en), features })
     } else {
       form.resetFields()
-      form.setFieldsValue({ activo: true, grace_days: 15 })
+      form.setFieldsValue({ activo: true, grace_days: 15, features: Object.keys(DEFAULT_FEATURES) })
     }
   }
 
   async function handleSave() {
     const values = await form.validateFields()
-    const payload = { ...values, vence_en: values.vence_en.format('YYYY-MM-DD') }
+    const featuresObj = Object.fromEntries(ALL_FEATURES.map(f => [f.key, (values.features || []).includes(f.key)]))
+    const payload = { ...values, vence_en: values.vence_en.format('YYYY-MM-DD'), features: featuresObj }
+    delete payload.features_checkboxes
     const res = modal.record
       ? await window.api.license.update(modal.record.id, payload)
       : await window.api.license.create(payload)
@@ -227,6 +245,18 @@ export default function Licencias() {
             </Form.Item>
             <Form.Item name="activo" label="Activa" valuePropName="checked">
               <Switch />
+            </Form.Item>
+            <Divider style={{ margin: '12px 0' }} />
+            <Form.Item name="features" label="Módulos habilitados">
+              <Checkbox.Group>
+                <Row gutter={[8, 8]}>
+                  {ALL_FEATURES.map(f => (
+                    <Col span={12} key={f.key}>
+                      <Checkbox value={f.key}>{f.label}</Checkbox>
+                    </Col>
+                  ))}
+                </Row>
+              </Checkbox.Group>
             </Form.Item>
           </Form>
         )}
