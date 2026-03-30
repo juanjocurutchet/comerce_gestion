@@ -41,7 +41,32 @@ body.dark ::-webkit-scrollbar-thumb:hover {
 }
 
 .page-header {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
+}
+
+/* Tabs de Ventas POS: llenar el alto disponible */
+.pos-tabs {
+  flex: 1 !important;
+  min-height: 0;
+  display: flex !important;
+  flex-direction: column;
+}
+.pos-tabs > .ant-tabs-nav {
+  flex-shrink: 0;
+  margin-bottom: 0 !important;
+  padding: 0 16px;
+}
+.pos-tabs > .ant-tabs-content-holder {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.pos-tabs .ant-tabs-content {
+  height: 100%;
+}
+.pos-tabs .ant-tabs-tabpane {
+  height: 100%;
+  overflow: hidden;
 }
 
 .stat-card {
@@ -50,4 +75,15 @@ body.dark ::-webkit-scrollbar-thumb:hover {
 
 .ant-table-wrapper .ant-table {
   border-radius: 8px;
+}
+
+/* Quitar el doble borde (focus ring) del buscador del POS */
+.pos-search .ant-input-affix-wrapper:focus,
+.pos-search .ant-input-affix-wrapper:focus-within,
+.pos-search .ant-input-affix-wrapper-focused,
+.pos-search .ant-input-affix-wrapper-status-validating,
+.pos-search .ant-input-outlined:focus,
+.pos-search .ant-input-outlined:focus-within {
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
 }

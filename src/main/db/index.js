@@ -299,6 +299,55 @@ export const cajaDB = {
   }
 }
 
+// ─── Cotizaciones ────────────────────────────────────────────────────────────
+
+export const cotizacionesDB = {
+  getAll: () => getDb().prepare(`
+    SELECT c.*, u.nombre as usuario_nombre
+    FROM cotizaciones c
+    LEFT JOIN usuarios u ON c.usuario_id = u.id
+    ORDER BY c.id DESC LIMIT 100
+  `).all(),
+
+  getById: (id) => getDb().prepare(`
+    SELECT c.*, u.nombre as usuario_nombre
+    FROM cotizaciones c LEFT JOIN usuarios u ON c.usuario_id=u.id
+    WHERE c.id=?
+  `).get(id),
+
+  getItems: (cotizacion_id) => getDb().prepare(`
+    SELECT ci.*, p.codigo
+    FROM cotizacion_items ci
+    LEFT JOIN productos p ON ci.producto_id = p.id
+    WHERE ci.cotizacion_id = ?
+  `).all(cotizacion_id),
+
+  create: (cotizacion, items, usuarioId) => {
+    const db = getDb()
+    const insertCot  = db.prepare(`
+      INSERT INTO cotizaciones (subtotal, descuento, total, notas, validez_dias, usuario_id)
+      VALUES (@subtotal, @descuento, @total, @notas, @validez_dias, @usuario_id)
+    `)
+    const insertItem = db.prepare(`
+      INSERT INTO cotizacion_items (cotizacion_id, producto_id, nombre, cantidad, precio_unitario, subtotal)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `)
+    return db.transaction(() => {
+      const { lastInsertRowid } = insertCot.run({ ...cotizacion, usuario_id: usuarioId || null })
+      for (const item of items) {
+        insertItem.run(lastInsertRowid, item.producto_id || null, item.nombre, item.cantidad, item.precio_unitario, item.subtotal)
+      }
+      return lastInsertRowid
+    })()
+  },
+
+  updateEstado: (id, estado) =>
+    getDb().prepare('UPDATE cotizaciones SET estado=? WHERE id=?').run(estado, id),
+
+  delete: (id) =>
+    getDb().prepare('DELETE FROM cotizaciones WHERE id=?').run(id)
+}
+
 // ─── Configuración ───────────────────────────────────────────────────────────
 
 export const configDB = {

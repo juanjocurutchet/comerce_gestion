@@ -7,7 +7,7 @@ import {
   BarChartOutlined, UserOutlined, LogoutOutlined,
   MenuFoldOutlined, MenuUnfoldOutlined, BellOutlined,
   ShopOutlined, SettingOutlined, CloudUploadOutlined,
-  BulbOutlined, BulbFilled
+  BulbOutlined, BulbFilled, FileTextOutlined
 } from '@ant-design/icons'
 import { useAuthStore } from '../store/authStore'
 import { useThemeStore } from '../store/themeStore'
@@ -19,6 +19,7 @@ const menuItems = [
   { key: '/dashboard', icon: <DashboardOutlined />, label: 'Dashboard' },
   { type: 'divider' },
   { key: '/ventas', icon: <ShoppingCartOutlined />, label: 'Ventas' },
+  { key: '/cotizaciones', icon: <FileTextOutlined />, label: 'Cotizaciones' },
   { key: '/productos', icon: <AppstoreOutlined />, label: 'Productos' },
   { key: '/stock', icon: <InboxOutlined />, label: 'Stock' },
   { key: '/proveedores', icon: <TeamOutlined />, label: 'Proveedores' },

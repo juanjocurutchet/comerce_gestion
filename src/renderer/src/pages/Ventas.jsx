@@ -20,6 +20,7 @@ function POS({ onVentaCreada, active }) {
   const [carrito, setCarrito] = useState([])
   const [busqueda, setBusqueda] = useState('')
   const [descuento, setDescuento] = useState(0)
+  const [tipoDescuento, setTipoDescuento] = useState('$')
   const [metodoPago, setMetodoPago] = useState('efectivo')
   const [loading, setLoading] = useState(false)
   const [notas, setNotas] = useState('')
@@ -114,12 +115,13 @@ function POS({ onVentaCreada, active }) {
   }
 
   const subtotal = carrito.reduce((a, i) => a + i.subtotal, 0)
-  const totalFinal = Math.max(0, subtotal - descuento)
+  const descuentoMonto = tipoDescuento === '%' ? subtotal * (descuento / 100) : descuento
+  const totalFinal = Math.max(0, subtotal - descuentoMonto)
 
   async function confirmarVenta() {
     if (carrito.length === 0) return message.warning('El carrito está vacío')
     setLoading(true)
-    const venta = { subtotal, descuento, total: totalFinal, metodo_pago: metodoPago, notas }
+    const venta = { subtotal, descuento: descuentoMonto, total: totalFinal, metodo_pago: metodoPago, notas }
     const items = carrito.map(i => ({
       producto_id: i.producto_id,
       cantidad: i.cantidad,
@@ -136,7 +138,7 @@ function POS({ onVentaCreada, active }) {
         id: ventaId,
         fecha: new Date().toISOString(),
         subtotal,
-        descuento,
+        descuento: descuentoMonto,
         total: totalFinal,
         metodo_pago: metodoPago,
         notas,
@@ -145,6 +147,7 @@ function POS({ onVentaCreada, active }) {
       setTicketModal({ open: true, venta: ventaObj, items: carrito.map(i => ({ ...i, producto_nombre: i.nombre })) })
       setCarrito([])
       setDescuento(0)
+      setTipoDescuento('$')
       setNotas('')
       setLastScanned(null)
       onVentaCreada?.()
@@ -188,14 +191,19 @@ function POS({ onVentaCreada, active }) {
   ]
 
   return (
-    <Row gutter={16} style={{ height: 'calc(100vh - 200px)' }}>
-      {/* Panel izquierdo: productos */}
-      <Col span={14}>
-        <Card style={{ height: '100%', display: 'flex', flexDirection: 'column' }} styles={{ body: { padding: 12, flex: 1, overflow: 'auto' } }}>
-          {/* Barra de búsqueda + indicador de scanner */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center' }}>
+    <div style={{ display: 'flex', gap: 12, height: '100%', padding: '8px 16px 16px', overflow: 'hidden' }}>
+
+      {/* ── Panel izquierdo: productos ─────────────────────────── */}
+      <Card
+        style={{ flex: 14, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+        styles={{ body: { flex: 1, minHeight: 0, padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' } }}
+      >
+        {/* Barra de búsqueda — fija */}
+        <div style={{ padding: '10px 12px 8px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <Input.Search
               ref={searchRef}
+              className="pos-search"
               placeholder="Buscar producto o escanear código..."
               value={busqueda}
               onChange={e => setBusqueda(e.target.value)}
@@ -204,135 +212,145 @@ function POS({ onVentaCreada, active }) {
               style={{ flex: 1 }}
             />
             <Tooltip title="Lector USB activo: apuntá el lector a cualquier código de barras">
-              <Tag
-                icon={<ScanOutlined />}
-                color="blue"
-                style={{ cursor: 'help', userSelect: 'none', padding: '4px 8px' }}
-              >
+              <Tag icon={<ScanOutlined />} color="blue" style={{ cursor: 'help', userSelect: 'none', padding: '4px 8px' }}>
                 Lector USB
               </Tag>
             </Tooltip>
           </div>
 
-          {/* Último código escaneado */}
           {lastScanned && (
             <div style={{
-              marginBottom: 8,
-              padding: '6px 12px',
+              marginTop: 6,
+              padding: '4px 10px',
               borderRadius: 6,
               background: lastScanned.ok ? '#f6ffed' : '#fff2f0',
               border: `1px solid ${lastScanned.ok ? '#b7eb8f' : '#ffccc7'}`,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              fontSize: 12
+              display: 'flex', alignItems: 'center', gap: 8, fontSize: 12
             }}>
               <BarcodeOutlined style={{ color: lastScanned.ok ? '#52c41a' : '#ff4d4f' }} />
               <Text style={{ fontSize: 12 }}>
                 <Text code style={{ fontSize: 11 }}>{lastScanned.code}</Text>
                 {lastScanned.ok
                   ? <Text style={{ color: '#52c41a', marginLeft: 6 }}>→ {lastScanned.nombre} agregado</Text>
-                  : <Text style={{ color: '#ff4d4f', marginLeft: 6 }}>→ no encontrado</Text>
-                }
+                  : <Text style={{ color: '#ff4d4f', marginLeft: 6 }}>→ no encontrado</Text>}
               </Text>
             </div>
           )}
+        </div>
 
-          {/* Grilla de productos */}
-          <Row gutter={[8, 8]}>
+        {/* Lista de productos — scrollable */}
+        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, padding: '0 12px 12px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {prodFiltrados.map(p => (
-              <Col span={6} key={p.id}>
-                <Card
-                  size="small"
-                  hoverable
-                  onClick={() => agregarAlCarrito(p)}
-                  style={{ cursor: 'pointer', borderRadius: 8 }}
-                  styles={{ body: { padding: 8 } }}
+              <div
+                key={p.id}
+                onClick={() => agregarAlCarrito(p)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '7px 10px', borderRadius: 6, cursor: 'pointer',
+                  border: '1px solid var(--ant-color-border, #d9d9d9)',
+                  transition: 'background 0.15s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(22,119,255,0.06)'}
+                onMouseLeave={e => e.currentTarget.style.background = ''}
+              >
+                {/* Nombre + código */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <Text strong style={{ fontSize: 13, display: 'block' }} ellipsis>{p.nombre}</Text>
+                  {p.codigo && <Text type="secondary" style={{ fontSize: 11 }}>{p.codigo}</Text>}
+                </div>
+                {/* Stock */}
+                <Tag
+                  color={p.stock_actual <= 0 ? 'error' : 'default'}
+                  style={{ fontSize: 11, margin: 0 }}
                 >
-                  <Text strong style={{ fontSize: 12, display: 'block', marginBottom: 2 }} ellipsis>{p.nombre}</Text>
-                  {p.codigo && <Text type="secondary" style={{ fontSize: 10, display: 'block' }}>{p.codigo}</Text>}
-                  <Text style={{ color: '#1677ff', fontWeight: 700 }}>${Number(p.precio_venta).toFixed(2)}</Text>
-                  <br />
-                  <Tag color={p.stock_actual <= 0 ? 'error' : 'default'} style={{ fontSize: 10, marginTop: 2 }}>
-                    Stock: {p.stock_actual}
-                  </Tag>
-                </Card>
-              </Col>
+                  Stock: {p.stock_actual}
+                </Tag>
+                {/* Precio */}
+                <Text style={{ color: '#1677ff', fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap' }}>
+                  ${Number(p.precio_venta).toFixed(2)}
+                </Text>
+              </div>
             ))}
-            {prodFiltrados.length === 0 && <Col span={24}><Empty description="Sin resultados" /></Col>}
+            {prodFiltrados.length === 0 && <Empty description="Sin resultados" style={{ padding: 24 }} />}
+          </div>
+        </div>
+      </Card>
+
+      {/* ── Panel derecho: carrito ─────────────────────────────── */}
+      <Card
+        title={<Space><ShoppingCartOutlined /><span>Carrito</span><Badge count={carrito.length} color="#1677ff" /></Space>}
+        style={{ flex: 10, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+        styles={{ body: { flex: 1, minHeight: 0, padding: '8px 12px 0', display: 'flex', flexDirection: 'column', overflow: 'hidden' } }}
+      >
+        {/* Tabla del carrito — scrollable */}
+        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+          <Table
+            columns={colsCarrito}
+            dataSource={carrito}
+            rowKey="producto_id"
+            size="small"
+            pagination={false}
+            locale={{ emptyText: 'Carrito vacío' }}
+          />
+        </div>
+
+        {/* Totales y acciones — fijos */}
+        <div style={{ flexShrink: 0, paddingBottom: 12 }}>
+          <Divider style={{ margin: '8px 0' }} />
+          <Row justify="space-between" style={{ marginBottom: 6 }}>
+            <Text>Subtotal:</Text>
+            <Text>${subtotal.toFixed(2)}</Text>
           </Row>
-        </Card>
-      </Col>
-
-      {/* Panel derecho: carrito */}
-      <Col span={10}>
-        <Card
-          title={
-            <Space>
-              <ShoppingCartOutlined />
-              <span>Carrito</span>
-              <Badge count={carrito.length} color="#1677ff" />
-            </Space>
-          }
-          style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
-          styles={{ body: { padding: 12, display: 'flex', flexDirection: 'column', flex: 1 } }}
-        >
-          <div style={{ flex: 1, overflow: 'auto', marginBottom: 12 }}>
-            <Table
-              columns={colsCarrito}
-              dataSource={carrito}
-              rowKey="producto_id"
-              size="small"
-              pagination={false}
-              locale={{ emptyText: 'Carrito vacío' }}
-            />
-          </div>
-
-          <div>
-            <Divider style={{ margin: '8px 0' }} />
-            <Row justify="space-between" style={{ marginBottom: 8 }}>
-              <Text>Subtotal:</Text>
-              <Text>${subtotal.toFixed(2)}</Text>
-            </Row>
-            <Row justify="space-between" align="middle" style={{ marginBottom: 8 }}>
-              <Text>Descuento:</Text>
-              <InputNumber
-                value={descuento} min={0} max={subtotal} precision={2} prefix="$"
-                onChange={setDescuento} size="small" style={{ width: 110 }}
+          <Row justify="space-between" align="middle" style={{ marginBottom: 6 }}>
+            <Text>Descuento:</Text>
+            <Space.Compact size="small">
+              <Select
+                value={tipoDescuento}
+                onChange={v => { setTipoDescuento(v); setDescuento(0) }}
+                style={{ width: 56 }}
+                options={[{ value: '$', label: '$' }, { value: '%', label: '%' }]}
               />
-            </Row>
-            <Row justify="space-between" style={{ marginBottom: 12 }}>
-              <Text strong style={{ fontSize: 16 }}>TOTAL:</Text>
-              <Text strong style={{ fontSize: 20, color: '#1677ff' }}>${totalFinal.toFixed(2)}</Text>
-            </Row>
-            <Select
-              value={metodoPago}
-              onChange={setMetodoPago}
-              style={{ width: '100%', marginBottom: 8 }}
-              options={[
-                { value: 'efectivo', label: 'Efectivo' },
-                { value: 'tarjeta_debito', label: 'Tarjeta Débito' },
-                { value: 'tarjeta_credito', label: 'Tarjeta Crédito' },
-                { value: 'transferencia', label: 'Transferencia' },
-                { value: 'otro', label: 'Otro' }
-              ]}
-            />
-            <Input
-              placeholder="Notas (opcional)"
-              value={notas}
-              onChange={e => setNotas(e.target.value)}
-              style={{ marginBottom: 8 }}
-            />
-            <Button
-              type="primary" icon={<CheckOutlined />} block size="large"
-              loading={loading} onClick={confirmarVenta}
-              disabled={carrito.length === 0}
-            >
-              Confirmar Venta
-            </Button>
-          </div>
-        </Card>
-      </Col>
+              <InputNumber
+                value={descuento}
+                min={0}
+                max={tipoDescuento === '%' ? 100 : subtotal}
+                precision={tipoDescuento === '%' ? 1 : 2}
+                onChange={v => setDescuento(v || 0)}
+                size="small"
+                style={{ width: 80 }}
+              />
+            </Space.Compact>
+          </Row>
+          <Row justify="space-between" style={{ marginBottom: 10 }}>
+            <Text strong style={{ fontSize: 16 }}>TOTAL:</Text>
+            <Text strong style={{ fontSize: 20, color: '#1677ff' }}>${totalFinal.toFixed(2)}</Text>
+          </Row>
+          <Select
+            value={metodoPago} onChange={setMetodoPago}
+            style={{ width: '100%', marginBottom: 6 }}
+            options={[
+              { value: 'efectivo',        label: 'Efectivo' },
+              { value: 'tarjeta_debito',  label: 'Tarjeta Débito' },
+              { value: 'tarjeta_credito', label: 'Tarjeta Crédito' },
+              { value: 'transferencia',   label: 'Transferencia' },
+              { value: 'mercado_pago',    label: 'Mercado Pago' },
+              { value: 'cuenta_dni',      label: 'Cuenta DNI' },
+              { value: 'otro',            label: 'Otro' }
+            ]}
+          />
+          <Input
+            placeholder="Notas (opcional)" value={notas}
+            onChange={e => setNotas(e.target.value)} style={{ marginBottom: 8 }}
+          />
+          <Button
+            type="primary" icon={<CheckOutlined />} block size="large"
+            loading={loading} onClick={confirmarVenta} disabled={carrito.length === 0}
+          >
+            Confirmar Venta
+          </Button>
+        </div>
+      </Card>
 
       <TicketPreview
         open={ticketModal.open}
@@ -343,7 +361,7 @@ function POS({ onVentaCreada, active }) {
           setTimeout(() => searchRef.current?.focus(), 100)
         }}
       />
-    </Row>
+    </div>
   )
 }
 
@@ -471,12 +489,15 @@ export default function Ventas() {
   ]
 
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 112px)', overflow: 'hidden' }}>
       <div className="page-header">
         <Title level={4} style={{ margin: 0 }}>Ventas</Title>
       </div>
-      <Card styles={{ body: { padding: '0 16px 16px' } }}>
-        <Tabs items={tabItems} activeKey={activeTab} onChange={setActiveTab} />
+      <Card
+        style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+        styles={{ body: { flex: 1, minHeight: 0, overflow: 'hidden', padding: 0, display: 'flex', flexDirection: 'column' } }}
+      >
+        <Tabs className="pos-tabs" items={tabItems} activeKey={activeTab} onChange={setActiveTab} />
       </Card>
     </div>
   )

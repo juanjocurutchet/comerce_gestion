@@ -3,7 +3,7 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import {
   usuariosDB, categoriasDB, proveedoresDB, productosDB,
-  ventasDB, stockDB, cajaDB, configDB, reportesDB
+  ventasDB, stockDB, cajaDB, configDB, reportesDB, cotizacionesDB
 } from './db/index.js'
 import { setupPrint } from './print.js'
 import { setupBackup } from './backup.js'
@@ -125,3 +125,11 @@ handle('reportes:ventasPorDia', (d, h) => reportesDB.ventasPorDia(d, h))
 handle('reportes:ventasPorProducto', (d, h) => reportesDB.ventasPorProducto(d, h))
 handle('reportes:ventasPorCategoria', (d, h) => reportesDB.ventasPorCategoria(d, h))
 handle('reportes:resumenGeneral', () => reportesDB.resumenGeneral())
+
+// Cotizaciones
+handle('cotizaciones:getAll', () => cotizacionesDB.getAll())
+handle('cotizaciones:getById', (id) => cotizacionesDB.getById(id))
+handle('cotizaciones:getItems', (id) => cotizacionesDB.getItems(id))
+handle('cotizaciones:create', (c, items, uid) => cotizacionesDB.create(c, items, uid))
+handle('cotizaciones:updateEstado', (id, estado) => cotizacionesDB.updateEstado(id, estado))
+handle('cotizaciones:delete', (id) => cotizacionesDB.delete(id))

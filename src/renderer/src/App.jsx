@@ -12,6 +12,7 @@ import Reportes from './pages/Reportes'
 import Usuarios from './pages/Usuarios'
 import Configuracion from './pages/Configuracion'
 import Backup from './pages/Backup'
+import Cotizaciones from './pages/Cotizaciones'
 import { useAuthStore } from './store/authStore'
 import { useThemeStore } from './store/themeStore'
 
@@ -43,6 +44,7 @@ export default function App() {
                   <Route path="/productos" element={<Productos />} />
                   <Route path="/stock" element={<Stock />} />
                   <Route path="/ventas" element={<Ventas />} />
+                  <Route path="/cotizaciones" element={<Cotizaciones />} />
                   <Route path="/proveedores" element={<Proveedores />} />
                   <Route path="/caja" element={<Caja />} />
                   <Route path="/reportes" element={<Reportes />} />

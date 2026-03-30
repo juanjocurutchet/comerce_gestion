@@ -89,5 +89,14 @@ contextBridge.exposeInMainWorld('api', {
     ventasPorProducto: (d, h) => invoke('reportes:ventasPorProducto', d, h),
     ventasPorCategoria: (d, h) => invoke('reportes:ventasPorCategoria', d, h),
     resumenGeneral: () => invoke('reportes:resumenGeneral')
+  },
+  // Cotizaciones
+  cotizaciones: {
+    getAll: () => invoke('cotizaciones:getAll'),
+    getById: (id) => invoke('cotizaciones:getById', id),
+    getItems: (id) => invoke('cotizaciones:getItems', id),
+    create: (c, items, uid) => invoke('cotizaciones:create', c, items, uid),
+    updateEstado: (id, estado) => invoke('cotizaciones:updateEstado', id, estado),
+    delete: (id) => invoke('cotizaciones:delete', id)
   }
 })

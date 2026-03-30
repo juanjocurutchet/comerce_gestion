@@ -111,6 +111,28 @@ export function initSchema(db) {
       clave TEXT PRIMARY KEY,
       valor TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS cotizaciones (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      fecha TEXT DEFAULT (datetime('now','localtime')),
+      subtotal REAL NOT NULL DEFAULT 0,
+      descuento REAL NOT NULL DEFAULT 0,
+      total REAL NOT NULL DEFAULT 0,
+      estado TEXT DEFAULT 'pendiente',
+      notas TEXT,
+      validez_dias INTEGER DEFAULT 30,
+      usuario_id INTEGER REFERENCES usuarios(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS cotizacion_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      cotizacion_id INTEGER NOT NULL REFERENCES cotizaciones(id) ON DELETE CASCADE,
+      producto_id INTEGER REFERENCES productos(id),
+      nombre TEXT NOT NULL,
+      cantidad REAL NOT NULL,
+      precio_unitario REAL NOT NULL,
+      subtotal REAL NOT NULL
+    );
   `)
 
   // Insertar usuario admin por defecto si no existe
