@@ -7,3 +7,4 @@ dist/
 .env
 resources/icon.ico
 resources/icon.png
+resources/supabase.json

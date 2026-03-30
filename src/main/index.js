@@ -10,6 +10,7 @@ import { setupBackup } from './backup.js'
 import { setupSeed } from './seed.js'
 import { setupUpdater } from './updater.js'
 import { setupClient } from './client.js'
+import { setupLicense } from './license.js'
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -49,6 +50,7 @@ app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.comercio.gestion')
   app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window))
   setupClient()
+  setupLicense()
   setupPrint()
   setupBackup()
   setupSeed()

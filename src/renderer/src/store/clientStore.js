@@ -16,12 +16,14 @@ const DEFAULT_FEATURES = {
 export const useClientStore = create((set) => ({
   features: DEFAULT_FEATURES,
   clientName: '',
+  isAdmin: false,
   loaded: false,
   load: async () => {
     const config = await window.api.client.getConfig()
     set({
       features: { ...DEFAULT_FEATURES, ...config.features },
       clientName: config.clientName || '',
+      isAdmin: config.isAdmin === true,
       loaded: true
     })
   }

@@ -4,6 +4,8 @@ import { UserOutlined, LockOutlined, ShopOutlined, BulbOutlined, BulbFilled } fr
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { useThemeStore } from '../store/themeStore'
+import { useLicenseStore } from '../store/licenseStore'
+import { LicenseWarning } from '../components/LicenseGuard'
 
 const { Title, Text } = Typography
 
@@ -14,6 +16,7 @@ export default function Login() {
   const navigate = useNavigate()
   const { dark, toggle } = useThemeStore()
   const { token } = antTheme.useToken()
+  const licenseStatus = useLicenseStore((s) => s.status)
 
   const onFinish = async ({ username, password }) => {
     setLoading(true)
@@ -64,6 +67,7 @@ export default function Login() {
           <Text type="secondary">Ingresá tus credenciales para continuar</Text>
         </Space>
 
+        <LicenseWarning status={licenseStatus} />
         {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 16 }} />}
 
         <Form onFinish={onFinish} layout="vertical" size="large">

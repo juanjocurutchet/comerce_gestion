@@ -7,7 +7,7 @@ import {
   BarChartOutlined, UserOutlined, LogoutOutlined,
   MenuFoldOutlined, MenuUnfoldOutlined, BellOutlined,
   ShopOutlined, SettingOutlined, CloudUploadOutlined,
-  BulbOutlined, BulbFilled, FileTextOutlined
+  BulbOutlined, BulbFilled, FileTextOutlined, SafetyCertificateOutlined
 } from '@ant-design/icons'
 import { useAuthStore } from '../store/authStore'
 import { useThemeStore } from '../store/themeStore'
@@ -29,8 +29,9 @@ const ALL_MENU_ITEMS = [
   { key: '/reportes',     icon: <BarChartOutlined />,     label: 'Reportes',       feature: 'reportes' },
   { key: '/usuarios',     icon: <UserOutlined />,         label: 'Usuarios',       feature: 'usuarios' },
   { type: 'divider' },
-  { key: '/backup',       icon: <CloudUploadOutlined />,  label: 'Backup',         feature: 'backup' },
-  { key: '/configuracion',icon: <SettingOutlined />,      label: 'Configuración',  feature: 'configuracion' }
+  { key: '/backup',       icon: <CloudUploadOutlined />,        label: 'Backup',         feature: 'backup' },
+  { key: '/configuracion',icon: <SettingOutlined />,            label: 'Configuración',  feature: 'configuracion' },
+  { key: '/licencias',    icon: <SafetyCertificateOutlined />,  label: 'Licencias',      feature: '__admin__' }
 ]
 
 export default function MainLayout({ children }) {
@@ -39,11 +40,12 @@ export default function MainLayout({ children }) {
   const location = useLocation()
   const { user, logout } = useAuthStore()
   const { dark, toggle } = useThemeStore()
-  const { features } = useClientStore()
+  const { features, isAdmin } = useClientStore()
   const { token } = antTheme.useToken()
 
   const menuItems = ALL_MENU_ITEMS.filter(item => {
     if (item.type === 'divider') return true
+    if (item.feature === '__admin__') return isAdmin
     return item.feature === null || features[item.feature]
   })
 

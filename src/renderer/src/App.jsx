@@ -13,10 +13,13 @@ import Usuarios from './pages/Usuarios'
 import Configuracion from './pages/Configuracion'
 import Backup from './pages/Backup'
 import Cotizaciones from './pages/Cotizaciones'
+import Licencias from './pages/Licencias'
 import UpdateNotifier from './components/UpdateNotifier'
+import { LicenseBlock } from './components/LicenseGuard'
 import { useAuthStore } from './store/authStore'
 import { useThemeStore } from './store/themeStore'
 import { useClientStore } from './store/clientStore'
+import { useLicenseStore } from './store/licenseStore'
 
 function PrivateRoute({ children }) {
   const user = useAuthStore((s) => s.user)
@@ -25,15 +28,23 @@ function PrivateRoute({ children }) {
 
 export default function App() {
   const dark = useThemeStore((s) => s.dark)
-  const { features, load } = useClientStore()
+  const { features, isAdmin, load: loadClient } = useClientStore()
+  const { status, checked, check } = useLicenseStore()
 
   useEffect(() => {
     document.body.classList.toggle('dark', dark)
   }, [dark])
 
   useEffect(() => {
-    load()
+    loadClient()
+    check()
   }, [])
+
+  if (!checked) return null
+
+  if (checked && status && !status.valid) {
+    return <LicenseBlock status={status} />
+  }
 
   return (
     <HashRouter>
@@ -48,16 +59,17 @@ export default function App() {
                 <Routes>
                   <Route path="/" element={<Navigate to="/dashboard" replace />} />
                   <Route path="/dashboard" element={<Dashboard />} />
-                  {features.productos    && <Route path="/productos"    element={<Productos />} />}
-                  {features.stock        && <Route path="/stock"        element={<Stock />} />}
-                  {features.ventas       && <Route path="/ventas"       element={<Ventas />} />}
-                  {features.cotizaciones && <Route path="/cotizaciones" element={<Cotizaciones />} />}
-                  {features.proveedores  && <Route path="/proveedores"  element={<Proveedores />} />}
-                  {features.caja         && <Route path="/caja"         element={<Caja />} />}
-                  {features.reportes     && <Route path="/reportes"     element={<Reportes />} />}
-                  {features.usuarios     && <Route path="/usuarios"     element={<Usuarios />} />}
+                  {features.productos     && <Route path="/productos"     element={<Productos />} />}
+                  {features.stock         && <Route path="/stock"         element={<Stock />} />}
+                  {features.ventas        && <Route path="/ventas"        element={<Ventas />} />}
+                  {features.cotizaciones  && <Route path="/cotizaciones"  element={<Cotizaciones />} />}
+                  {features.proveedores   && <Route path="/proveedores"   element={<Proveedores />} />}
+                  {features.caja          && <Route path="/caja"          element={<Caja />} />}
+                  {features.reportes      && <Route path="/reportes"      element={<Reportes />} />}
+                  {features.usuarios      && <Route path="/usuarios"      element={<Usuarios />} />}
                   {features.configuracion && <Route path="/configuracion" element={<Configuracion />} />}
-                  {features.backup       && <Route path="/backup"       element={<Backup />} />}
+                  {features.backup        && <Route path="/backup"        element={<Backup />} />}
+                  {isAdmin                && <Route path="/licencias"     element={<Licencias />} />}
                 </Routes>
               </MainLayout>
             </PrivateRoute>
