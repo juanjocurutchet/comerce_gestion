@@ -1,0 +1,17 @@
+{
+  "clientId": "default",
+  "clientName": "Mi Comercio",
+  "isAdmin": true,
+  "features": {
+    "ventas": true,
+    "cotizaciones": true,
+    "productos": true,
+    "stock": true,
+    "proveedores": true,
+    "caja": true,
+    "reportes": true,
+    "usuarios": true,
+    "backup": true,
+    "configuracion": true
+  }
+}

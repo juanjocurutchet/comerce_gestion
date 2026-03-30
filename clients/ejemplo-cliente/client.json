@@ -1,0 +1,17 @@
+{
+  "clientId": "ejemplo-cliente",
+  "clientName": "Nombre del Comercio",
+  "isAdmin": false,
+  "features": {
+    "ventas": true,
+    "cotizaciones": false,
+    "productos": true,
+    "stock": true,
+    "proveedores": true,
+    "caja": true,
+    "reportes": true,
+    "usuarios": true,
+    "backup": true,
+    "configuracion": true
+  }
+}
