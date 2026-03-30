@@ -39,7 +39,6 @@ export default function Login() {
       justifyContent: 'center',
       position: 'relative'
     }}>
-      {/* Toggle modo oscuro en esquina */}
       <div style={{ position: 'absolute', top: 16, right: 16 }}>
         <Tooltip title={dark ? 'Modo claro' : 'Modo oscuro'}>
           <Button

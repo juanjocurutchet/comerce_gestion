@@ -11,25 +11,26 @@ import {
 } from '@ant-design/icons'
 import { useAuthStore } from '../store/authStore'
 import { useThemeStore } from '../store/themeStore'
+import { useClientStore } from '../store/clientStore'
 
 const { Sider, Header, Content } = Layout
 const { Text } = Typography
 
-const menuItems = [
-  { key: '/dashboard', icon: <DashboardOutlined />, label: 'Dashboard' },
+const ALL_MENU_ITEMS = [
+  { key: '/dashboard',    icon: <DashboardOutlined />,   label: 'Dashboard',      feature: null },
   { type: 'divider' },
-  { key: '/ventas', icon: <ShoppingCartOutlined />, label: 'Ventas' },
-  { key: '/cotizaciones', icon: <FileTextOutlined />, label: 'Cotizaciones' },
-  { key: '/productos', icon: <AppstoreOutlined />, label: 'Productos' },
-  { key: '/stock', icon: <InboxOutlined />, label: 'Stock' },
-  { key: '/proveedores', icon: <TeamOutlined />, label: 'Proveedores' },
-  { key: '/caja', icon: <WalletOutlined />, label: 'Caja' },
+  { key: '/ventas',       icon: <ShoppingCartOutlined />, label: 'Ventas',         feature: 'ventas' },
+  { key: '/cotizaciones', icon: <FileTextOutlined />,     label: 'Cotizaciones',   feature: 'cotizaciones' },
+  { key: '/productos',    icon: <AppstoreOutlined />,     label: 'Productos',      feature: 'productos' },
+  { key: '/stock',        icon: <InboxOutlined />,        label: 'Stock',          feature: 'stock' },
+  { key: '/proveedores',  icon: <TeamOutlined />,         label: 'Proveedores',    feature: 'proveedores' },
+  { key: '/caja',         icon: <WalletOutlined />,       label: 'Caja',           feature: 'caja' },
   { type: 'divider' },
-  { key: '/reportes', icon: <BarChartOutlined />, label: 'Reportes' },
-  { key: '/usuarios', icon: <UserOutlined />, label: 'Usuarios' },
+  { key: '/reportes',     icon: <BarChartOutlined />,     label: 'Reportes',       feature: 'reportes' },
+  { key: '/usuarios',     icon: <UserOutlined />,         label: 'Usuarios',       feature: 'usuarios' },
   { type: 'divider' },
-  { key: '/backup', icon: <CloudUploadOutlined />, label: 'Backup' },
-  { key: '/configuracion', icon: <SettingOutlined />, label: 'Configuración' }
+  { key: '/backup',       icon: <CloudUploadOutlined />,  label: 'Backup',         feature: 'backup' },
+  { key: '/configuracion',icon: <SettingOutlined />,      label: 'Configuración',  feature: 'configuracion' }
 ]
 
 export default function MainLayout({ children }) {
@@ -38,7 +39,13 @@ export default function MainLayout({ children }) {
   const location = useLocation()
   const { user, logout } = useAuthStore()
   const { dark, toggle } = useThemeStore()
+  const { features } = useClientStore()
   const { token } = antTheme.useToken()
+
+  const menuItems = ALL_MENU_ITEMS.filter(item => {
+    if (item.type === 'divider') return true
+    return item.feature === null || features[item.feature]
+  })
 
   const userMenu = {
     items: [
@@ -65,7 +72,6 @@ export default function MainLayout({ children }) {
           zIndex: 100
         }}
       >
-        {/* Logo */}
         <div style={{
           height: 64,
           display: 'flex',
@@ -117,7 +123,6 @@ export default function MainLayout({ children }) {
           />
 
           <Space size={16}>
-            {/* Toggle modo oscuro */}
             <Tooltip title={dark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}>
               <Button
                 type="text"

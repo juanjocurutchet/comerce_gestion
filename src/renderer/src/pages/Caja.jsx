@@ -93,7 +93,6 @@ export default function Caja() {
     const ingresos = movs.filter(m => m.tipo === 'ingreso')
     const egresos = movs.filter(m => m.tipo === 'egreso')
 
-    // Agrupar ventas por método de pago
     const porMetodo = ventas.reduce((acc, m) => {
       const k = m.metodo_pago || 'otro'
       if (!acc[k]) acc[k] = { metodo: k, cantidad: 0, total: 0 }
@@ -258,7 +257,6 @@ export default function Caja() {
         </>
       ) : (
         <>
-          {/* Resumen caja actual */}
           <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
             <Col xs={12} sm={6}>
               <Card className="stat-card">
@@ -298,7 +296,6 @@ export default function Caja() {
         </>
       )}
 
-      {/* Modal apertura */}
       <Modal title="Abrir Caja" open={modalApertura} onOk={abrirCaja}
         onCancel={() => setModalApertura(false)} okText="Abrir" cancelText="Cancelar">
         <Form form={formApertura} layout="vertical" style={{ marginTop: 16 }}>
@@ -308,7 +305,6 @@ export default function Caja() {
         </Form>
       </Modal>
 
-      {/* Modal ingreso/egreso */}
       <Modal
         title={modalMovimiento.tipo === 'ingreso' ? 'Registrar Ingreso' : 'Registrar Egreso'}
         open={modalMovimiento.open}
@@ -334,7 +330,6 @@ export default function Caja() {
         </Form>
       </Modal>
 
-      {/* Modal detalle de caja */}
       <Modal
         title={`Detalle Caja #${modalDetalle.caja?.id}`}
         open={modalDetalle.open}
@@ -365,7 +360,6 @@ export default function Caja() {
           const totalE = egresos.reduce((a, m) => a + m.monto, 0)
           const saldoFinal = caja.saldo_final ?? (caja.saldo_inicial + totalV + totalI - totalE)
 
-          // Ventas agrupadas por método de pago
           const porMetodo = ventas.reduce((acc, m) => {
             const k = m.metodo_pago || 'otro'
             if (!acc[k]) acc[k] = { metodo: k, cantidad: 0, total: 0 }
@@ -456,7 +450,6 @@ export default function Caja() {
         })()}
       </Modal>
 
-      {/* Modal cierre de caja */}
       <Modal title="Cerrar Caja" open={modalCierre} onOk={cerrarCaja}
         onCancel={() => setModalCierre(false)} okText="Confirmar Cierre" cancelText="Cancelar"
         okButtonProps={{ danger: true }}>

@@ -14,8 +14,6 @@ export function getDb() {
   return db
 }
 
-// ─── Usuarios ───────────────────────────────────────────────────────────────
-
 export const usuariosDB = {
   login: (username, password) =>
     getDb().prepare('SELECT * FROM usuarios WHERE username=? AND password=? AND activo=1').get(username, password),
@@ -31,16 +29,12 @@ export const usuariosDB = {
     getDb().prepare('UPDATE usuarios SET activo=0 WHERE id=?').run(id)
 }
 
-// ─── Categorías ─────────────────────────────────────────────────────────────
-
 export const categoriasDB = {
   getAll: () => getDb().prepare('SELECT * FROM categorias ORDER BY nombre').all(),
   create: (data) => getDb().prepare('INSERT INTO categorias (nombre, descripcion) VALUES (@nombre, @descripcion)').run(data),
   update: (data) => getDb().prepare('UPDATE categorias SET nombre=@nombre, descripcion=@descripcion WHERE id=@id').run(data),
   delete: (id) => getDb().prepare('DELETE FROM categorias WHERE id=?').run(id)
 }
-
-// ─── Proveedores ─────────────────────────────────────────────────────────────
 
 export const proveedoresDB = {
   getAll: () => getDb().prepare('SELECT * FROM proveedores WHERE activo=1 ORDER BY nombre').all(),
@@ -55,8 +49,6 @@ export const proveedoresDB = {
   delete: (id) => getDb().prepare('UPDATE proveedores SET activo=0 WHERE id=?').run(id)
 }
 
-// ─── Productos ───────────────────────────────────────────────────────────────
-
 export const productosDB = {
   getAll: () => getDb().prepare(`
     SELECT p.*, c.nombre as categoria_nombre, pr.nombre as proveedor_nombre
@@ -69,7 +61,6 @@ export const productosDB = {
   getByCodigo: (codigo) => getDb().prepare('SELECT * FROM productos WHERE codigo=? AND activo=1').get(codigo),
   getStockBajo: () => getDb().prepare('SELECT * FROM productos WHERE stock_actual <= stock_minimo AND activo=1').all(),
 
-  // Buscar duplicado por código exacto o nombre exacto (case-insensitive)
   findDuplicate: (nombre, codigo) => {
     const db = getDb()
     if (codigo) {
@@ -89,7 +80,6 @@ export const productosDB = {
         VALUES (@codigo, @nombre, @descripcion, @categoria_id, @proveedor_id, @precio_compra, @precio_venta, @stock_actual, @stock_minimo, @unidad)
       `).run(data)
       const id = result.lastInsertRowid
-      // Registrar movimiento de stock inicial si hay stock
       if (data.stock_actual > 0) {
         db.prepare(`
           INSERT INTO movimientos_stock (producto_id, tipo, cantidad, stock_anterior, stock_nuevo, motivo, referencia_tipo, usuario_id)
@@ -100,7 +90,6 @@ export const productosDB = {
     })()
   },
 
-  // Sumar stock a un producto existente (cuando se detecta duplicado)
   sumarStock: (id, cantidad, usuarioId) => {
     const db = getDb()
     return db.transaction(() => {
@@ -123,8 +112,6 @@ export const productosDB = {
   delete: (id) => getDb().prepare('UPDATE productos SET activo=0 WHERE id=?').run(id),
   ajustarStock: (id, cantidad) => getDb().prepare('UPDATE productos SET stock_actual = stock_actual + ? WHERE id=?').run(cantidad, id)
 }
-
-// ─── Ventas ──────────────────────────────────────────────────────────────────
 
 export const ventasDB = {
   getAll: (desde, hasta) => {
@@ -164,7 +151,6 @@ export const ventasDB = {
       const result  = insertVenta.run({ ...venta, usuario_id: usuarioId })
       const ventaId = result.lastInsertRowid
 
-      // Items + movimientos de stock
       for (const item of items) {
         insertItem.run({ ...item, venta_id: ventaId })
         const prod      = getStock.get(item.producto_id)
@@ -173,7 +159,6 @@ export const ventasDB = {
         insertMovStock.run(item.producto_id, item.cantidad, prod.stock_actual, stockNuevo, ventaId, usuarioId)
       }
 
-      // Registrar en caja si hay una abierta
       const caja = getCajaAbierta.get()
       if (caja) {
         insertMovCaja.run(
@@ -209,10 +194,8 @@ export const ventasDB = {
       const venta = getVenta.get(id)
       if (!venta) throw new Error('La venta no existe o ya fue anulada')
 
-      // Cambiar estado
       updateEstado.run(id)
 
-      // Restaurar stock de cada ítem
       const items = getItems.all(id)
       for (const item of items) {
         const prod = getStock.get(item.producto_id)
@@ -221,7 +204,6 @@ export const ventasDB = {
         insertMovStock.run(item.producto_id, item.cantidad, prod.stock_actual, stockNuevo, id, usuarioId || null)
       }
 
-      // Revertir en caja si hay una abierta
       const caja = getCajaAbierta.get()
       if (caja) {
         insertMovCaja.run(caja.id, venta.total, `Anulación Venta #${id}`, venta.metodo_pago, id)
@@ -240,8 +222,6 @@ export const ventasDB = {
     GROUP BY dia ORDER BY dia
   `).all(desde, hasta)
 }
-
-// ─── Movimientos de Stock ────────────────────────────────────────────────────
 
 export const stockDB = {
   getMovimientos: (producto_id) => {
@@ -265,8 +245,6 @@ export const stockDB = {
     })()
   }
 }
-
-// ─── Caja ────────────────────────────────────────────────────────────────────
 
 export const cajaDB = {
   getCajaAbierta: () => getDb().prepare("SELECT * FROM cajas WHERE estado='abierta' ORDER BY id DESC LIMIT 1").get(),
@@ -298,8 +276,6 @@ export const cajaDB = {
     `).run(data)
   }
 }
-
-// ─── Cotizaciones ────────────────────────────────────────────────────────────
 
 export const cotizacionesDB = {
   getAll: () => getDb().prepare(`
@@ -349,8 +325,6 @@ export const cotizacionesDB = {
     getDb().prepare('DELETE FROM cotizaciones WHERE id=?').run(id)
 }
 
-// ─── Configuración ───────────────────────────────────────────────────────────
-
 export const configDB = {
   getAll: () => {
     const rows = getDb().prepare('SELECT clave, valor FROM configuracion').all()
@@ -366,8 +340,6 @@ export const configDB = {
     tx(obj)
   }
 }
-
-// ─── Reportes ────────────────────────────────────────────────────────────────
 
 export const reportesDB = {
   ventasPorDia: (desde, hasta) => getDb().prepare(`

@@ -14,7 +14,6 @@ import dayjs from 'dayjs'
 
 const { Title, Text } = Typography
 
-// ── Punto de Venta ───────────────────────────────────────────────────────────
 function POS({ onVentaCreada, active }) {
   const [productos, setProductos] = useState([])
   const [carrito, setCarrito] = useState([])
@@ -31,7 +30,6 @@ function POS({ onVentaCreada, active }) {
 
   useEffect(() => { loadProductos() }, [])
 
-  // Auto-foco al activar la pestaña POS
   useEffect(() => {
     if (active) {
       setTimeout(() => searchRef.current?.focus(), 100)
@@ -52,7 +50,6 @@ function POS({ onVentaCreada, active }) {
       setLastScanned({ code, nombre: res.data.nombre, ok: true })
       setBusqueda('')
     } else {
-      // Intentar búsqueda por nombre como fallback
       const match = productos.find(p =>
         p.nombre?.toLowerCase().includes(code.toLowerCase()) ||
         p.codigo === code
@@ -68,7 +65,6 @@ function POS({ onVentaCreada, active }) {
     }
   }
 
-  // Hook global de lector de código de barras
   useBarcodeScanner(
     (code) => buscarPorCodigo(code),
     { enabled: active, minLength: 3, maxDelay: 50 }
@@ -133,7 +129,6 @@ function POS({ onVentaCreada, active }) {
     if (res.ok) {
       const ventaId = res.data
       message.success(`Venta #${ventaId} registrada correctamente`)
-      // Armar venta e items para el ticket
       const ventaObj = {
         id: ventaId,
         fecha: new Date().toISOString(),
@@ -193,12 +188,10 @@ function POS({ onVentaCreada, active }) {
   return (
     <div style={{ display: 'flex', gap: 12, height: '100%', padding: '8px 16px 16px', overflow: 'hidden' }}>
 
-      {/* ── Panel izquierdo: productos ─────────────────────────── */}
       <Card
         style={{ flex: 14, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
         styles={{ body: { flex: 1, minHeight: 0, padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' } }}
       >
-        {/* Barra de búsqueda — fija */}
         <div style={{ padding: '10px 12px 8px', flexShrink: 0 }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <Input.Search
@@ -238,7 +231,6 @@ function POS({ onVentaCreada, active }) {
           )}
         </div>
 
-        {/* Lista de productos — scrollable */}
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, padding: '0 12px 12px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {prodFiltrados.map(p => (
@@ -254,19 +246,16 @@ function POS({ onVentaCreada, active }) {
                 onMouseEnter={e => e.currentTarget.style.background = 'rgba(22,119,255,0.06)'}
                 onMouseLeave={e => e.currentTarget.style.background = ''}
               >
-                {/* Nombre + código */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <Text strong style={{ fontSize: 13, display: 'block' }} ellipsis>{p.nombre}</Text>
                   {p.codigo && <Text type="secondary" style={{ fontSize: 11 }}>{p.codigo}</Text>}
                 </div>
-                {/* Stock */}
                 <Tag
                   color={p.stock_actual <= 0 ? 'error' : 'default'}
                   style={{ fontSize: 11, margin: 0 }}
                 >
                   Stock: {p.stock_actual}
                 </Tag>
-                {/* Precio */}
                 <Text style={{ color: '#1677ff', fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap' }}>
                   ${Number(p.precio_venta).toFixed(2)}
                 </Text>
@@ -277,13 +266,11 @@ function POS({ onVentaCreada, active }) {
         </div>
       </Card>
 
-      {/* ── Panel derecho: carrito ─────────────────────────────── */}
       <Card
         title={<Space><ShoppingCartOutlined /><span>Carrito</span><Badge count={carrito.length} color="#1677ff" /></Space>}
         style={{ flex: 10, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
         styles={{ body: { flex: 1, minHeight: 0, padding: '8px 12px 0', display: 'flex', flexDirection: 'column', overflow: 'hidden' } }}
       >
-        {/* Tabla del carrito — scrollable */}
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
           <Table
             columns={colsCarrito}
@@ -295,7 +282,6 @@ function POS({ onVentaCreada, active }) {
           />
         </div>
 
-        {/* Totales y acciones — fijos */}
         <div style={{ flexShrink: 0, paddingBottom: 12 }}>
           <Divider style={{ margin: '8px 0' }} />
           <Row justify="space-between" style={{ marginBottom: 6 }}>
@@ -365,7 +351,6 @@ function POS({ onVentaCreada, active }) {
   )
 }
 
-// ── Historial de Ventas ──────────────────────────────────────────────────────
 function HistorialVentas() {
   const [ventas, setVentas] = useState([])
   const [loading, setLoading] = useState(false)

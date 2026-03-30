@@ -20,9 +20,7 @@ const PROVEEDORES = [
   { nombre: 'Deco Verde',              contacto: 'Martín Álvarez',  telefono: '0221-4981234',  email: 'deco@decoverde.com.ar',      direccion: 'Calle 13 N°455, La Plata' },
 ]
 
-// [ codigo, nombre, descripcion, cat_idx, prov_idx, p_compra, p_venta, stock, stock_min, unidad ]
 const PRODUCTOS = [
-  // ── Plantas de Interior (cat 0, prov 0)
   ['PLI001', 'Pothos (Epipremnum) 14cm',       'Planta colgante de fácil cuidado',          0, 0,  350,  650,  30, 5, 'unidad'],
   ['PLI002', 'Sansevieria 20cm',               'Lengua de suegra, muy resistente',           0, 0,  420,  850,  20, 4, 'unidad'],
   ['PLI003', 'Helecho Boston 15cm',            'Helecho de interior, requiere humedad',      0, 0,  380,  700,  25, 5, 'unidad'],
@@ -34,7 +32,6 @@ const PRODUCTOS = [
   ['PLI009', 'Lirio de Paz 20cm',              'Spathiphyllum, purifica el aire',            0, 0,  450,  850,  18, 4, 'unidad'],
   ['PLI010', 'Palmera Kentia 50cm',            'Palmera de interior de bajo mantenimiento',  0, 0, 1500, 2800,   6, 2, 'unidad'],
 
-  // ── Plantas de Exterior (cat 1, prov 0)
   ['PLE001', 'Lavanda 15cm',                   'Arbusto aromático lila',                     1, 0,  280,  520,  35, 8, 'unidad'],
   ['PLE002', 'Jazmín Trepador 20cm',           'Trepadora de flor blanca perfumada',         1, 0,  350,  650,  20, 4, 'unidad'],
   ['PLE003', 'Rosa Arbustiva 30cm',            'Rosa en varios colores disponibles',         1, 0,  480,  950,  25, 5, 'unidad'],
@@ -44,14 +41,12 @@ const PRODUCTOS = [
   ['PLE007', 'Limonero en Maceta 60cm',        'Árbol frutal cítrico ornamental',            1, 0, 2000, 3900,   5, 2, 'unidad'],
   ['PLE008', 'Ciprés Italiano 80cm',           'Árbol perenne de forma columnar',            1, 0,  950, 1800,   8, 2, 'unidad'],
 
-  // ── Plantas Artificiales (cat 2, prov 4)
   ['PLA001', 'Planta Artificial 40cm',         'Planta verde decorativa de interior',        2, 4,  600, 1200,  20, 4, 'unidad'],
   ['PLA002', 'Planta Artificial 80cm',         'Arbusto artificial para rincones',           2, 4, 1100, 2100,  12, 3, 'unidad'],
   ['PLA003', 'Árbol Artificial 1.5m',          'Árbol decorativo de gran presencia',         2, 4, 2800, 5200,   6, 2, 'unidad'],
   ['PLA004', 'Suculenta Artificial 10cm',      'Suculenta decorativa sin mantenimiento',     2, 4,  180,  350,  30, 6, 'unidad'],
   ['PLA005', 'Orquídea Artificial',            'Orquídea decorativa muy realista',           2, 4,  750, 1400,  15, 3, 'unidad'],
 
-  // ── Macetas y Contenedores (cat 3, prov 1)
   ['MAC001', 'Maceta Plástica 15cm',           'Maceta redonda con plato incluido',          3, 1,   80,  150,  60, 10,'unidad'],
   ['MAC002', 'Maceta Plástica 25cm',           'Maceta mediana con plato',                   3, 1,  140,  260,  50, 10,'unidad'],
   ['MAC003', 'Maceta Plástica 35cm',           'Maceta grande con plato',                    3, 1,  220,  420,  30, 6, 'unidad'],
@@ -61,28 +56,24 @@ const PRODUCTOS = [
   ['MAC007', 'Jardinera Rectangular 60cm',     'Jardinera para balcón o borde',              3, 1,  320,  620,  20, 4, 'unidad'],
   ['MAC008', 'Colgante Macramé',               'Soporte colgante artesanal para maceta',     3, 4,  280,  550,  18, 4, 'unidad'],
 
-  // ── Ramos y Flores Cortadas (cat 4, prov 3)
   ['RAM001', 'Ramo de Rosas x12',              'Rosas frescas variedad híbrida',             4, 3,  900, 1800,  15, 3, 'unidad'],
   ['RAM002', 'Ramo Mixto Primaveral',          'Combinación de flores de temporada',         4, 3,  700, 1400,  12, 3, 'unidad'],
   ['RAM003', 'Girasoles x6',                   'Girasoles frescos de tallo largo',           4, 3,  500,  980,  10, 2, 'unidad'],
   ['RAM004', 'Liliums x5',                     'Liliums blancos o rosados',                  4, 3,  650, 1250,   8, 2, 'unidad'],
   ['RAM005', 'Margaritas x10',                 'Margaritas blancas frescas',                 4, 3,  350,  680,  15, 3, 'unidad'],
 
-  // ── Tierra y Sustratos (cat 5, prov 0)
   ['TIE001', 'Tierra Negra 20L',               'Tierra fértil para todo uso',                5, 0,  380,  720,  40, 8, 'unidad'],
   ['TIE002', 'Sustrato Universal 10L',         'Sustrato premium con nutrientes',            5, 0,  280,  520,  35, 7, 'unidad'],
   ['TIE003', 'Sustrato para Cactus 5L',        'Sustrato drenante especial',                 5, 0,  180,  340,  25, 5, 'unidad'],
   ['TIE004', 'Perlita 2L',                     'Mejorador de drenaje y aireación',           5, 0,  120,  230,  30, 6, 'unidad'],
   ['TIE005', 'Mantillo 20L',                   'Abono orgánico enriquecido',                 5, 0,  420,  800,  20, 4, 'unidad'],
 
-  // ── Pesticidas y Fertilizantes (cat 6, prov 2)
   ['PES001', 'Fertilizante Plantas Verdes 500ml','Fórmula alta en nitrógeno',               6, 2,  280,  540,  30, 6, 'unidad'],
   ['PES002', 'Fertilizante para Flores 500ml',  'Estimula la floración',                    6, 2,  290,  550,  28, 6, 'unidad'],
   ['PES003', 'Insecticida Sistémico 250ml',     'Controla pulgones y cochinillas',           6, 2,  350,  680,  20, 4, 'unidad'],
   ['PES004', 'Fungicida Preventivo 250ml',      'Previene hongos y mildiu',                  6, 2,  320,  620,  18, 4, 'unidad'],
   ['PES005', 'Abono Orgánico 1kg',              'Abono de liberación lenta',                 6, 2,  240,  460,  25, 5, 'unidad'],
 
-  // ── Decoración (cat 7, prov 4)
   ['DEC001', 'Piedras Decorativas 1kg',        'Piedras de colores para macetas',            7, 4,  120,  230,  40, 8, 'kg'],
   ['DEC002', 'Guijarros Blancos 1kg',          'Guijarros blancos pulidos',                  7, 4,  130,  250,  35, 7, 'kg'],
   ['DEC003', 'Musgo Natural Seco 200g',        'Musgo para decoración y base',               7, 4,  180,  350,  20, 4, 'unidad'],
@@ -96,7 +87,6 @@ export function setupSeed() {
     try {
       const db = getDb()
 
-      // Preparar statements fuera de la transacción
       const insertCat  = db.prepare('INSERT OR IGNORE INTO categorias (nombre, descripcion) VALUES (?, ?)')
       const getCat     = db.prepare('SELECT id FROM categorias WHERE nombre=?')
       const insertProv = db.prepare('INSERT INTO proveedores (nombre, contacto, telefono, email, direccion) VALUES (?, ?, ?, ?, ?)')
@@ -115,7 +105,6 @@ export function setupSeed() {
       `)
 
       const run = db.transaction(() => {
-        // ── Categorías ────────────────────────────────────────────────────
         const catIds = []
         for (const c of CATEGORIAS) {
           insertCat.run(c.nombre, c.descripcion)
@@ -123,7 +112,6 @@ export function setupSeed() {
           catIds.push(row.id)
         }
 
-        // ── Proveedores ───────────────────────────────────────────────────
         const provIds = []
         for (const p of PROVEEDORES) {
           const existe = existeProv.get(p.nombre)
@@ -134,7 +122,6 @@ export function setupSeed() {
           provIds.push(row.id)
         }
 
-        // ── Productos ─────────────────────────────────────────────────────
         let creados = 0
         let omitidos = 0
         for (const p of PRODUCTOS) {
@@ -159,7 +146,6 @@ export function setupSeed() {
       const data = run()
       return { ok: true, data }
     } catch (e) {
-      console.error('[Seed] Error:', e)
       return { ok: false, error: e.message }
     }
   })
@@ -190,7 +176,6 @@ export function setupSeed() {
       const data = run()
       return { ok: true, data }
     } catch (e) {
-      console.error('[Seed] Clear error:', e)
       return { ok: false, error: e.message }
     }
   })

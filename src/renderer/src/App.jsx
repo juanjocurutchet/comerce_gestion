@@ -13,8 +13,10 @@ import Usuarios from './pages/Usuarios'
 import Configuracion from './pages/Configuracion'
 import Backup from './pages/Backup'
 import Cotizaciones from './pages/Cotizaciones'
+import UpdateNotifier from './components/UpdateNotifier'
 import { useAuthStore } from './store/authStore'
 import { useThemeStore } from './store/themeStore'
+import { useClientStore } from './store/clientStore'
 
 function PrivateRoute({ children }) {
   const user = useAuthStore((s) => s.user)
@@ -23,14 +25,19 @@ function PrivateRoute({ children }) {
 
 export default function App() {
   const dark = useThemeStore((s) => s.dark)
+  const { features, load } = useClientStore()
 
-  // Sincroniza clase CSS en <body> para scrollbars y elementos fuera de Ant Design
   useEffect(() => {
     document.body.classList.toggle('dark', dark)
   }, [dark])
 
+  useEffect(() => {
+    load()
+  }, [])
+
   return (
     <HashRouter>
+      <UpdateNotifier />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route
@@ -41,16 +48,16 @@ export default function App() {
                 <Routes>
                   <Route path="/" element={<Navigate to="/dashboard" replace />} />
                   <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/productos" element={<Productos />} />
-                  <Route path="/stock" element={<Stock />} />
-                  <Route path="/ventas" element={<Ventas />} />
-                  <Route path="/cotizaciones" element={<Cotizaciones />} />
-                  <Route path="/proveedores" element={<Proveedores />} />
-                  <Route path="/caja" element={<Caja />} />
-                  <Route path="/reportes" element={<Reportes />} />
-                  <Route path="/usuarios" element={<Usuarios />} />
-                  <Route path="/configuracion" element={<Configuracion />} />
-                  <Route path="/backup" element={<Backup />} />
+                  {features.productos    && <Route path="/productos"    element={<Productos />} />}
+                  {features.stock        && <Route path="/stock"        element={<Stock />} />}
+                  {features.ventas       && <Route path="/ventas"       element={<Ventas />} />}
+                  {features.cotizaciones && <Route path="/cotizaciones" element={<Cotizaciones />} />}
+                  {features.proveedores  && <Route path="/proveedores"  element={<Proveedores />} />}
+                  {features.caja         && <Route path="/caja"         element={<Caja />} />}
+                  {features.reportes     && <Route path="/reportes"     element={<Reportes />} />}
+                  {features.usuarios     && <Route path="/usuarios"     element={<Usuarios />} />}
+                  {features.configuracion && <Route path="/configuracion" element={<Configuracion />} />}
+                  {features.backup       && <Route path="/backup"       element={<Backup />} />}
                 </Routes>
               </MainLayout>
             </PrivateRoute>

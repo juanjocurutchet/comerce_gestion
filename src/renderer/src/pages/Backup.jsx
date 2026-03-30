@@ -192,7 +192,6 @@ export default function Backup() {
         </Space>
       </div>
 
-      {/* Estado del último backup */}
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={24} sm={8}>
           <Card className="stat-card">
@@ -242,7 +241,6 @@ export default function Backup() {
         </Col>
       </Row>
 
-      {/* Configuración */}
       <Card title="Configuración de Backup" style={{ marginBottom: 16 }}>
         <Row gutter={[24, 16]} align="middle">
           <Col xs={24} sm={12}>
@@ -279,7 +277,6 @@ export default function Backup() {
         </Row>
       </Card>
 
-      {/* Lista de backups */}
       <Card title="Backups Disponibles">
         {backupStatus === 'danger' && (
           <Alert

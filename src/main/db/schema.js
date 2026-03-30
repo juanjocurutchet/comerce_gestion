@@ -135,7 +135,6 @@ export function initSchema(db) {
     );
   `)
 
-  // Insertar usuario admin por defecto si no existe
   const adminExists = db.prepare("SELECT id FROM usuarios WHERE username = 'admin'").get()
   if (!adminExists) {
     db.prepare(`
@@ -144,7 +143,6 @@ export function initSchema(db) {
     `).run()
   }
 
-  // Configuración por defecto
   const configCount = db.prepare("SELECT COUNT(*) as c FROM configuracion").get()
   if (configCount.c === 0) {
     const insertConfig = db.prepare("INSERT INTO configuracion (clave, valor) VALUES (?, ?)")
@@ -155,7 +153,6 @@ export function initSchema(db) {
     insertConfig.run('ticketFooter', 'Gracias por su compra!')
   }
 
-  // Categorías por defecto
   const catCount = db.prepare('SELECT COUNT(*) as c FROM categorias').get()
   if (catCount.c === 0) {
     const insertCat = db.prepare('INSERT INTO categorias (nombre) VALUES (?)')

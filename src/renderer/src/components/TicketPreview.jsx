@@ -1,16 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { Modal, Button, Space, Select, message, Spin } from 'antd'
-import { PrinterOutlined, EyeOutlined } from '@ant-design/icons'
+import { PrinterOutlined } from '@ant-design/icons'
 import { generateReceiptHTML } from '../utils/receipt'
 
-/**
- * Modal de vista previa e impresión de ticket.
- * Props:
- *   open        - boolean
- *   onClose     - callback
- *   venta       - objeto venta
- *   items       - array de items de la venta
- */
 export default function TicketPreview({ open, onClose, venta, items }) {
   const [config, setConfig] = useState({})
   const [pageSize, setPageSize] = useState('80mm')

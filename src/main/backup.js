@@ -3,8 +3,6 @@ import { join } from 'path'
 import { copyFileSync, readdirSync, unlinkSync, existsSync, mkdirSync, statSync } from 'fs'
 import { configDB } from './db/index.js'
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
 function getDbPath() {
   return join(app.getPath('userData'), 'comercio.db')
 }
@@ -26,8 +24,6 @@ function getBackupConfig() {
   }
 }
 
-// ─── Listar backups ───────────────────────────────────────────────────────────
-
 function listBackups(dir) {
   if (!existsSync(dir)) return []
   return readdirSync(dir)
@@ -40,8 +36,6 @@ function listBackups(dir) {
     .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
 }
 
-// ─── Ejecutar backup ──────────────────────────────────────────────────────────
-
 function runBackup(backupDir, keepLast) {
   ensureDir(backupDir)
   const dbPath = getDbPath()
@@ -53,10 +47,8 @@ function runBackup(backupDir, keepLast) {
 
   copyFileSync(dbPath, destFile)
 
-  // Guardar fecha del último backup
   configDB.set('backupLastDate', now.toISOString())
 
-  // Limpiar backups viejos (mantener los últimos N)
   const all = listBackups(backupDir)
   if (all.length > keepLast) {
     all.slice(keepLast).forEach(b => {
@@ -67,10 +59,7 @@ function runBackup(backupDir, keepLast) {
   return { file: `comercio_backup_${ts}.db`, path: destFile, fecha: now.toISOString() }
 }
 
-// ─── Auto backup al iniciar ───────────────────────────────────────────────────
-
 export function setupBackup() {
-  // Verificar si corresponde hacer backup automático
   try {
     const cfg = getBackupConfig()
     if (!cfg.autoBackup) return
@@ -82,13 +71,8 @@ export function setupBackup() {
 
     if (horasPasadas >= 24) {
       runBackup(cfg.backupDir, cfg.keepLast)
-      console.log('[Backup] Backup automático realizado al iniciar')
     }
-  } catch (e) {
-    console.error('[Backup] Error en backup automático:', e.message)
-  }
-
-  // ─── IPC Handlers ───────────────────────────────────────────────────────────
+  } catch (_e) {}
 
   ipcMain.handle('backup:run', async () => {
     try {
@@ -134,12 +118,10 @@ export function setupBackup() {
     try {
       const dbPath = getDbPath()
       if (!existsSync(backupPath)) throw new Error('Archivo de backup no encontrado')
-      // Hacer backup del estado actual antes de restaurar
       const cfg = getBackupConfig()
       ensureDir(cfg.backupDir)
       const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
       copyFileSync(dbPath, join(cfg.backupDir, `comercio_preRestore_${ts}.db`))
-      // Restaurar
       copyFileSync(backupPath, dbPath)
       return { ok: true }
     } catch (e) {

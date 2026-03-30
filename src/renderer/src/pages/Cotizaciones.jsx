@@ -21,7 +21,6 @@ const ESTADO_COLOR = {
   vencida:   'default'
 }
 
-// ── Generador de presupuesto ─────────────────────────────────────────────────
 function GeneradorPresupuesto({ onCreado, active }) {
   const [productos, setProductos] = useState([])
   const [carrito, setCarrito]     = useState([])
@@ -131,7 +130,7 @@ function GeneradorPresupuesto({ onCreado, active }) {
 
   const prodFiltrados = productos.filter(p =>
     p.nombre?.toLowerCase().includes(busqueda.toLowerCase()) || p.codigo?.includes(busqueda)
-  )
+  ).slice(0, 30)
 
   const colsCarrito = [
     { title: 'Producto', dataIndex: 'nombre', ellipsis: true },
@@ -159,7 +158,6 @@ function GeneradorPresupuesto({ onCreado, active }) {
   return (
     <div style={{ display: 'flex', gap: 12, height: '100%', padding: '8px 16px 16px', overflow: 'hidden' }}>
 
-      {/* Panel productos */}
       <Card
         style={{ flex: 14, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
         styles={{ body: { flex: 1, minHeight: 0, padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' } }}
@@ -226,7 +224,6 @@ function GeneradorPresupuesto({ onCreado, active }) {
         </div>
       </Card>
 
-      {/* Panel presupuesto */}
       <Card
         title={<Space><FileTextOutlined /><span>Presupuesto</span><Badge count={carrito.length} color="#1677ff" /></Space>}
         style={{ flex: 10, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
@@ -273,7 +270,6 @@ function GeneradorPresupuesto({ onCreado, active }) {
   )
 }
 
-// ── Historial de cotizaciones ─────────────────────────────────────────────────
 function HistorialCotizaciones() {
   const [cotizaciones, setCotizaciones] = useState([])
   const [loading, setLoading]           = useState(false)
@@ -403,7 +399,6 @@ function HistorialCotizaciones() {
   )
 }
 
-// ── Página principal ──────────────────────────────────────────────────────────
 export default function Cotizaciones() {
   const [activeTab, setActiveTab] = useState('nuevo')
   const [refreshKey, setRefreshKey] = useState(0)

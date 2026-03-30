@@ -48,7 +48,6 @@ export default function Productos() {
     record ? form.setFieldsValue(record) : form.resetFields()
   }
 
-  // ── Autocompletado de nombre ─────────────────────────────────────────────
   function onNombreSearch(text) {
     if (!text || text.length < 2) {
       setNombreSugerencias([])
@@ -71,13 +70,11 @@ export default function Productos() {
             </Space>
           </Space>
         ),
-        // guardar el producto completo para autocompletar precios si se selecciona
         producto: p
       }))
     setNombreSugerencias(matches)
   }
 
-  // Al seleccionar una sugerencia → preguntar si sumar stock
   function onNombreSelect(value, option) {
     if (option.producto && !modal.record) {
       const p = option.producto
@@ -98,7 +95,6 @@ export default function Productos() {
         okText: 'Sí, sumar stock',
         cancelText: 'No, crear nuevo',
         onOk: () => {
-          // Cerrar el modal actual y abrir en modo edición con el duplicado
           setModal({ open: true, record: p })
           form.setFieldsValue(p)
           setNombreSugerencias([])
@@ -108,7 +104,6 @@ export default function Productos() {
     }
   }
 
-  // ── Lector de código de barras ───────────────────────────────────────────
   useBarcodeScanner(
     (code) => {
       form.setFieldValue('codigo', code)
@@ -123,7 +118,6 @@ export default function Productos() {
     { enabled: modal.open, minLength: 3, maxDelay: 50 }
   )
 
-  // ── Guardar ──────────────────────────────────────────────────────────────
   async function handleSave() {
     const values = await form.validateFields()
 
@@ -286,7 +280,6 @@ export default function Productos() {
         width={600}
         destroyOnClose
       >
-        {/* Indicador lector USB */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8,
           padding: '6px 10px', borderRadius: 6, marginBottom: 16,

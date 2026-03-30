@@ -1,8 +1,5 @@
 import dayjs from 'dayjs'
 
-/**
- * Despacha al generador correcto según el tamaño de página.
- */
 export function generateReceiptHTML(venta, items, config = {}, pageSize = '80mm') {
   if (pageSize === 'A4' || pageSize === 'A5') {
     return generateInvoiceHTML(venta, items, config, pageSize)
@@ -10,9 +7,6 @@ export function generateReceiptHTML(venta, items, config = {}, pageSize = '80mm'
   return generateTicketHTML(venta, items, config)
 }
 
-/**
- * Comprobante de venta tipo "Remito X" para A4 / A5.
- */
 export function generateInvoiceHTML(venta, items, config = {}, pageSize = 'A4') {
   const {
     nombreComercio = 'Mi Comercio',
@@ -33,6 +27,8 @@ export function generateInvoiceHTML(venta, items, config = {}, pageSize = 'A4') 
     tarjeta_debito: 'Tarjeta Débito',
     tarjeta_credito: 'Tarjeta Crédito',
     transferencia: 'Transferencia',
+    mercado_pago: 'Mercado Pago',
+    cuenta_dni: 'Cuenta DNI',
     otro: 'Otro'
   }[venta.metodo_pago] || venta.metodo_pago || '-'
 
@@ -61,7 +57,6 @@ export function generateInvoiceHTML(venta, items, config = {}, pageSize = 'A4') 
       padding: ${isA5 ? '12mm 14mm' : '16mm 18mm'};
     }
 
-    /* ── Encabezado ── */
     .header-wrap {
       display: flex;
       align-items: stretch;
@@ -125,7 +120,6 @@ export function generateInvoiceHTML(venta, items, config = {}, pageSize = 'A4') 
     .doc-row b { font-weight: 700; }
     .doc-comp { font-size: ${isA5 ? '11px' : '12px'}; font-weight: 700; text-transform: uppercase; }
 
-    /* ── Datos del comprobante ── */
     .datos-wrap {
       border: 1px solid #bbb;
       padding: ${isA5 ? '6px 10px' : '8px 14px'};
@@ -137,7 +131,6 @@ export function generateInvoiceHTML(venta, items, config = {}, pageSize = 'A4') 
     .datos-wrap .field { display: flex; gap: 6px; }
     .datos-wrap .field span { font-weight: 600; }
 
-    /* ── Tabla de items ── */
     table {
       width: 100%;
       border-collapse: collapse;
@@ -163,10 +156,8 @@ export function generateInvoiceHTML(venta, items, config = {}, pageSize = 'A4') 
     .td-center { text-align: center; }
     .td-right  { text-align: right; white-space: nowrap; }
 
-    /* Rellenar filas vacías para que la tabla ocupe espacio */
     .empty-row td { padding: ${isA5 ? '12px 6px' : '16px 8px'}; border-bottom: 1px solid #e8e8e8; }
 
-    /* ── Totales ── */
     .totals-wrap {
       display: flex;
       justify-content: flex-end;
@@ -193,7 +184,6 @@ export function generateInvoiceHTML(venta, items, config = {}, pageSize = 'A4') 
       border-color: #111;
     }
 
-    /* ── Forma de pago ── */
     .pago-wrap {
       border: 1px solid #bbb;
       padding: ${isA5 ? '5px 10px' : '6px 12px'};
@@ -203,7 +193,6 @@ export function generateInvoiceHTML(venta, items, config = {}, pageSize = 'A4') 
     }
     .pago-wrap span { font-weight: 600; }
 
-    /* ── Footer ── */
     .footer {
       border-top: 1px dashed #999;
       padding-top: 8px;
@@ -221,7 +210,6 @@ export function generateInvoiceHTML(venta, items, config = {}, pageSize = 'A4') 
 </head>
 <body>
 
-  <!-- Encabezado principal -->
   <div class="header-wrap">
     <div class="header-left">
       <div class="comercio-nombre">${nombreComercio}</div>
@@ -242,13 +230,11 @@ export function generateInvoiceHTML(venta, items, config = {}, pageSize = 'A4') 
     </div>
   </div>
 
-  <!-- Datos adicionales -->
   <div class="datos-wrap">
     <div class="field"><span>Forma de pago:</span>${metodoPagoLabel}</div>
     ${venta.notas ? `<div class="field"><span>Notas:</span>${venta.notas}</div>` : ''}
   </div>
 
-  <!-- Tabla de productos -->
   <table>
     <thead>
       <tr>
@@ -267,7 +253,6 @@ export function generateInvoiceHTML(venta, items, config = {}, pageSize = 'A4') 
     </tbody>
   </table>
 
-  <!-- Totales -->
   <div class="totals-wrap">
     <table class="totals-table">
       <tbody>
@@ -288,7 +273,6 @@ export function generateInvoiceHTML(venta, items, config = {}, pageSize = 'A4') 
     </table>
   </div>
 
-  <!-- Footer -->
   <div class="footer">
     <div>${ticketFooter}</div>
     <div style="margin-top:3px">Documento no válido como factura fiscal &nbsp;·&nbsp; Generado el ${dayjs().format('DD/MM/YYYY HH:mm')}</div>
@@ -298,9 +282,6 @@ export function generateInvoiceHTML(venta, items, config = {}, pageSize = 'A4') 
 </html>`
 }
 
-/**
- * Genera el HTML del presupuesto/cotización para A4.
- */
 export function generateQuoteHTML(cotizacion, items, config = {}) {
   const {
     nombreComercio = 'Mi Comercio',
@@ -449,9 +430,6 @@ export function generateQuoteHTML(cotizacion, items, config = {}) {
 </body></html>`
 }
 
-/**
- * Genera el HTML del ticket de venta para impresora térmica 80mm.
- */
 export function generateTicketHTML(venta, items, config = {}) {
   const {
     nombreComercio = 'Mi Comercio',
@@ -478,6 +456,8 @@ export function generateTicketHTML(venta, items, config = {}) {
     tarjeta_debito: 'Tarjeta Débito',
     tarjeta_credito: 'Tarjeta Crédito',
     transferencia: 'Transferencia',
+    mercado_pago: 'Mercado Pago',
+    cuenta_dni: 'Cuenta DNI',
     otro: 'Otro'
   }[venta.metodo_pago] || venta.metodo_pago
 

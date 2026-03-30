@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Row, Col, Card, Statistic, Typography, List, Tag, Spin, Alert } from 'antd'
+import { Row, Col, Card, Statistic, Typography, List, Tag, Spin } from 'antd'
 import {
   ShoppingCartOutlined, DollarOutlined, AppstoreOutlined,
   WarningOutlined, ArrowUpOutlined
@@ -34,7 +34,6 @@ export default function Dashboard() {
     setResumen(r.data)
     setVentasHoy(h.data)
     setStockBajo(sb.data || [])
-    // Armar los últimos 7 días con datos
     const dias = []
     for (let i = 6; i >= 0; i--) {
       const dia = dayjs().subtract(i, 'day')
@@ -102,7 +101,6 @@ export default function Dashboard() {
       </Row>
 
       <Row gutter={[16, 16]}>
-        {/* Gráfica de ventas últimos 7 días */}
         <Col xs={24} lg={16}>
           <Card title="Ventas últimos 7 días" className="stat-card">
             <ResponsiveContainer width="100%" height={260}>
@@ -123,7 +121,6 @@ export default function Dashboard() {
           </Card>
         </Col>
 
-        {/* Alertas de stock bajo */}
         <Col xs={24} lg={8}>
           <Card
             title={<span><WarningOutlined style={{ color: '#fa8c16', marginRight: 8 }} />Stock Bajo</span>}
@@ -154,7 +151,6 @@ export default function Dashboard() {
         </Col>
       </Row>
 
-      {/* Resumen general */}
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         <Col xs={24}>
           <Card className="stat-card">

@@ -99,7 +99,7 @@ export default function Reportes() {
               <Table
                 columns={colsProductos}
                 dataSource={topProductos}
-                rowKey="nombre"
+                rowKey={(r, i) => r.codigo || i}
                 size="small"
                 pagination={{ pageSize: 10 }}
               />
@@ -141,7 +141,7 @@ export default function Reportes() {
                   { title: 'Total Vendido', dataIndex: 'total', render: v => `$${Number(v).toFixed(2)}`, align: 'right', sorter: (a, b) => a.total - b.total, defaultSortOrder: 'descend' }
                 ]}
                 dataSource={porCategoria}
-                rowKey="name"
+                rowKey={(r, i) => r.categoria || i}
                 size="small"
                 pagination={false}
               />

@@ -114,7 +114,6 @@ export default function Usuarios() {
         />
       </Card>
 
-      {/* Modal crear/editar */}
       <Modal
         title={modal.record ? 'Editar Usuario' : 'Nuevo Usuario'}
         open={modal.open}
@@ -149,7 +148,6 @@ export default function Usuarios() {
         </Form>
       </Modal>
 
-      {/* Modal cambiar contraseña */}
       <Modal
         title="Cambiar Contraseña"
         open={modalPwd.open}

@@ -82,7 +82,6 @@ export default function Configuracion() {
         <Title level={4} style={{ margin: 0 }}>Configuración</Title>
       </div>
 
-      {/* Datos del comercio */}
       <Card
         title={<><ShopOutlined style={{ marginRight: 8 }} />Datos del Comercio</>}
         style={{ maxWidth: 600, marginBottom: 16 }}
@@ -115,7 +114,6 @@ export default function Configuracion() {
         </Form>
       </Card>
 
-      {/* Datos de prueba */}
       <Card
         title={<><ExperimentOutlined style={{ marginRight: 8 }} />Datos de Prueba — Vivero</>}
         style={{ maxWidth: 600 }}
