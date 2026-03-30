@@ -9,7 +9,7 @@ import { setupPrint } from './print.js'
 import { setupBackup } from './backup.js'
 import { setupSeed } from './seed.js'
 import { setupUpdater } from './updater.js'
-import { setupClient } from './client.js'
+import { setupClient, getClientConfig } from './client.js'
 import { setupLicense } from './license.js'
 
 function createWindow() {
@@ -20,7 +20,7 @@ function createWindow() {
     minHeight: 600,
     show: false,
     autoHideMenuBar: true,
-    title: 'Gestión Comercio',
+    title: getClientConfig().clientName || 'Gestión Comercio',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,

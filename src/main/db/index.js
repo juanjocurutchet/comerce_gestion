@@ -2,6 +2,7 @@ import Database from 'better-sqlite3'
 import { app } from 'electron'
 import { join } from 'path'
 import { initSchema } from './schema.js'
+import { getClientConfig } from '../client.js'
 
 let db
 
@@ -9,7 +10,8 @@ export function getDb() {
   if (!db) {
     const dbPath = join(app.getPath('userData'), 'comercio.db')
     db = new Database(dbPath)
-    initSchema(db)
+    const { clientName } = getClientConfig()
+    initSchema(db, clientName)
   }
   return db
 }

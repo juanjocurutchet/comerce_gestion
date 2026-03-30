@@ -1,4 +1,4 @@
-export function initSchema(db) {
+export function initSchema(db, clientName = '') {
   db.exec(`
     PRAGMA journal_mode=WAL;
     PRAGMA foreign_keys=ON;
@@ -144,13 +144,16 @@ export function initSchema(db) {
   }
 
   const configCount = db.prepare("SELECT COUNT(*) as c FROM configuracion").get()
+  const defaultName = clientName || 'Mi Comercio'
   if (configCount.c === 0) {
     const insertConfig = db.prepare("INSERT INTO configuracion (clave, valor) VALUES (?, ?)")
-    insertConfig.run('nombreComercio', 'Mi Comercio')
+    insertConfig.run('nombreComercio', defaultName)
     insertConfig.run('direccion', '')
     insertConfig.run('telefono', '')
     insertConfig.run('cuit', '')
     insertConfig.run('ticketFooter', 'Gracias por su compra!')
+  } else if (clientName) {
+    db.prepare("UPDATE configuracion SET valor=? WHERE clave='nombreComercio' AND valor='Mi Comercio'").run(clientName)
   }
 
   const catCount = db.prepare('SELECT COUNT(*) as c FROM categorias').get()

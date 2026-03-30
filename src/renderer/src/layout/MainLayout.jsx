@@ -40,7 +40,7 @@ export default function MainLayout({ children }) {
   const location = useLocation()
   const { user, logout } = useAuthStore()
   const { dark, toggle } = useThemeStore()
-  const { features, isAdmin } = useClientStore()
+  const { features, isAdmin, clientName } = useClientStore()
   const { token } = antTheme.useToken()
 
   const menuItems = ALL_MENU_ITEMS.filter(item => {
@@ -87,7 +87,7 @@ export default function MainLayout({ children }) {
           <ShopOutlined style={{ fontSize: 24, color: '#1677ff' }} />
           {!collapsed && (
             <Text style={{ color: '#fff', fontWeight: 700, fontSize: 16, whiteSpace: 'nowrap' }}>
-              Gestión Comercio
+              {clientName || 'Gestión Comercio'}
             </Text>
           )}
         </div>

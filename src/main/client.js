@@ -35,9 +35,16 @@ function loadClientConfig() {
   return { clientId: 'default', clientName: '', features: DEFAULT_FEATURES }
 }
 
-export function setupClient() {
-  const config = loadClientConfig()
-  config.features = { ...DEFAULT_FEATURES, ...config.features }
+let _clientConfig = null
 
-  ipcMain.handle('client:getConfig', () => config)
+export function getClientConfig() {
+  if (!_clientConfig) {
+    _clientConfig = loadClientConfig()
+    _clientConfig.features = { ...DEFAULT_FEATURES, ..._clientConfig.features }
+  }
+  return _clientConfig
+}
+
+export function setupClient() {
+  ipcMain.handle('client:getConfig', () => getClientConfig())
 }
