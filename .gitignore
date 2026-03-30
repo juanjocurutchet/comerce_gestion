@@ -5,6 +5,4 @@ dist/
 *.db-shm
 *.db-wal
 .env
-resources/icon.ico
-resources/icon.png
 resources/supabase.json
