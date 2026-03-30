@@ -26,5 +26,11 @@ export const useClientStore = create((set) => ({
       isAdmin: config.isAdmin === true,
       loaded: true
     })
+  },
+  setFromLicense: (clientName, features) => {
+    set({
+      clientName: clientName || '',
+      features: features ? { ...DEFAULT_FEATURES, ...features } : DEFAULT_FEATURES
+    })
   }
 }))

@@ -98,12 +98,12 @@ async function checkLicense() {
 
     writeCache({ ...row, last_check: new Date().toISOString() })
 
-    if (!row.activo) return { valid: false, reason: 'disabled', offline: false, clienteNombre: row.cliente_nombre }
+    if (!row.activo) return { valid: false, reason: 'disabled', offline: false, clientName: row.cliente_nombre }
 
     const days = daysUntil(row.vence_en)
-    if (days < 0) return { valid: false, reason: 'expired', offline: false, vence_en: row.vence_en, clienteNombre: row.cliente_nombre }
+    if (days < 0) return { valid: false, reason: 'expired', offline: false, vence_en: row.vence_en, clientName: row.cliente_nombre }
 
-    return { valid: true, offline: false, daysLeft: days, vence_en: row.vence_en, clienteNombre: row.cliente_nombre }
+    return { valid: true, offline: false, daysLeft: days, vence_en: row.vence_en, clientName: row.cliente_nombre, features: row.features || null }
 
   } catch {
     const cache = readCache()
@@ -115,7 +115,7 @@ async function checkLicense() {
     const grace = cache.grace_days ?? GRACE_DAYS
     if (daysOffline > grace) return { valid: false, reason: 'grace_exceeded', offline: true, daysOffline, grace }
 
-    return { valid: true, offline: true, daysOffline, daysRemaining: grace - daysOffline, grace, vence_en: cache.vence_en }
+    return { valid: true, offline: true, daysOffline, daysRemaining: grace - daysOffline, grace, vence_en: cache.vence_en, clientName: cache.cliente_nombre, features: cache.features || null }
   }
 }
 
@@ -140,7 +140,7 @@ export function setupLicense() {
       if (daysUntil(row.vence_en) < 0) return { ok: false, error: 'Esta clave está vencida. Renovála para continuar.' }
       writeStoredKey(key.trim().toUpperCase())
       writeCache({ ...row, last_check: new Date().toISOString() })
-      return { ok: true, clienteNombre: row.cliente_nombre }
+      return { ok: true, clientName: row.cliente_nombre }
     } catch {
       return { ok: false, error: 'Sin conexión a internet. Necesitás conexión para activar la app por primera vez.' }
     }
