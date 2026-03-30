@@ -333,11 +333,12 @@ export const cotizacionesDB = {
       VALUES (?, ?, ?, ?, ?, ?)
     `)
     return db.transaction(() => {
-      const { lastInsertRowid } = insertCot.run({ ...cotizacion, usuario_id: usuarioId || null })
+      const info = insertCot.run({ ...cotizacion, usuario_id: usuarioId || null })
+      const id = Number(info.lastInsertRowid)
       for (const item of items) {
-        insertItem.run(lastInsertRowid, item.producto_id || null, item.nombre, item.cantidad, item.precio_unitario, item.subtotal)
+        insertItem.run(id, item.producto_id || null, item.nombre, item.cantidad, item.precio_unitario, item.subtotal)
       }
-      return lastInsertRowid
+      return id
     })()
   },
 

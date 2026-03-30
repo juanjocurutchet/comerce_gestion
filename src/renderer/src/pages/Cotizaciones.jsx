@@ -98,26 +98,34 @@ function GeneradorPresupuesto({ onCreado, active }) {
   async function generarPresupuesto() {
     if (carrito.length === 0) return message.warning('Agregá al menos un producto')
     setLoading(true)
-    const cotizacion = { subtotal, descuento: descuentoMonto, total: totalFinal, notas, validez_dias: validez }
-    const items = carrito.map(i => ({
-      producto_id: i.producto_id, nombre: i.nombre,
-      cantidad: i.cantidad, precio_unitario: i.precio_unitario, subtotal: i.subtotal
-    }))
-    const res = await window.api.cotizaciones.create(cotizacion, items, user?.id)
-    setLoading(false)
-    if (res.ok) {
+    try {
+      const cotizacion = { subtotal, descuento: descuentoMonto, total: totalFinal, notas, validez_dias: validez }
+      const items = carrito.map(i => ({
+        producto_id: i.producto_id, nombre: i.nombre,
+        cantidad: i.cantidad, precio_unitario: i.precio_unitario, subtotal: i.subtotal
+      }))
+      const res = await window.api.cotizaciones.create(cotizacion, items, user?.id)
+      if (!res.ok) {
+        message.error(res.error || 'Error al generar presupuesto')
+        return
+      }
       const id = res.data
       message.success(`Presupuesto #${id} generado`)
-      // Abrir PDF
-      const config = (await window.api.config.getAll()).data || {}
-      const cotObj = { id, fecha: new Date().toISOString(), subtotal, descuento: descuentoMonto,
-        total: totalFinal, notas, validez_dias: validez, usuario_nombre: user?.nombre, estado: 'pendiente' }
+      const configRes = await window.api.config.getAll()
+      const config = configRes.data || {}
+      const cotObj = {
+        id, fecha: new Date().toISOString(), subtotal, descuento: descuentoMonto,
+        total: totalFinal, notas, validez_dias: validez,
+        usuario_nombre: user?.nombre, estado: 'pendiente'
+      }
       const html = generateQuoteHTML(cotObj, items, config)
       window.api.print.ticket(html, { silent: false, pageSize: 'A4' })
-      setCarrito([]); setDescuento(0); setNotas(''); setLastScanned(null)
+      setCarrito([]); setDescuento(0); setTipoDesc('$'); setNotas(''); setLastScanned(null)
       onCreado?.()
-    } else {
-      message.error(res.error || 'Error al generar presupuesto')
+    } catch (e) {
+      message.error('Error inesperado: ' + e.message)
+    } finally {
+      setLoading(false)
     }
   }
 
