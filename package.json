@@ -1,6 +1,6 @@
 {
   "name": "gestion-comercio",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Sistema de gestión para comercios",
   "main": "out/main/index.js",
   "scripts": {
@@ -51,10 +51,12 @@
       }
     ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "resources/icon.ico"
     },
     "linux": {
-      "target": "AppImage"
+      "target": "AppImage",
+      "icon": "resources/icon.png"
     },
     "publish": {
       "provider": "github",
