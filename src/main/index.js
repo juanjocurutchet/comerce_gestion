@@ -56,6 +56,7 @@ app.whenReady().then(() => {
   setupSeed()
   const win = createWindow()
   setupUpdater(win)
+  ipcMain.on('window:setTitle', (_, title) => { if (title) win.setTitle(title) })
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })
 })
 

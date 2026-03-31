@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { useThemeStore } from '../store/themeStore'
 import { useLicenseStore } from '../store/licenseStore'
+import { useClientStore } from '../store/clientStore'
 import { LicenseWarning } from '../components/LicenseGuard'
 
 const { Title, Text } = Typography
@@ -17,6 +18,7 @@ export default function Login() {
   const { dark, toggle } = useThemeStore()
   const { token } = antTheme.useToken()
   const licenseStatus = useLicenseStore((s) => s.status)
+  const { logo, clientName } = useClientStore()
 
   const onFinish = async ({ username, password }) => {
     setLoading(true)
@@ -56,14 +58,20 @@ export default function Login() {
       </div>
       <Card style={{ width: 380, borderRadius: 16, boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
         <Space direction="vertical" align="center" style={{ width: '100%', marginBottom: 32 }}>
-          <div style={{
-            width: 64, height: 64, borderRadius: 16,
-            background: 'linear-gradient(135deg, #1677ff, #003a8c)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}>
-            <ShopOutlined style={{ fontSize: 32, color: '#fff' }} />
-          </div>
-          <Title level={3} style={{ margin: 0 }}>Gestión Comercio</Title>
+          {logo ? (
+            <img src={logo} alt={clientName} style={{ width: '100%', maxHeight: 80, objectFit: 'contain' }} />
+          ) : (
+            <>
+              <div style={{
+                width: 64, height: 64, borderRadius: 16,
+                background: 'linear-gradient(135deg, #1677ff, #003a8c)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}>
+                <ShopOutlined style={{ fontSize: 32, color: '#fff' }} />
+              </div>
+              <Title level={3} style={{ margin: 0 }}>{clientName || 'Gestión Comercio'}</Title>
+            </>
+          )}
           <Text type="secondary">Ingresá tus credenciales para continuar</Text>
         </Space>
 

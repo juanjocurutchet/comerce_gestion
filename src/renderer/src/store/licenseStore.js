@@ -7,8 +7,9 @@ export const useLicenseStore = create((set) => ({
   check: async () => {
     const status = await window.api.license.check()
     set({ status, checked: true })
-    if (status.valid && status.clientName) {
+    if (status.valid && status.clientName && !useClientStore.getState().isAdmin) {
       useClientStore.getState().setFromLicense(status.clientName, status.features)
+      window.api.client.setTitle(status.clientName)
     }
     return status
   }

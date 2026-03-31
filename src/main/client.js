@@ -15,24 +15,35 @@ const DEFAULT_FEATURES = {
   configuracion: true
 }
 
-function loadClientConfig() {
+function findResourceFile(filename) {
   const candidates = [
-    join(process.resourcesPath, 'resources', 'client.json'),
-    join(app.getAppPath(), '..', 'resources', 'client.json'),
-    join(__dirname, '../../resources/client.json')
+    join(process.resourcesPath, 'resources', filename),
+    join(app.getAppPath(), '..', 'resources', filename),
+    join(__dirname, '../../resources', filename)
   ]
+  return candidates.find(p => existsSync(p)) || null
+}
 
-  for (const path of candidates) {
-    if (existsSync(path)) {
-      try {
-        return JSON.parse(readFileSync(path, 'utf-8'))
-      } catch {
-        break
-      }
-    }
+function loadClientConfig() {
+  const jsonPath = findResourceFile('client.json')
+  if (jsonPath) {
+    try {
+      return JSON.parse(readFileSync(jsonPath, 'utf-8'))
+    } catch {}
   }
-
   return { clientId: 'default', clientName: '', features: DEFAULT_FEATURES }
+}
+
+function loadLogo() {
+  const logoPath = findResourceFile('logo.png')
+  const iconPath = findResourceFile('logo_icon.png')
+  const toBase64 = (p) => {
+    try { return `data:image/png;base64,${readFileSync(p).toString('base64')}` } catch { return null }
+  }
+  return {
+    full: logoPath ? toBase64(logoPath) : null,
+    icon: iconPath ? toBase64(iconPath) : null
+  }
 }
 
 let _clientConfig = null
@@ -46,5 +57,5 @@ export function getClientConfig() {
 }
 
 export function setupClient() {
-  ipcMain.handle('client:getConfig', () => getClientConfig())
+  ipcMain.handle('client:getConfig', () => ({ ...getClientConfig(), logo: loadLogo() }))
 }

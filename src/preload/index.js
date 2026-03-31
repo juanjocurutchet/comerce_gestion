@@ -93,7 +93,8 @@ contextBridge.exposeInMainWorld('api', {
     delete: (id) => invoke('cotizaciones:delete', id)
   },
   client: {
-    getConfig: () => invoke('client:getConfig')
+    getConfig: () => invoke('client:getConfig'),
+    setTitle: (title) => ipcRenderer.send('window:setTitle', title)
   },
   license: {
     check: () => invoke('license:check'),

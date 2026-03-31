@@ -40,7 +40,7 @@ export default function MainLayout({ children }) {
   const location = useLocation()
   const { user, logout } = useAuthStore()
   const { dark, toggle } = useThemeStore()
-  const { features, isAdmin, clientName } = useClientStore()
+  const { features, isAdmin, clientName, logo, logoIcon } = useClientStore()
   const { token } = antTheme.useToken()
 
   const menuItems = ALL_MENU_ITEMS.filter(item => {
@@ -80,15 +80,22 @@ export default function MainLayout({ children }) {
           alignItems: 'center',
           justifyContent: 'center',
           borderBottom: '1px solid rgba(255,255,255,0.1)',
-          gap: 10,
-          padding: '0 16px',
+          padding: (logo && !collapsed) || (logoIcon && collapsed) ? 0 : '0 16px',
           overflow: 'hidden'
         }}>
-          <ShopOutlined style={{ fontSize: 24, color: '#1677ff' }} />
-          {!collapsed && (
-            <Text style={{ color: '#fff', fontWeight: 700, fontSize: 16, whiteSpace: 'nowrap' }}>
-              {clientName || 'Gestión Comercio'}
-            </Text>
+          {logo && !collapsed ? (
+            <img src={logo} alt={clientName} style={{ width: '100%', height: 64, objectFit: 'contain' }} />
+          ) : logoIcon && collapsed ? (
+            <img src={logoIcon} alt={clientName} style={{ width: '100%', height: 64, objectFit: 'fill' }} />
+          ) : (
+            <>
+              <ShopOutlined style={{ fontSize: 24, color: '#1677ff' }} />
+              {!collapsed && (
+                <Text style={{ color: '#fff', fontWeight: 700, fontSize: 16, whiteSpace: 'nowrap', marginLeft: 10 }}>
+                  {clientName || 'Gestión Comercio'}
+                </Text>
+              )}
+            </>
           )}
         </div>
 
