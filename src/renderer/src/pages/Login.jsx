@@ -28,6 +28,8 @@ export default function Login() {
     if (res.ok && res.data) {
       setUser(res.data)
       navigate('/dashboard')
+    } else if (!res.ok) {
+      setError(`Error interno: ${res.error}`)
     } else {
       setError('Usuario o contraseña incorrectos')
     }
