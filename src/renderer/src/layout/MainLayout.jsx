@@ -11,6 +11,8 @@ import {
   QuestionCircleOutlined
 } from '@ant-design/icons'
 import { useAuthStore } from '../store/authStore'
+import nexoLogo from '../assets/nexo-commerce-logo.png'
+import nexoIcon from '../assets/nexo-commerce-icon.png'
 import { useThemeStore } from '../store/themeStore'
 import { useClientStore } from '../store/clientStore'
 
@@ -83,22 +85,13 @@ export default function MainLayout({ children }) {
           alignItems: 'center',
           justifyContent: 'center',
           borderBottom: '1px solid rgba(255,255,255,0.1)',
-          padding: (logo && !collapsed) || (logoIcon && collapsed) ? 0 : '0 16px',
+          padding: '0 8px',
           overflow: 'hidden'
         }}>
-          {logo && !collapsed ? (
-            <img src={logo} alt={clientName} style={{ width: '100%', height: 64, objectFit: 'contain' }} />
-          ) : logoIcon && collapsed ? (
-            <img src={logoIcon} alt={clientName} style={{ width: '100%', height: 64, objectFit: 'fill' }} />
+          {collapsed ? (
+            <img src={logoIcon || nexoIcon} alt="Nexo Commerce" style={{ width: 44, height: 44, objectFit: 'contain' }} />
           ) : (
-            <>
-              <ShopOutlined style={{ fontSize: 24, color: '#1677ff' }} />
-              {!collapsed && (
-                <Text style={{ color: '#fff', fontWeight: 700, fontSize: 16, whiteSpace: 'nowrap', marginLeft: 10 }}>
-                  {clientName || 'Nexo Commerce'}
-                </Text>
-              )}
-            </>
+            <img src={logo || nexoLogo} alt="Nexo Commerce" style={{ width: '100%', height: 52, objectFit: 'contain' }} />
           )}
         </div>
 
@@ -110,6 +103,18 @@ export default function MainLayout({ children }) {
           onClick={({ key }) => navigate(key)}
           style={{ marginTop: 8, border: 'none' }}
         />
+
+        {!collapsed && (
+          <div style={{
+            position: 'absolute', bottom: 12, width: '100%',
+            textAlign: 'center', paddingTop: 10,
+            borderTop: '1px solid rgba(255,255,255,0.1)'
+          }}>
+            <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 11 }}>
+              © 2025 ShangoTech · Todos los derechos reservados
+            </Text>
+          </div>
+        )}
       </Sider>
 
       <Layout style={{ marginLeft: collapsed ? 80 : 200, transition: 'margin-left 0.2s' }}>

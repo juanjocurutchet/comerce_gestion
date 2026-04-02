@@ -1,12 +1,13 @@
 import React, { useState } from 'react'
 import { Form, Input, Button, Card, Typography, Alert, Space, Tooltip, theme as antTheme } from 'antd'
-import { UserOutlined, LockOutlined, ShopOutlined, BulbOutlined, BulbFilled } from '@ant-design/icons'
+import { UserOutlined, LockOutlined, BulbOutlined, BulbFilled } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { useThemeStore } from '../store/themeStore'
 import { useLicenseStore } from '../store/licenseStore'
 import { useClientStore } from '../store/clientStore'
 import { LicenseWarning } from '../components/LicenseGuard'
+import nexoLogo from '../assets/nexo-commerce-logo.png'
 
 const { Title, Text } = Typography
 
@@ -59,21 +60,13 @@ export default function Login() {
         </Tooltip>
       </div>
       <Card style={{ width: 380, borderRadius: 16, boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
-        <Space direction="vertical" align="center" style={{ width: '100%', marginBottom: 32 }}>
-          {logo ? (
-            <img src={logo} alt={clientName} style={{ width: '100%', maxHeight: 80, objectFit: 'contain' }} />
-          ) : (
-            <>
-              <div style={{
-                width: 64, height: 64, borderRadius: 16,
-                background: 'linear-gradient(135deg, #1677ff, #003a8c)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center'
-              }}>
-                <ShopOutlined style={{ fontSize: 32, color: '#fff' }} />
-              </div>
-              <Title level={3} style={{ margin: 0 }}>{clientName || 'Nexo Commerce'}</Title>
-            </>
-          )}
+        <Space direction="vertical" align="center" style={{ width: '100%', marginBottom: 24 }}>
+          <img
+            src={logo || nexoLogo}
+            alt={clientName || 'Nexo Commerce'}
+            style={{ width: '100%', maxHeight: 80, objectFit: 'contain' }}
+          />
+          {clientName && <Title level={4} style={{ margin: 0 }}>{clientName}</Title>}
           <Text type="secondary">Ingresá tus credenciales para continuar</Text>
         </Space>
 
@@ -97,6 +90,10 @@ export default function Login() {
         <Text type="secondary" style={{ display: 'block', textAlign: 'center', marginTop: 16, fontSize: 12 }}>
           Usuario por defecto: admin / admin123
         </Text>
+
+        <div style={{ textAlign: 'center', marginTop: 20, paddingTop: 16, borderTop: '1px solid #f0f0f0' }}>
+          <Text style={{ fontSize: 11, color: '#8c8c8c' }}>© 2025 ShangoTech · Todos los derechos reservados</Text>
+        </div>
       </Card>
     </div>
   )
