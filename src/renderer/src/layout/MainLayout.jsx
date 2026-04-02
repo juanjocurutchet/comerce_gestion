@@ -106,8 +106,8 @@ export default function MainLayout({ children }) {
 
         {!collapsed && (
           <div style={{
-            position: 'absolute', bottom: 12, width: '100%',
-            textAlign: 'center', paddingTop: 10,
+            position: 'absolute', bottom: 12, left: 0, right: 0,
+            textAlign: 'center', paddingTop: 10, paddingLeft: 12, paddingRight: 12,
             borderTop: '1px solid rgba(255,255,255,0.1)'
           }}>
             <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 11 }}>

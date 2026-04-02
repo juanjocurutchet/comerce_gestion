@@ -2,7 +2,7 @@ import { app, shell, BrowserWindow, ipcMain, Menu } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 
-app.setPath('userData', join(app.getPath('appData'), 'NexoCommerce'))
+app.setPath('userData', join(app.getPath('appData'), 'GestionComercio'))
 import {
   usuariosDB, categoriasDB, proveedoresDB, productosDB,
   ventasDB, stockDB, cajaDB, configDB, reportesDB, cotizacionesDB

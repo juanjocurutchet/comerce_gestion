@@ -44,7 +44,7 @@ export default function App() {
   if (!checked || !clientLoaded) return null
 
   if (!isAdmin) {
-    if (status?.reason === 'no_key') {
+    if (status?.reason === 'no_key' || status?.reason === 'not_found') {
       return <ActivationScreen onActivated={() => check()} />
     }
     if (status && !status.valid) {
