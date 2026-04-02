@@ -92,7 +92,7 @@ export default function Login() {
         </Text>
 
         <div style={{ textAlign: 'center', marginTop: 20, paddingTop: 16, borderTop: '1px solid #f0f0f0' }}>
-          <Text style={{ fontSize: 11, color: '#8c8c8c' }}>© 2025 ShangoTech · Todos los derechos reservados</Text>
+          <Text style={{ fontSize: 11, color: '#8c8c8c' }}>© 2026 ShangoTech · Todos los derechos reservados</Text>
         </div>
       </Card>
     </div>

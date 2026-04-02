@@ -111,7 +111,7 @@ export default function MainLayout({ children }) {
             borderTop: '1px solid rgba(255,255,255,0.1)'
           }}>
             <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 11 }}>
-              © 2025 ShangoTech · Todos los derechos reservados
+              © 2026 ShangoTech · Todos los derechos reservados
             </Text>
           </div>
         )}
