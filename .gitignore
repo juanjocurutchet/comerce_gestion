@@ -6,3 +6,5 @@ dist/
 *.db-wal
 .env
 resources/supabase.json
+resources/client.json
+resources/client.json
