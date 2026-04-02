@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Result, Button, Typography, Space, Alert, Input, Form, Card } from 'antd'
-import { LockOutlined, WifiOutlined, CalendarOutlined, StopOutlined, KeyOutlined, ShopOutlined } from '@ant-design/icons'
+import { LockOutlined, WifiOutlined, CalendarOutlined, StopOutlined, KeyOutlined } from '@ant-design/icons'
+import nexoLogo from '../assets/nexo-commerce-logo.png'
 
 const { Text, Title } = Typography
 
@@ -32,13 +33,7 @@ export function ActivationScreen({ onActivated }) {
     }}>
       <Card style={{ width: 420, borderRadius: 16, boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
         <Space direction="vertical" align="center" style={{ width: '100%', marginBottom: 24 }}>
-          <div style={{
-            width: 64, height: 64, borderRadius: 16,
-            background: 'linear-gradient(135deg, #1677ff, #003a8c)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}>
-            <ShopOutlined style={{ fontSize: 32, color: '#fff' }} />
-          </div>
+          <img src={nexoLogo} alt="Nexo Commerce" style={{ width: 200, objectFit: 'contain', marginBottom: 4 }} />
           <Title level={3} style={{ margin: 0 }}>Activar aplicación</Title>
           <Text type="secondary" style={{ textAlign: 'center' }}>
             Ingresá la clave de activación que recibiste para comenzar a usar el sistema.
