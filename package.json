@@ -60,7 +60,7 @@
       "icon": "resources/icon.ico"
     },
     "appx": {
-      "publisher": "CN=REEMPLAZAR-CON-PUBLISHER-IDENTITY-DEL-DEV-CENTER",
+      "publisher": "CN=3CE17C7B-F3A6-4AD6-A06F-2AED692EA622",
       "publisherDisplayName": "ShangoTech",
       "identityName": "ShangoTech.NexoCommerce",
       "applicationId": "NexoCommerce",
