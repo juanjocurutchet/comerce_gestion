@@ -13,8 +13,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Set client config for build
-        run: cp resources/client.json.default resources/client.json
+      - name: Set client config
+        run: cp resources/client.json.default resources/client.json && cp resources/supabase.json.default resources/supabase.json
       - name: Install dependencies
         run: npm ci --ignore-scripts
       - name: Build and publish Linux
@@ -29,8 +29,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: Set client config for build
-        run: cp resources/client.json.default resources/client.json
+      - name: Set client config
+        run: cp resources/client.json.default resources/client.json && cp resources/supabase.json.default resources/supabase.json
       - name: Install dependencies
         run: npm ci --ignore-scripts
       - name: Build and publish Windows
