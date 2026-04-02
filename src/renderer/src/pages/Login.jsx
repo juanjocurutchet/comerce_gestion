@@ -71,7 +71,7 @@ export default function Login() {
               }}>
                 <ShopOutlined style={{ fontSize: 32, color: '#fff' }} />
               </div>
-              <Title level={3} style={{ margin: 0 }}>{clientName || 'Gestión Comercio'}</Title>
+              <Title level={3} style={{ margin: 0 }}>{clientName || 'Nexo Commerce'}</Title>
             </>
           )}
           <Text type="secondary">Ingresá tus credenciales para continuar</Text>

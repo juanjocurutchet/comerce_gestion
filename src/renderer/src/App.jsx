@@ -14,6 +14,7 @@ import Configuracion from './pages/Configuracion'
 import Backup from './pages/Backup'
 import Cotizaciones from './pages/Cotizaciones'
 import Licencias from './pages/Licencias'
+import Ayuda from './pages/Ayuda'
 import UpdateNotifier from './components/UpdateNotifier'
 import { LicenseBlock, ActivationScreen } from './components/LicenseGuard'
 import { useAuthStore } from './store/authStore'
@@ -75,6 +76,7 @@ export default function App() {
                   {features.configuracion && <Route path="/configuracion" element={<Configuracion />} />}
                   {features.backup        && <Route path="/backup"        element={<Backup />} />}
                   {isAdmin                && <Route path="/licencias"     element={<Licencias />} />}
+                  <Route path="/ayuda" element={<Ayuda />} />
                 </Routes>
               </MainLayout>
             </PrivateRoute>

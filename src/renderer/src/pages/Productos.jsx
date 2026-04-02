@@ -121,7 +121,6 @@ export default function Productos() {
   async function handleSave() {
     const values = await form.validateFields()
 
-    // Si es edición, guardar directo
     if (modal.record) {
       const { _agregarStock, ...rest } = values
       const res = await window.api.productos.update({ ...rest, id: modal.record.id })
@@ -142,12 +141,10 @@ export default function Productos() {
       return
     }
 
-    // Si es nuevo, verificar duplicados antes de crear
     const dupRes = await window.api.productos.findDuplicate(values.nombre, values.codigo || null)
     const dup = dupRes.data
 
     if (dup) {
-      // Producto duplicado → preguntar qué hacer
       Modal.confirm({
         title: 'Producto existente',
         icon: <ExclamationCircleOutlined />,
@@ -187,7 +184,6 @@ export default function Productos() {
       return
     }
 
-    // Sin duplicados → crear normalmente
     const res = await window.api.productos.create(values, user?.id)
     if (res.ok) {
       message.success('Producto creado')

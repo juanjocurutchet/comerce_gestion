@@ -7,6 +7,8 @@ autoUpdater.autoInstallOnAppQuit = true
 let mainWindow = null
 
 export function setupUpdater(win) {
+  if (process.windowsStore) return
+
   mainWindow = win
 
   const send = (event, data) => {

@@ -93,7 +93,7 @@ export function LicenseBlock({ status, onRetry }) {
         subTitle={subTitle}
         extra={
           <Space direction="vertical" align="center">
-            <Text type="secondary" style={{ fontSize: 12 }}>Contacto: soporte@tudominio.com</Text>
+            <Text type="secondary" style={{ fontSize: 12 }}>Contacto: soporteshangotech@gmail.com</Text>
             <Button onClick={onRetry}>Reintentar</Button>
           </Space>
         }

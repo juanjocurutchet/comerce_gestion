@@ -7,7 +7,8 @@ import {
   BarChartOutlined, UserOutlined, LogoutOutlined,
   MenuFoldOutlined, MenuUnfoldOutlined, BellOutlined,
   ShopOutlined, SettingOutlined, CloudUploadOutlined,
-  BulbOutlined, BulbFilled, FileTextOutlined, SafetyCertificateOutlined
+  BulbOutlined, BulbFilled, FileTextOutlined, SafetyCertificateOutlined,
+  QuestionCircleOutlined
 } from '@ant-design/icons'
 import { useAuthStore } from '../store/authStore'
 import { useThemeStore } from '../store/themeStore'
@@ -31,7 +32,9 @@ const ALL_MENU_ITEMS = [
   { type: 'divider' },
   { key: '/backup',       icon: <CloudUploadOutlined />,        label: 'Backup',         feature: 'backup' },
   { key: '/configuracion',icon: <SettingOutlined />,            label: 'Configuración',  feature: 'configuracion' },
-  { key: '/licencias',    icon: <SafetyCertificateOutlined />,  label: 'Licencias',      feature: '__admin__' }
+  { key: '/licencias',    icon: <SafetyCertificateOutlined />,  label: 'Licencias',      feature: '__admin__' },
+  { type: 'divider' },
+  { key: '/ayuda',        icon: <QuestionCircleOutlined />,     label: 'Ayuda',          feature: null }
 ]
 
 export default function MainLayout({ children }) {
@@ -92,7 +95,7 @@ export default function MainLayout({ children }) {
               <ShopOutlined style={{ fontSize: 24, color: '#1677ff' }} />
               {!collapsed && (
                 <Text style={{ color: '#fff', fontWeight: 700, fontSize: 16, whiteSpace: 'nowrap', marginLeft: 10 }}>
-                  {clientName || 'Gestión Comercio'}
+                  {clientName || 'Nexo Commerce'}
                 </Text>
               )}
             </>

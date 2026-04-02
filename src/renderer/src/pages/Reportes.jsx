@@ -7,7 +7,6 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, AreaChart, Area
 } from 'recharts'
-import { SearchOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 
 const { Title, Text } = Typography

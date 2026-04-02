@@ -2,7 +2,7 @@ import { app, shell, BrowserWindow, ipcMain, Menu } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 
-app.setPath('userData', join(app.getPath('appData'), 'GestionComercio'))
+app.setPath('userData', join(app.getPath('appData'), 'NexoCommerce'))
 import {
   usuariosDB, categoriasDB, proveedoresDB, productosDB,
   ventasDB, stockDB, cajaDB, configDB, reportesDB, cotizacionesDB
@@ -22,7 +22,7 @@ function createWindow() {
     minHeight: 600,
     show: false,
     autoHideMenuBar: true,
-    title: getClientConfig().clientName || 'Gestión Comercio',
+    title: getClientConfig().clientName || 'Nexo Commerce',
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false,

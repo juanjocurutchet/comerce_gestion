@@ -438,8 +438,6 @@ export function generateTicketHTML(venta, items, config = {}) {
     cuit = '',
     ticketFooter = 'Gracias por su compra!'
   } = config
-  const footer = ticketFooter
-
   const fecha = dayjs(venta.fecha).format('DD/MM/YYYY HH:mm')
 
   const itemsHTML = items.map(item => `
@@ -615,7 +613,7 @@ export function generateTicketHTML(venta, items, config = {}) {
   ${venta.notas ? `<div style="margin-top:6px;font-size:11px;"><b>Nota:</b> ${venta.notas}</div>` : ''}
 
   <div class="footer">
-    <div>${footer}</div>
+    <div>${ticketFooter}</div>
     <div style="margin-top:4px; font-size:10px;">${dayjs().format('DD/MM/YYYY HH:mm:ss')}</div>
   </div>
 </body>
