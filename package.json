@@ -24,9 +24,11 @@
     "better-sqlite3": "^11.5.0",
     "dayjs": "^1.11.13",
     "electron-updater": "^6.8.3",
+    "i18next": "^26.0.3",
     "node-machine-id": "^1.1.12",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-i18next": "^17.0.2",
     "react-router-dom": "^6.28.0",
     "recharts": "^2.13.3",
     "zustand": "^5.0.2"
@@ -56,7 +58,10 @@
       }
     ],
     "win": {
-      "target": ["nsis", "appx"],
+      "target": [
+        "nsis",
+        "appx"
+      ],
       "icon": "resources/icon.ico"
     },
     "appx": {

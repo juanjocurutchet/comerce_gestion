@@ -62,6 +62,17 @@ export const productosDB = {
   getById: (id) => getDb().prepare('SELECT * FROM productos WHERE id=?').get(id),
   getByCodigo: (codigo) => getDb().prepare('SELECT * FROM productos WHERE codigo=? AND activo=1').get(codigo),
   getStockBajo: () => getDb().prepare('SELECT * FROM productos WHERE stock_actual <= stock_minimo AND activo=1').all(),
+  getVencimientosCercanos: () => {
+    return getDb().prepare(`
+      SELECT p.*, c.nombre as categoria_nombre
+      FROM productos p
+      LEFT JOIN categorias c ON p.categoria_id = c.id
+      WHERE p.activo=1
+        AND p.fecha_vencimiento IS NOT NULL AND p.fecha_vencimiento != ''
+        AND date(p.fecha_vencimiento) <= date('now', '+' || COALESCE(p.dias_alerta_vencimiento, 7) || ' days')
+      ORDER BY p.fecha_vencimiento ASC
+    `).all()
+  },
 
   findDuplicate: (nombre, codigo) => {
     const db = getDb()
@@ -78,8 +89,8 @@ export const productosDB = {
     const db = getDb()
     return db.transaction(() => {
       const result = db.prepare(`
-        INSERT INTO productos (codigo, nombre, descripcion, categoria_id, proveedor_id, precio_compra, precio_venta, stock_actual, stock_minimo, unidad)
-        VALUES (@codigo, @nombre, @descripcion, @categoria_id, @proveedor_id, @precio_compra, @precio_venta, @stock_actual, @stock_minimo, @unidad)
+        INSERT INTO productos (codigo, nombre, descripcion, categoria_id, proveedor_id, precio_compra, precio_venta, stock_actual, stock_minimo, unidad, fecha_vencimiento)
+        VALUES (@codigo, @nombre, @descripcion, @categoria_id, @proveedor_id, @precio_compra, @precio_venta, @stock_actual, @stock_minimo, @unidad, @fecha_vencimiento)
       `).run(data)
       const id = result.lastInsertRowid
       if (data.stock_actual > 0) {
@@ -92,16 +103,24 @@ export const productosDB = {
     })()
   },
 
-  sumarStock: (id, cantidad, usuarioId) => {
+  sumarStock: (id, cantidad, usuarioId, fechaVencLote = null) => {
     const db = getDb()
     return db.transaction(() => {
       const prod = db.prepare('SELECT stock_actual FROM productos WHERE id=?').get(id)
       const stockNuevo = prod.stock_actual + cantidad
       db.prepare('UPDATE productos SET stock_actual=? WHERE id=?').run(stockNuevo, id)
       db.prepare(`
-        INSERT INTO movimientos_stock (producto_id, tipo, cantidad, stock_anterior, stock_nuevo, motivo, referencia_tipo, usuario_id)
-        VALUES (?, 'ingreso', ?, ?, ?, 'Reposición de stock', 'ajuste', ?)
-      `).run(id, cantidad, prod.stock_actual, stockNuevo, usuarioId || null)
+        INSERT INTO movimientos_stock (producto_id, tipo, cantidad, stock_anterior, stock_nuevo, motivo, referencia_tipo, usuario_id, fecha_vencimiento)
+        VALUES (?, 'ingreso', ?, ?, ?, 'Reposición de stock', 'ajuste', ?, ?)
+      `).run(id, cantidad, prod.stock_actual, stockNuevo, usuarioId || null, fechaVencLote || null)
+      if (fechaVencLote) {
+        db.prepare(`
+          UPDATE productos SET fecha_vencimiento = (
+            SELECT MIN(fecha_vencimiento) FROM movimientos_stock
+            WHERE producto_id=? AND tipo='ingreso' AND fecha_vencimiento IS NOT NULL
+          ) WHERE id=?
+        `).run(id, id)
+      }
       return stockNuevo
     })()
   },
@@ -109,7 +128,8 @@ export const productosDB = {
   update: (data) => getDb().prepare(`
     UPDATE productos SET codigo=@codigo, nombre=@nombre, descripcion=@descripcion,
     categoria_id=@categoria_id, proveedor_id=@proveedor_id, precio_compra=@precio_compra,
-    precio_venta=@precio_venta, stock_minimo=@stock_minimo, unidad=@unidad WHERE id=@id
+    precio_venta=@precio_venta, stock_minimo=@stock_minimo, unidad=@unidad,
+    fecha_vencimiento=@fecha_vencimiento, dias_alerta_vencimiento=@dias_alerta_vencimiento WHERE id=@id
   `).run(data),
   delete: (id) => getDb().prepare('UPDATE productos SET activo=0 WHERE id=?').run(id),
   ajustarStock: (id, cantidad) => getDb().prepare('UPDATE productos SET stock_actual = stock_actual + ? WHERE id=?').run(cantidad, id)
@@ -241,9 +261,17 @@ export const stockDB = {
         : prod.stock_actual - data.cantidad
       db.prepare('UPDATE productos SET stock_actual=? WHERE id=?').run(stockNuevo, data.producto_id)
       db.prepare(`
-        INSERT INTO movimientos_stock (producto_id, tipo, cantidad, stock_anterior, stock_nuevo, motivo, referencia_tipo, usuario_id)
-        VALUES (?, ?, ?, ?, ?, ?, 'ajuste', ?)
-      `).run(data.producto_id, data.tipo, data.cantidad, prod.stock_actual, stockNuevo, data.motivo, usuarioId)
+        INSERT INTO movimientos_stock (producto_id, tipo, cantidad, stock_anterior, stock_nuevo, motivo, referencia_tipo, usuario_id, fecha_vencimiento)
+        VALUES (?, ?, ?, ?, ?, ?, 'ajuste', ?, ?)
+      `).run(data.producto_id, data.tipo, data.cantidad, prod.stock_actual, stockNuevo, data.motivo, usuarioId, data.fecha_vencimiento || null)
+      if (data.tipo === 'ingreso' && data.fecha_vencimiento) {
+        db.prepare(`
+          UPDATE productos SET fecha_vencimiento = (
+            SELECT MIN(fecha_vencimiento) FROM movimientos_stock
+            WHERE producto_id=? AND tipo='ingreso' AND fecha_vencimiento IS NOT NULL
+          ) WHERE id=?
+        `).run(data.producto_id, data.producto_id)
+      }
     })()
   }
 }

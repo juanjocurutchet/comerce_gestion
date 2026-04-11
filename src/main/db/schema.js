@@ -158,7 +158,19 @@ export function initSchema(db, clientName = '') {
 
   const catCount = db.prepare('SELECT COUNT(*) as c FROM categorias').get()
   if (catCount.c === 0) {
-    const insertCat = db.prepare('INSERT INTO categorias (nombre) VALUES (?)')
-    ;['General', 'Bebidas', 'Alimentos', 'Limpieza', 'Electrónica', 'Ropa', 'Otros'].forEach(n => insertCat.run(n))
+    db.prepare('INSERT INTO categorias (nombre) VALUES (?)').run('Otros')
+  }
+
+  try { db.exec('ALTER TABLE productos ADD COLUMN fecha_vencimiento TEXT') } catch {}
+  try { db.exec('ALTER TABLE productos ADD COLUMN dias_alerta_vencimiento INTEGER DEFAULT 7') } catch {}
+  try { db.exec('ALTER TABLE movimientos_stock ADD COLUMN fecha_vencimiento TEXT') } catch {}
+
+  for (const nombre of ['General', 'Bebidas', 'Alimentos', 'Limpieza', 'Electrónica', 'Ropa']) {
+    try {
+      db.prepare(`
+        DELETE FROM categorias WHERE nombre=?
+        AND id NOT IN (SELECT categoria_id FROM productos WHERE categoria_id IS NOT NULL)
+      `).run(nombre)
+    } catch {}
   }
 }

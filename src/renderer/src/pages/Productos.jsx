@@ -2,14 +2,26 @@ import React, { useEffect, useState, useRef } from 'react'
 import {
   Table, Button, Space, Typography, Input, Modal, Form,
   Select, InputNumber, Tag, Popconfirm, message, Row, Col,
-  Card, Tooltip, AutoComplete
+  Card, Tooltip, AutoComplete, DatePicker
 } from 'antd'
 import {
   PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined,
-  BarcodeOutlined, ScanOutlined, ExclamationCircleOutlined
+  BarcodeOutlined, ScanOutlined, ExclamationCircleOutlined, CalendarOutlined
 } from '@ant-design/icons'
 import { useBarcodeScanner } from '../hooks/useBarcodeScanner'
 import { useAuthStore } from '../store/authStore'
+import dayjs from 'dayjs'
+
+function vencimientoTag(fecha) {
+  if (!fecha) return null
+  const hoy = dayjs()
+  const vence = dayjs(fecha)
+  const dias = vence.diff(hoy, 'day')
+  if (dias < 0) return <Tag color="error" icon={<CalendarOutlined />}>Vencido</Tag>
+  if (dias <= 7) return <Tag color="error" icon={<CalendarOutlined />}>Vence en {dias}d</Tag>
+  if (dias <= 30) return <Tag color="warning" icon={<CalendarOutlined />}>Vence en {dias}d</Tag>
+  return <Tag color="default" icon={<CalendarOutlined />}>{vence.format('DD/MM/YY')}</Tag>
+}
 
 const { Title, Text } = Typography
 
@@ -45,7 +57,14 @@ export default function Productos() {
     setModal({ open: true, record })
     setScanned(false)
     setNombreSugerencias([])
-    record ? form.setFieldsValue(record) : form.resetFields()
+    if (record) {
+      form.setFieldsValue({
+        ...record,
+        fecha_vencimiento: record.fecha_vencimiento ? dayjs(record.fecha_vencimiento) : null
+      })
+    } else {
+      form.resetFields()
+    }
   }
 
   function onNombreSearch(text) {
@@ -120,6 +139,11 @@ export default function Productos() {
 
   async function handleSave() {
     const values = await form.validateFields()
+    if (values.fecha_vencimiento) {
+      values.fecha_vencimiento = values.fecha_vencimiento.format('YYYY-MM-DD')
+    } else {
+      values.fecha_vencimiento = null
+    }
 
     if (modal.record) {
       const { _agregarStock, ...rest } = values
@@ -127,7 +151,8 @@ export default function Productos() {
       if (!res.ok) { message.error(res.error || 'Error al guardar'); return }
 
       if (_agregarStock > 0) {
-        const r = await window.api.productos.sumarStock(modal.record.id, _agregarStock, user?.id)
+        const fechaVencLote = values._fechaVencLote ? values._fechaVencLote.format('YYYY-MM-DD') : null
+        const r = await window.api.productos.sumarStock(modal.record.id, _agregarStock, user?.id, fechaVencLote)
         if (r.ok) {
           message.success(`Producto actualizado · stock +${_agregarStock} (total: ${r.data})`)
         } else {
@@ -225,6 +250,16 @@ export default function Productos() {
       align: 'center'
     },
     { title: 'Proveedor', dataIndex: 'proveedor_nombre', render: v => v || '-' },
+    {
+      title: 'Vencimiento', dataIndex: 'fecha_vencimiento',
+      render: v => vencimientoTag(v),
+      sorter: (a, b) => {
+        if (!a.fecha_vencimiento && !b.fecha_vencimiento) return 0
+        if (!a.fecha_vencimiento) return 1
+        if (!b.fecha_vencimiento) return -1
+        return a.fecha_vencimiento.localeCompare(b.fecha_vencimiento)
+      }
+    },
     {
       title: 'Acciones', key: 'acciones', width: 100, align: 'center',
       render: (_, r) => (
@@ -382,6 +417,36 @@ export default function Productos() {
               </Form.Item>
             </Col>
           </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="fecha_vencimiento"
+                label={<Space size={4}><CalendarOutlined />Fecha de vencimiento</Space>}
+                extra="Opcional — solo para productos perecederos"
+              >
+                <DatePicker
+                  style={{ width: '100%' }}
+                  format="DD/MM/YYYY"
+                  placeholder="Sin vencimiento"
+                  allowClear
+                />
+              </Form.Item>
+            </Col>
+            <Form.Item noStyle shouldUpdate={(prev, cur) => prev.fecha_vencimiento !== cur.fecha_vencimiento}>
+              {({ getFieldValue }) => getFieldValue('fecha_vencimiento') ? (
+                <Col span={12}>
+                  <Form.Item
+                    name="dias_alerta_vencimiento"
+                    label="Días de alerta previos"
+                    initialValue={7}
+                    extra="Avisar en el dashboard X días antes de vencer"
+                  >
+                    <InputNumber min={1} max={365} style={{ width: '100%' }} addonAfter="días" />
+                  </Form.Item>
+                </Col>
+              ) : null}
+            </Form.Item>
+          </Row>
           {modal.record && (
             <Row gutter={16}>
               <Col span={12}>
@@ -390,6 +455,16 @@ export default function Productos() {
                   <InputNumber min={0} style={{ width: '100%' }} />
                 </Form.Item>
               </Col>
+              <Form.Item noStyle shouldUpdate={(p, c) => p._agregarStock !== c._agregarStock}>
+                {({ getFieldValue }) => getFieldValue('_agregarStock') > 0 ? (
+                  <Col span={12}>
+                    <Form.Item name="_fechaVencLote" label="Vencimiento de este lote"
+                      extra="Opcional — actualiza la alerta del producto">
+                      <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder="Sin vencimiento" allowClear />
+                    </Form.Item>
+                  </Col>
+                ) : null}
+              </Form.Item>
             </Row>
           )}
           {!modal.record && (

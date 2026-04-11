@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import {
   Table, Button, Space, Typography, Select, Modal, Form,
-  InputNumber, Input, Tag, message, Card, Row, Col, Tabs, Alert
+  InputNumber, Input, Tag, message, Card, Tabs, Alert, DatePicker
 } from 'antd'
-import { PlusOutlined, MinusOutlined, WarningOutlined } from '@ant-design/icons'
+import { PlusOutlined, MinusOutlined, WarningOutlined, CalendarOutlined } from '@ant-design/icons'
 import { useAuthStore } from '../store/authStore'
 import dayjs from 'dayjs'
 
@@ -41,6 +41,9 @@ export default function Stock() {
 
   async function handleAjuste() {
     const values = await form.validateFields()
+    if (values.fecha_vencimiento) {
+      values.fecha_vencimiento = values.fecha_vencimiento.format('YYYY-MM-DD')
+    }
     const res = await window.api.stock.ajuste(values, user?.id)
     if (res.ok) {
       message.success('Ajuste de stock registrado')
@@ -88,7 +91,17 @@ export default function Stock() {
     { title: 'Cantidad', dataIndex: 'cantidad', align: 'right' },
     { title: 'Stock Ant.', dataIndex: 'stock_anterior', align: 'right' },
     { title: 'Stock Nuevo', dataIndex: 'stock_nuevo', align: 'right' },
-    { title: 'Motivo', dataIndex: 'motivo', render: v => v || '-' }
+    { title: 'Motivo', dataIndex: 'motivo', render: v => v || '-' },
+    {
+      title: 'Vencimiento lote', dataIndex: 'fecha_vencimiento',
+      render: (v, r) => {
+        if (!v || r.tipo !== 'ingreso') return '-'
+        const dias = dayjs(v).diff(dayjs(), 'day')
+        const color = dias < 0 ? 'error' : dias <= 7 ? 'error' : dias <= 30 ? 'warning' : 'default'
+        return <Tag color={color} icon={<CalendarOutlined />}>{dayjs(v).format('DD/MM/YY')}</Tag>
+      },
+      width: 140
+    }
   ]
 
   const tabItems = [
@@ -163,6 +176,12 @@ export default function Stock() {
           <Form.Item name="motivo" label="Motivo / Observación">
             <Input placeholder={modal.tipo === 'ingreso' ? 'Ej: Compra a proveedor' : 'Ej: Merma, rotura...'} />
           </Form.Item>
+          {modal.tipo === 'ingreso' && (
+            <Form.Item name="fecha_vencimiento" label="Vencimiento de este lote"
+              extra="Opcional — actualiza automáticamente la alerta del producto">
+              <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder="Sin vencimiento" allowClear />
+            </Form.Item>
+          )}
         </Form>
       </Modal>
     </div>

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react'
-import { Row, Col, Card, Statistic, Typography, List, Tag, Spin } from 'antd'
+import { Row, Col, Card, Statistic, Typography, List, Tag, Spin, Modal } from 'antd'
 import {
-  ShoppingCartOutlined, DollarOutlined, AppstoreOutlined,
-  WarningOutlined, ArrowUpOutlined
+  ShoppingCartOutlined, AppstoreOutlined,
+  WarningOutlined, CalendarOutlined
 } from '@ant-design/icons'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import dayjs from 'dayjs'
@@ -14,18 +14,20 @@ export default function Dashboard() {
   const [resumen, setResumen] = useState(null)
   const [ventasHoy, setVentasHoy] = useState(null)
   const [stockBajo, setStockBajo] = useState([])
+  const [vencimientos, setVencimientos] = useState([])
   const [graficaSemana, setGraficaSemana] = useState([])
+  const [modalStock, setModalStock] = useState(false)
+  const [modalVenc, setModalVenc] = useState(false)
 
-  useEffect(() => {
-    loadData()
-  }, [])
+  useEffect(() => { loadData() }, [])
 
   async function loadData() {
     setLoading(true)
-    const [r, h, sb, g] = await Promise.all([
+    const [r, h, sb, vc, g] = await Promise.all([
       window.api.reportes.resumenGeneral(),
       window.api.ventas.resumenHoy(),
       window.api.productos.getStockBajo(),
+      window.api.productos.getVencimientosCercanos(),
       window.api.ventas.resumenPeriodo(
         dayjs().subtract(6, 'day').format('YYYY-MM-DD'),
         dayjs().format('YYYY-MM-DD')
@@ -34,6 +36,7 @@ export default function Dashboard() {
     setResumen(r.data)
     setVentasHoy(h.data)
     setStockBajo(sb.data || [])
+    setVencimientos(vc.data || [])
     const dias = []
     for (let i = 6; i >= 0; i--) {
       const dia = dayjs().subtract(i, 'day')
@@ -53,7 +56,6 @@ export default function Dashboard() {
         <Text type="secondary">{dayjs().format('dddd, D [de] MMMM [de] YYYY')}</Text>
       </div>
 
-      {/* Estadísticas del día */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col xs={24} sm={12} lg={6}>
           <Card className="stat-card" style={{ background: 'linear-gradient(135deg, #1677ff, #0050b3)', border: 'none' }}>
@@ -88,7 +90,11 @@ export default function Dashboard() {
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card className="stat-card" style={{ background: 'linear-gradient(135deg, #fa8c16, #ad4e00)', border: 'none' }}>
+          <Card
+            className="stat-card"
+            style={{ background: 'linear-gradient(135deg, #fa8c16, #ad4e00)', border: 'none', cursor: stockBajo.length > 0 ? 'pointer' : 'default' }}
+            onClick={() => stockBajo.length > 0 && setModalStock(true)}
+          >
             <Statistic
               title={<Text style={{ color: 'rgba(255,255,255,0.85)' }}>Stock Bajo</Text>}
               value={resumen?.stock_bajo || 0}
@@ -121,11 +127,19 @@ export default function Dashboard() {
           </Card>
         </Col>
 
-        <Col xs={24} lg={8}>
+        <Col xs={24} lg={8} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Card
             title={<span><WarningOutlined style={{ color: '#fa8c16', marginRight: 8 }} />Stock Bajo</span>}
             className="stat-card"
             styles={{ body: { padding: '0 16px' } }}
+            extra={stockBajo.length > 0 && (
+              <Text
+                style={{ fontSize: 12, color: '#1677ff', cursor: 'pointer' }}
+                onClick={() => setModalStock(true)}
+              >
+                Ver todos ({stockBajo.length})
+              </Text>
+            )}
           >
             {stockBajo.length === 0 ? (
               <div style={{ padding: '24px 0', textAlign: 'center' }}>
@@ -133,18 +147,54 @@ export default function Dashboard() {
               </div>
             ) : (
               <List
-                dataSource={stockBajo.slice(0, 8)}
+                dataSource={stockBajo.slice(0, 5)}
                 renderItem={(item) => (
-                  <List.Item style={{ padding: '10px 0' }}>
+                  <List.Item style={{ padding: '8px 0' }}>
                     <List.Item.Meta
                       title={<Text style={{ fontSize: 13 }}>{item.nombre}</Text>}
-                      description={<Text type="secondary" style={{ fontSize: 12 }}>{item.codigo || 'Sin código'}</Text>}
                     />
                     <Tag color={item.stock_actual <= 0 ? 'error' : 'warning'}>
                       {item.stock_actual} {item.unidad}
                     </Tag>
                   </List.Item>
                 )}
+              />
+            )}
+          </Card>
+
+          <Card
+            title={<span><CalendarOutlined style={{ color: '#ff4d4f', marginRight: 8 }} />Próximos a vencer</span>}
+            className="stat-card"
+            styles={{ body: { padding: '0 16px' } }}
+            extra={vencimientos.length > 0 && (
+              <Text
+                style={{ fontSize: 12, color: '#1677ff', cursor: 'pointer' }}
+                onClick={() => setModalVenc(true)}
+              >
+                Ver todos ({vencimientos.length})
+              </Text>
+            )}
+          >
+            {vencimientos.length === 0 ? (
+              <div style={{ padding: '24px 0', textAlign: 'center' }}>
+                <Text type="secondary">Sin alertas de vencimiento</Text>
+              </div>
+            ) : (
+              <List
+                dataSource={vencimientos.slice(0, 5)}
+                renderItem={(item) => {
+                  const dias = dayjs(item.fecha_vencimiento).diff(dayjs(), 'day')
+                  return (
+                    <List.Item style={{ padding: '8px 0' }}>
+                      <List.Item.Meta
+                        title={<Text style={{ fontSize: 13 }}>{item.nombre}</Text>}
+                      />
+                      <Tag color={dias < 0 ? 'error' : dias <= 7 ? 'error' : 'warning'}>
+                        {dias < 0 ? 'Vencido' : `${dias}d`}
+                      </Tag>
+                    </List.Item>
+                  )
+                }}
               />
             )}
           </Card>
@@ -171,6 +221,77 @@ export default function Dashboard() {
           </Card>
         </Col>
       </Row>
+
+      <Modal
+        title={<span><WarningOutlined style={{ color: '#fa8c16', marginRight: 8 }} />Productos con Stock Bajo</span>}
+        open={modalStock}
+        onCancel={() => setModalStock(false)}
+        footer={null}
+        width={500}
+      >
+        <List
+          dataSource={stockBajo}
+          renderItem={(item) => (
+            <List.Item>
+              <List.Item.Meta
+                title={item.nombre}
+                description={
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    {item.codigo ? `Cód: ${item.codigo}` : 'Sin código'}
+                    {item.categoria_nombre ? ` · ${item.categoria_nombre}` : ''}
+                  </Text>
+                }
+              />
+              <div style={{ textAlign: 'right' }}>
+                <Tag color={item.stock_actual <= 0 ? 'error' : 'warning'}>
+                  Stock: {item.stock_actual} {item.unidad}
+                </Tag>
+                <div style={{ fontSize: 11, color: '#999', marginTop: 2 }}>
+                  Mínimo: {item.stock_minimo}
+                </div>
+              </div>
+            </List.Item>
+          )}
+          locale={{ emptyText: 'Sin productos con stock bajo' }}
+        />
+      </Modal>
+
+      <Modal
+        title={<span><CalendarOutlined style={{ color: '#ff4d4f', marginRight: 8 }} />Productos próximos a vencer</span>}
+        open={modalVenc}
+        onCancel={() => setModalVenc(false)}
+        footer={null}
+        width={500}
+      >
+        <List
+          dataSource={vencimientos}
+          renderItem={(item) => {
+            const dias = dayjs(item.fecha_vencimiento).diff(dayjs(), 'day')
+            return (
+              <List.Item>
+                <List.Item.Meta
+                  title={item.nombre}
+                  description={
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      {item.codigo ? `Cód: ${item.codigo}` : 'Sin código'}
+                      {item.categoria_nombre ? ` · ${item.categoria_nombre}` : ''}
+                    </Text>
+                  }
+                />
+                <div style={{ textAlign: 'right' }}>
+                  <Tag color={dias < 0 ? 'error' : dias <= 7 ? 'error' : 'warning'}>
+                    {dias < 0 ? 'Vencido' : `Vence en ${dias}d`}
+                  </Tag>
+                  <div style={{ fontSize: 11, color: '#999', marginTop: 2 }}>
+                    {dayjs(item.fecha_vencimiento).format('DD/MM/YYYY')}
+                  </div>
+                </div>
+              </List.Item>
+            )
+          }}
+          locale={{ emptyText: 'Sin productos próximos a vencer' }}
+        />
+      </Modal>
     </div>
   )
 }

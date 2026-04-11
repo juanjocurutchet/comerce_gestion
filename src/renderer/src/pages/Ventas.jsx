@@ -5,12 +5,21 @@ import {
 } from 'antd'
 import {
   DeleteOutlined, ShoppingCartOutlined,
-  CheckOutlined, EyeOutlined, BarcodeOutlined, ScanOutlined, PrinterOutlined
+  CheckOutlined, EyeOutlined, BarcodeOutlined, ScanOutlined, PrinterOutlined, WarningOutlined
 } from '@ant-design/icons'
 import { useAuthStore } from '../store/authStore'
 import { useBarcodeScanner } from '../hooks/useBarcodeScanner'
 import TicketPreview from '../components/TicketPreview'
 import dayjs from 'dayjs'
+
+function estadoVencimiento(fecha) {
+  if (!fecha) return null
+  const dias = dayjs(fecha).diff(dayjs(), 'day')
+  if (dias < 0) return { color: 'error', label: 'VENCIDO' }
+  if (dias <= 7) return { color: 'error', label: `Vence en ${dias}d` }
+  if (dias <= 30) return { color: 'warning', label: `Vence en ${dias}d` }
+  return null
+}
 
 const { Title, Text } = Typography
 
@@ -21,8 +30,8 @@ function POS({ onVentaCreada, active }) {
   const [descuento, setDescuento] = useState(0)
   const [tipoDescuento, setTipoDescuento] = useState('$')
   const [metodoPago, setMetodoPago] = useState('efectivo')
+  const [montoRecibido, setMontoRecibido] = useState('')
   const [loading, setLoading] = useState(false)
-  const [notas, setNotas] = useState('')
   const [lastScanned, setLastScanned] = useState(null)
   const [ticketModal, setTicketModal] = useState({ open: false, venta: null, items: [] })
   const user = useAuthStore(s => s.user)
@@ -71,6 +80,13 @@ function POS({ onVentaCreada, active }) {
   )
 
   function agregarAlCarrito(prod) {
+    const ev = estadoVencimiento(prod.fecha_vencimiento)
+    if (ev?.color === 'error' && prod.fecha_vencimiento) {
+      const dias = dayjs(prod.fecha_vencimiento).diff(dayjs(), 'day')
+      if (dias < 0) {
+        message.warning({ content: `"${prod.nombre}" está VENCIDO (${dayjs(prod.fecha_vencimiento).format('DD/MM/YY')})`, duration: 3 })
+      }
+    }
     setCarrito(prev => {
       const existe = prev.find(i => i.producto_id === prod.id)
       if (existe) {
@@ -85,7 +101,8 @@ function POS({ onVentaCreada, active }) {
         precio_unitario: prod.precio_venta,
         cantidad: 1,
         subtotal: prod.precio_venta,
-        stock: prod.stock_actual
+        stock: prod.stock_actual,
+        fecha_vencimiento: prod.fecha_vencimiento || null
       }]
     })
   }
@@ -117,7 +134,7 @@ function POS({ onVentaCreada, active }) {
   async function confirmarVenta() {
     if (carrito.length === 0) return message.warning('El carrito está vacío')
     setLoading(true)
-    const venta = { subtotal, descuento: descuentoMonto, total: totalFinal, metodo_pago: metodoPago, notas }
+    const venta = { subtotal, descuento: descuentoMonto, total: totalFinal, metodo_pago: metodoPago, notas: '' }
     const items = carrito.map(i => ({
       producto_id: i.producto_id,
       cantidad: i.cantidad,
@@ -136,14 +153,14 @@ function POS({ onVentaCreada, active }) {
         descuento: descuentoMonto,
         total: totalFinal,
         metodo_pago: metodoPago,
-        notas,
+        notas: '',
         usuario_nombre: user?.nombre
       }
       setTicketModal({ open: true, venta: ventaObj, items: carrito.map(i => ({ ...i, producto_nombre: i.nombre })) })
       setCarrito([])
       setDescuento(0)
       setTipoDescuento('$')
-      setNotas('')
+      setMontoRecibido('')
       setLastScanned(null)
       onVentaCreada?.()
     } else {
@@ -250,6 +267,10 @@ function POS({ onVentaCreada, active }) {
                   <Text strong style={{ fontSize: 13, display: 'block' }} ellipsis>{p.nombre}</Text>
                   {p.codigo && <Text type="secondary" style={{ fontSize: 11 }}>{p.codigo}</Text>}
                 </div>
+                {(() => {
+                  const ev = estadoVencimiento(p.fecha_vencimiento)
+                  return ev ? <Tag color={ev.color} icon={<WarningOutlined />} style={{ fontSize: 11, margin: 0 }}>{ev.label}</Tag> : null
+                })()}
                 <Tag
                   color={p.stock_actual <= 0 ? 'error' : 'default'}
                   style={{ fontSize: 11, margin: 0 }}
@@ -313,7 +334,7 @@ function POS({ onVentaCreada, active }) {
             <Text strong style={{ fontSize: 20, color: '#1677ff' }}>${totalFinal.toFixed(2)}</Text>
           </Row>
           <Select
-            value={metodoPago} onChange={setMetodoPago}
+            value={metodoPago} onChange={v => { setMetodoPago(v); setMontoRecibido('') }}
             style={{ width: '100%', marginBottom: 6 }}
             options={[
               { value: 'efectivo',        label: 'Efectivo' },
@@ -325,10 +346,39 @@ function POS({ onVentaCreada, active }) {
               { value: 'otro',            label: 'Otro' }
             ]}
           />
-          <Input
-            placeholder="Notas (opcional)" value={notas}
-            onChange={e => setNotas(e.target.value)} style={{ marginBottom: 8 }}
-          />
+          {metodoPago === 'efectivo' && (
+            <>
+              <div style={{ marginBottom: 6 }}>
+                <Text style={{ display: 'block', marginBottom: 4 }}>Monto recibido:</Text>
+                <InputNumber
+                  value={montoRecibido}
+                  min={0}
+                  precision={2}
+                  placeholder="0.00"
+                  formatter={v => v !== '' && v != null ? `$ ${v}` : ''}
+                  parser={v => v.replace(/\$\s?/g, '')}
+                  onChange={v => setMontoRecibido(v ?? '')}
+                  size="large"
+                  className="monto-recibido"
+                  style={{ width: '100%' }}
+                  controls={false}
+                />
+              </div>
+              {montoRecibido !== '' && montoRecibido >= 0 && (
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  marginBottom: 8, padding: '8px 12px', borderRadius: 6,
+                  background: montoRecibido >= totalFinal ? 'rgba(82,196,26,0.12)' : 'rgba(255,77,79,0.12)',
+                  border: `1px solid ${montoRecibido >= totalFinal ? 'rgba(82,196,26,0.35)' : 'rgba(255,77,79,0.35)'}`,
+                }}>
+                  <Text strong style={{ fontSize: 15 }}>Vuelto</Text>
+                  <Text strong style={{ fontSize: 20, color: montoRecibido >= totalFinal ? '#52c41a' : '#ff4d4f' }}>
+                    ${Math.max(0, montoRecibido - totalFinal).toFixed(2)}
+                  </Text>
+                </div>
+              )}
+            </>
+          )}
           <Button
             type="primary" icon={<CheckOutlined />} block size="large"
             loading={loading} onClick={confirmarVenta} disabled={carrito.length === 0}
