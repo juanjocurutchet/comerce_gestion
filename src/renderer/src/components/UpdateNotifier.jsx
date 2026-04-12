@@ -4,7 +4,7 @@ import { CloudDownloadOutlined, ReloadOutlined } from '@ant-design/icons'
 
 const { Text } = Typography
 
-export default function UpdateNotifier() {
+const UpdateNotifier = () => {
   const [downloadedVersion, setDownloadedVersion] = useState(null)
   const [downloading, setDownloading] = useState(false)
   const [percent, setPercent] = useState(0)
@@ -69,3 +69,5 @@ export default function UpdateNotifier() {
 
   return contextHolder
 }
+
+export default UpdateNotifier

@@ -5,12 +5,12 @@ import nexoLogo from '../assets/nexo-commerce-logo.png'
 
 const { Text, Title } = Typography
 
-export function ActivationScreen({ onActivated }) {
+export const ActivationScreen = ({ onActivated }) => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [form] = Form.useForm()
 
-  async function handleActivate() {
+  const handleActivate = async () => {
     const { key } = await form.validateFields()
     setLoading(true)
     setError('')
@@ -73,7 +73,7 @@ const BLOCK_CONFIG = {
   no_config:     { icon: <LockOutlined style={{ color: '#faad14' }} />,     title: 'Configuración incompleta',  subTitle: 'No se encontró la configuración del servidor. Contactá al soporte.' }
 }
 
-export function LicenseBlock({ status, onRetry }) {
+export const LicenseBlock = ({ status, onRetry }) => {
   const cfg = BLOCK_CONFIG[status.reason] || BLOCK_CONFIG.no_config
   const subTitle = status.reason === 'grace_exceeded'
     ? `Llevás ${status.daysOffline} días sin conexión (límite: ${status.grace} días). Conectate a internet para verificar tu suscripción.`
@@ -97,7 +97,7 @@ export function LicenseBlock({ status, onRetry }) {
   )
 }
 
-export function LicenseWarning({ status }) {
+export const LicenseWarning = ({ status }) => {
   if (!status?.offline || !status?.valid) return null
   return (
     <Alert

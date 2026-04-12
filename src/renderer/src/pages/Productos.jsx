@@ -10,22 +10,12 @@ import {
 } from '@ant-design/icons'
 import { useBarcodeScanner } from '../hooks/useBarcodeScanner'
 import { useAuthStore } from '../store/authStore'
+import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
-
-function vencimientoTag(fecha) {
-  if (!fecha) return null
-  const hoy = dayjs()
-  const vence = dayjs(fecha)
-  const dias = vence.diff(hoy, 'day')
-  if (dias < 0) return <Tag color="error" icon={<CalendarOutlined />}>Vencido</Tag>
-  if (dias <= 7) return <Tag color="error" icon={<CalendarOutlined />}>Vence en {dias}d</Tag>
-  if (dias <= 30) return <Tag color="warning" icon={<CalendarOutlined />}>Vence en {dias}d</Tag>
-  return <Tag color="default" icon={<CalendarOutlined />}>{vence.format('DD/MM/YY')}</Tag>
-}
 
 const { Title, Text } = Typography
 
-export default function Productos() {
+const Productos = () => {
   const [data, setData] = useState([])
   const [categorias, setCategorias] = useState([])
   const [proveedores, setProveedores] = useState([])
@@ -37,10 +27,11 @@ export default function Productos() {
   const [form] = Form.useForm()
   const codigoInputRef = useRef()
   const user = useAuthStore(s => s.user)
+  const { t } = useTranslation()
 
   useEffect(() => { loadAll() }, [])
 
-  async function loadAll() {
+  const loadAll = async () => {
     setLoading(true)
     const [p, c, pr] = await Promise.all([
       window.api.productos.getAll(),
@@ -53,7 +44,7 @@ export default function Productos() {
     setLoading(false)
   }
 
-  function openModal(record = null) {
+  const openModal = (record = null) => {
     setModal({ open: true, record })
     setScanned(false)
     setNombreSugerencias([])
@@ -67,7 +58,7 @@ export default function Productos() {
     }
   }
 
-  function onNombreSearch(text) {
+  const onNombreSearch = (text) => {
     if (!text || text.length < 2) {
       setNombreSugerencias([])
       return
@@ -94,25 +85,20 @@ export default function Productos() {
     setNombreSugerencias(matches)
   }
 
-  function onNombreSelect(value, option) {
+  const onNombreSelect = (value, option) => {
     if (option.producto && !modal.record) {
       const p = option.producto
       Modal.confirm({
-        title: 'Producto existente',
+        title: t('productos.dupExistingProduct'),
         icon: <ExclamationCircleOutlined />,
         content: (
           <div>
-            <p>
-              El producto <b>"{p.nombre}"</b> ya existe con stock actual de{' '}
-              <b>{p.stock_actual} {p.unidad}</b>.
-            </p>
-            <p style={{ marginTop: 8 }}>
-              ¿Querés agregar más stock a este producto en lugar de crear uno nuevo?
-            </p>
+            <p>{t('productos.dupQuestion', { nombre: p.nombre, stock: p.stock_actual, unit: p.unidad })}</p>
+            <p style={{ marginTop: 8 }}>{t('productos.dupAddStock')}</p>
           </div>
         ),
-        okText: 'Sí, sumar stock',
-        cancelText: 'No, crear nuevo',
+        okText: t('productos.dupYesAddStock'),
+        cancelText: t('productos.dupNoCreate'),
         onOk: () => {
           setModal({ open: true, record: p })
           form.setFieldsValue(p)
@@ -128,7 +114,7 @@ export default function Productos() {
       form.setFieldValue('codigo', code)
       setScanned(true)
       setTimeout(() => setScanned(false), 2000)
-      message.success({ content: `Código escaneado: ${code}`, key: 'scan', duration: 2 })
+      message.success({ content: t('productos.scannedConfirm', { code }), key: 'scan', duration: 2 })
       const nombre = form.getFieldValue('nombre')
       if (!nombre) {
         setTimeout(() => document.querySelector('.nombre-autocomplete input')?.focus(), 50)
@@ -137,7 +123,7 @@ export default function Productos() {
     { enabled: modal.open, minLength: 3, maxDelay: 50 }
   )
 
-  async function handleSave() {
+  const handleSave = async () => {
     const values = await form.validateFields()
     if (values.fecha_vencimiento) {
       values.fecha_vencimiento = values.fecha_vencimiento.format('YYYY-MM-DD')
@@ -148,18 +134,18 @@ export default function Productos() {
     if (modal.record) {
       const { _agregarStock, ...rest } = values
       const res = await window.api.productos.update({ ...rest, id: modal.record.id })
-      if (!res.ok) { message.error(res.error || 'Error al guardar'); return }
+      if (!res.ok) { message.error(res.error || t('productos.saveErrorDefault')); return }
 
       if (_agregarStock > 0) {
         const fechaVencLote = values._fechaVencLote ? values._fechaVencLote.format('YYYY-MM-DD') : null
         const r = await window.api.productos.sumarStock(modal.record.id, _agregarStock, user?.id, fechaVencLote)
         if (r.ok) {
-          message.success(`Producto actualizado · stock +${_agregarStock} (total: ${r.data})`)
+          message.success(t('productos.updatedWithStock', { qty: _agregarStock, total: r.data }))
         } else {
-          message.warning('Datos guardados pero no se pudo sumar stock: ' + r.error)
+          message.warning(t('productos.updatedStockError', { error: r.error }))
         }
       } else {
-        message.success('Producto actualizado')
+        message.success(t('productos.updated'))
       }
       setModal({ open: false, record: null })
       loadAll()
@@ -171,37 +157,36 @@ export default function Productos() {
 
     if (dup) {
       Modal.confirm({
-        title: 'Producto existente',
+        title: t('productos.dupExistingProduct'),
         icon: <ExclamationCircleOutlined />,
         content: (
           <div>
             <p>
-              Ya existe el producto <b>"{dup.nombre}"</b>
-              {dup.matchBy === 'codigo' ? ` con el código <b>${dup.codigo}</b>` : ''}.
+              {dup.matchBy === 'codigo'
+                ? t('productos.dupFoundCode', { nombre: dup.nombre, code: dup.codigo })
+                : t('productos.dupFoundName', { nombre: dup.nombre })}
             </p>
             <p style={{ marginTop: 8 }}>
-              Stock actual: <b>{dup.stock_actual} {dup.unidad}</b>
-              {values.stock_actual > 0 && (
-                <span> → pasaría a <b>{dup.stock_actual + values.stock_actual} {dup.unidad}</b></span>
-              )}
+              {t('productos.dupCurrentStock', { stock: dup.stock_actual, unit: dup.unidad })}
+              {values.stock_actual > 0 && t('productos.dupWouldBe', { newStock: dup.stock_actual + values.stock_actual, unit: dup.unidad })}
             </p>
-            <p style={{ marginTop: 8 }}>¿Querés sumarle {values.stock_actual} unidades de stock?</p>
+            <p style={{ marginTop: 8 }}>{t('productos.dupAddQuestion', { qty: values.stock_actual })}</p>
           </div>
         ),
-        okText: 'Sí, sumar stock',
-        cancelText: 'Cancelar',
+        okText: t('productos.dupYesSumar'),
+        cancelText: t('common.cancel'),
         onOk: async () => {
           if (values.stock_actual > 0) {
             const r = await window.api.productos.sumarStock(dup.id, values.stock_actual, user?.id)
             if (r.ok) {
-              message.success(`Stock actualizado: ${dup.nombre} ahora tiene ${r.data} ${dup.unidad}`)
+              message.success(t('productos.stockUpdated', { nombre: dup.nombre, stock: r.data, unit: dup.unidad }))
               setModal({ open: false, record: null })
               loadAll()
             } else {
               message.error(r.error)
             }
           } else {
-            message.info('El stock ingresado es 0, no se realizaron cambios.')
+            message.info(t('productos.stockZeroInfo'))
             setModal({ open: false, record: null })
           }
         }
@@ -211,21 +196,32 @@ export default function Productos() {
 
     const res = await window.api.productos.create(values, user?.id)
     if (res.ok) {
-      message.success('Producto creado')
+      message.success(t('productos.created'))
       if (values.stock_actual > 0) {
-        message.info(`Se registró ingreso inicial de ${values.stock_actual} unidades en el historial de stock.`, 3)
+        message.info(t('productos.initialStockInfo', { qty: values.stock_actual }), 3)
       }
       setModal({ open: false, record: null })
       loadAll()
     } else {
-      message.error(res.error || 'Error al guardar')
+      message.error(res.error || t('productos.saveErrorDefault'))
     }
   }
 
-  async function handleDelete(id) {
+  const handleDelete = async (id) => {
     const res = await window.api.productos.delete(id)
-    if (res.ok) { message.success('Producto eliminado'); loadAll() }
+    if (res.ok) { message.success(t('productos.deleteSuccess')); loadAll() }
     else message.error(res.error)
+  }
+
+  const vencimientoTag = (fecha) => {
+    if (!fecha) return null
+    const hoy = dayjs()
+    const vence = dayjs(fecha)
+    const dias = vence.diff(hoy, 'day')
+    if (dias < 0) return <Tag color="error" icon={<CalendarOutlined />}>{t('productos.expired')}</Tag>
+    if (dias <= 7) return <Tag color="error" icon={<CalendarOutlined />}>{t('productos.expiresIn', { days: dias })}</Tag>
+    if (dias <= 30) return <Tag color="warning" icon={<CalendarOutlined />}>{t('productos.expiresIn', { days: dias })}</Tag>
+    return <Tag color="default" icon={<CalendarOutlined />}>{vence.format('DD/MM/YY')}</Tag>
   }
 
   const filtered = data.filter(p =>
@@ -235,13 +231,13 @@ export default function Productos() {
   )
 
   const columns = [
-    { title: 'Código', dataIndex: 'codigo', width: 140, render: v => v ? <Text code style={{ fontSize: 12 }}>{v}</Text> : '-' },
-    { title: 'Nombre', dataIndex: 'nombre', sorter: (a, b) => a.nombre.localeCompare(b.nombre) },
-    { title: 'Categoría', dataIndex: 'categoria_nombre', render: v => v ? <Tag>{v}</Tag> : '-' },
-    { title: 'P. Compra', dataIndex: 'precio_compra', render: v => `$${Number(v).toFixed(2)}`, align: 'right' },
-    { title: 'P. Venta', dataIndex: 'precio_venta', render: v => `$${Number(v).toFixed(2)}`, align: 'right' },
+    { title: t('productos.colCode'), dataIndex: 'codigo', width: 140, render: v => v ? <Text code style={{ fontSize: 12 }}>{v}</Text> : '-' },
+    { title: t('productos.colName'), dataIndex: 'nombre', sorter: (a, b) => a.nombre.localeCompare(b.nombre) },
+    { title: t('productos.colCategory'), dataIndex: 'categoria_nombre', render: v => v ? <Tag>{v}</Tag> : '-' },
+    { title: t('productos.colCost'), dataIndex: 'precio_compra', render: v => `$${Number(v).toFixed(2)}`, align: 'right' },
+    { title: t('productos.colPrice'), dataIndex: 'precio_venta', render: v => `$${Number(v).toFixed(2)}`, align: 'right' },
     {
-      title: 'Stock', dataIndex: 'stock_actual',
+      title: t('productos.colStock'), dataIndex: 'stock_actual',
       render: (v, r) => (
         <Tag color={v <= 0 ? 'error' : v <= r.stock_minimo ? 'warning' : 'success'}>
           {v} {r.unidad}
@@ -249,9 +245,9 @@ export default function Productos() {
       ),
       align: 'center'
     },
-    { title: 'Proveedor', dataIndex: 'proveedor_nombre', render: v => v || '-' },
+    { title: t('productos.colSupplier'), dataIndex: 'proveedor_nombre', render: v => v || '-' },
     {
-      title: 'Vencimiento', dataIndex: 'fecha_vencimiento',
+      title: t('productos.colExpiry'), dataIndex: 'fecha_vencimiento',
       render: v => vencimientoTag(v),
       sorter: (a, b) => {
         if (!a.fecha_vencimiento && !b.fecha_vencimiento) return 0
@@ -261,11 +257,11 @@ export default function Productos() {
       }
     },
     {
-      title: 'Acciones', key: 'acciones', width: 100, align: 'center',
+      title: t('productos.colActions'), key: 'acciones', width: 100, align: 'center',
       render: (_, r) => (
         <Space>
           <Button size="small" icon={<EditOutlined />} onClick={() => openModal(r)} />
-          <Popconfirm title="¿Eliminar este producto?" onConfirm={() => handleDelete(r.id)} okText="Sí" cancelText="No">
+          <Popconfirm title={t('productos.deleteConfirm')} onConfirm={() => handleDelete(r.id)} okText={t('common.yes')} cancelText={t('common.no')}>
             <Button size="small" danger icon={<DeleteOutlined />} />
           </Popconfirm>
         </Space>
@@ -276,15 +272,15 @@ export default function Productos() {
   return (
     <div>
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Title level={4} style={{ margin: 0 }}>Productos</Title>
+        <Title level={4} style={{ margin: 0 }}>{t('productos.title')}</Title>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()}>
-          Nuevo Producto
+          {t('productos.newProduct')}
         </Button>
       </div>
 
       <Card>
         <Input
-          placeholder="Buscar por nombre, código o categoría..."
+          placeholder={t('productos.searchPlaceholder')}
           prefix={<SearchOutlined />}
           value={search}
           onChange={e => setSearch(e.target.value)}
@@ -297,17 +293,17 @@ export default function Productos() {
           rowKey="id"
           loading={loading}
           size="small"
-          pagination={{ pageSize: 15, showSizeChanger: true, showTotal: t => `${t} productos` }}
+          pagination={{ pageSize: 15, showSizeChanger: true, showTotal: total => t('productos.pagTotal', { total }) }}
         />
       </Card>
 
       <Modal
-        title={modal.record ? 'Editar Producto' : 'Nuevo Producto'}
+        title={modal.record ? t('productos.editProduct') : t('productos.newProduct')}
         open={modal.open}
         onOk={handleSave}
         onCancel={() => setModal({ open: false, record: null })}
-        okText="Guardar"
-        cancelText="Cancelar"
+        okText={t('common.save')}
+        cancelText={t('common.cancel')}
         width={600}
         destroyOnClose
       >
@@ -321,8 +317,8 @@ export default function Productos() {
           <ScanOutlined style={{ color: scanned ? '#52c41a' : '#1677ff', fontSize: 16 }} />
           <Text style={{ fontSize: 12 }}>
             {scanned
-              ? <Text style={{ color: '#52c41a', fontSize: 12 }}>¡Código escaneado! Completá los demás campos.</Text>
-              : <Text type="secondary" style={{ fontSize: 12 }}>Lector USB activo — escaneá el producto para completar el código automáticamente.</Text>
+              ? <Text style={{ color: '#52c41a', fontSize: 12 }}>{t('productos.scannerScanned')}</Text>
+              : <Text type="secondary" style={{ fontSize: 12 }}>{t('productos.scannerWaiting')}</Text>
             }
           </Text>
         </div>
@@ -330,7 +326,7 @@ export default function Productos() {
         <Form form={form} layout="vertical">
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="nombre" label="Nombre" rules={[{ required: true }]}>
+              <Form.Item name="nombre" label={t('productos.fieldName')} rules={[{ required: true }]}>
                 <AutoComplete
                   className="nombre-autocomplete"
                   options={nombreSugerencias}
@@ -339,7 +335,7 @@ export default function Productos() {
                   popupMatchSelectWidth={400}
                   disabled={!!modal.record}
                 >
-                  <Input placeholder="Escribí para ver sugerencias..." />
+                  <Input placeholder={t('productos.nameSuggestions')} />
                 </AutoComplete>
               </Form.Item>
             </Col>
@@ -348,8 +344,8 @@ export default function Productos() {
                 name="codigo"
                 label={
                   <Space size={6}>
-                    Código de barras
-                    <Tooltip title="Escribilo manualmente o escanealo con el lector USB">
+                    {t('productos.fieldCode')}
+                    <Tooltip title={t('productos.codeTooltip')}>
                       <BarcodeOutlined style={{ color: '#1677ff', cursor: 'help' }} />
                     </Tooltip>
                   </Space>
@@ -357,46 +353,46 @@ export default function Productos() {
               >
                 <Input
                   ref={codigoInputRef}
-                  placeholder="Escanear o escribir código..."
+                  placeholder={t('productos.codeScanPlaceholder')}
                   style={{ borderColor: scanned ? '#52c41a' : undefined, transition: 'border-color 0.3s' }}
-                  suffix={scanned ? <Tag color="success" style={{ margin: 0 }}>Escaneado</Tag> : null}
+                  suffix={scanned ? <Tag color="success" style={{ margin: 0 }}>{t('productos.scannedStatus')}</Tag> : null}
                 />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={16}>
             <Col span={12}>
-              <Form.Item name="categoria_id" label="Categoría">
-                <Select placeholder="Seleccionar categoría" allowClear
+              <Form.Item name="categoria_id" label={t('productos.fieldCategory')}>
+                <Select placeholder={t('productos.selectCategory')} allowClear
                   options={categorias.map(c => ({ value: c.id, label: c.nombre }))} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="proveedor_id" label="Proveedor">
-                <Select placeholder="Seleccionar proveedor" allowClear
+              <Form.Item name="proveedor_id" label={t('productos.fieldSupplier')}>
+                <Select placeholder={t('productos.selectSupplier')} allowClear
                   options={proveedores.map(p => ({ value: p.id, label: p.nombre }))} />
               </Form.Item>
             </Col>
           </Row>
           <Row gutter={16}>
             <Col span={8}>
-              <Form.Item name="precio_compra" label="Precio Compra" rules={[{ required: true }]}>
+              <Form.Item name="precio_compra" label={t('productos.fieldCost')} rules={[{ required: true }]}>
                 <InputNumber min={0} precision={2} prefix="$" style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col span={8}>
-              <Form.Item name="precio_venta" label="Precio Venta" rules={[{ required: true }]}>
+              <Form.Item name="precio_venta" label={t('productos.fieldPrice')} rules={[{ required: true }]}>
                 <InputNumber min={0} precision={2} prefix="$" style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col span={8}>
-              <Form.Item name="unidad" label="Unidad" initialValue="unidad">
+              <Form.Item name="unidad" label={t('productos.fieldUnit')} initialValue="unidad">
                 <Select options={[
-                  { value: 'unidad', label: 'Unidad' },
-                  { value: 'kg', label: 'Kg' },
-                  { value: 'litro', label: 'Litro' },
-                  { value: 'metro', label: 'Metro' },
-                  { value: 'caja', label: 'Caja' }
+                  { value: 'unidad', label: t('productos.unitUnidad') },
+                  { value: 'kg', label: t('productos.unitKg') },
+                  { value: 'litro', label: t('productos.unitLitro') },
+                  { value: 'metro', label: t('productos.unitMetro') },
+                  { value: 'caja', label: t('productos.unitCaja') }
                 ]} />
               </Form.Item>
             </Col>
@@ -405,14 +401,14 @@ export default function Productos() {
             <Col span={12}>
               <Form.Item
                 name="stock_actual"
-                label={modal.record ? 'Stock Actual' : 'Stock Inicial'}
+                label={modal.record ? t('productos.fieldStock') : t('productos.fieldInitialStock')}
                 initialValue={0}
               >
                 <InputNumber min={0} style={{ width: '100%' }} disabled={!!modal.record} />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item name="stock_minimo" label="Stock Mínimo (alerta)" initialValue={0}>
+              <Form.Item name="stock_minimo" label={t('productos.fieldMinStock')} initialValue={0}>
                 <InputNumber min={0} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
@@ -421,13 +417,13 @@ export default function Productos() {
             <Col span={12}>
               <Form.Item
                 name="fecha_vencimiento"
-                label={<Space size={4}><CalendarOutlined />Fecha de vencimiento</Space>}
-                extra="Opcional — solo para productos perecederos"
+                label={<Space size={4}><CalendarOutlined />{t('productos.fieldExpiry')}</Space>}
+                extra={t('productos.expiryExtra')}
               >
                 <DatePicker
                   style={{ width: '100%' }}
                   format="DD/MM/YYYY"
-                  placeholder="Sin vencimiento"
+                  placeholder={t('productos.expiryOptional')}
                   allowClear
                 />
               </Form.Item>
@@ -437,11 +433,11 @@ export default function Productos() {
                 <Col span={12}>
                   <Form.Item
                     name="dias_alerta_vencimiento"
-                    label="Días de alerta previos"
+                    label={t('productos.fieldAlertDays')}
                     initialValue={7}
-                    extra="Avisar en el dashboard X días antes de vencer"
+                    extra={t('productos.alertDaysExtra')}
                   >
-                    <InputNumber min={1} max={365} style={{ width: '100%' }} addonAfter="días" />
+                    <InputNumber min={1} max={365} style={{ width: '100%' }} addonAfter={t('productos.alertDaysSuffix')} />
                   </Form.Item>
                 </Col>
               ) : null}
@@ -450,17 +446,17 @@ export default function Productos() {
           {modal.record && (
             <Row gutter={16}>
               <Col span={12}>
-                <Form.Item name="_agregarStock" label="Agregar stock" initialValue={0}
-                  extra="Se suma al stock actual al guardar">
+                <Form.Item name="_agregarStock" label={t('productos.fieldAddStock')} initialValue={0}
+                  extra={t('productos.addStockExtra')}>
                   <InputNumber min={0} style={{ width: '100%' }} />
                 </Form.Item>
               </Col>
               <Form.Item noStyle shouldUpdate={(p, c) => p._agregarStock !== c._agregarStock}>
                 {({ getFieldValue }) => getFieldValue('_agregarStock') > 0 ? (
                   <Col span={12}>
-                    <Form.Item name="_fechaVencLote" label="Vencimiento de este lote"
-                      extra="Opcional — actualiza la alerta del producto">
-                      <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder="Sin vencimiento" allowClear />
+                    <Form.Item name="_fechaVencLote" label={t('productos.fieldLotExpiry')}
+                      extra={t('productos.lotExpiryExtra')}>
+                      <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder={t('productos.expiryOptional')} allowClear />
                     </Form.Item>
                   </Col>
                 ) : null}
@@ -469,14 +465,16 @@ export default function Productos() {
           )}
           {!modal.record && (
             <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 12 }}>
-              El stock inicial quedará registrado en el historial de movimientos.
+              {t('productos.initialStockNote')}
             </Text>
           )}
-          <Form.Item name="descripcion" label="Descripción">
-            <Input.TextArea rows={2} placeholder="Descripción opcional" />
+          <Form.Item name="descripcion" label={t('productos.fieldDescription')}>
+            <Input.TextArea rows={2} placeholder={t('productos.descPlaceholder')} />
           </Form.Item>
         </Form>
       </Modal>
     </div>
   )
 }
+
+export default Productos

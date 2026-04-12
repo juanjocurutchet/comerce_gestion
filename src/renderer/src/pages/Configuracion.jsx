@@ -4,63 +4,65 @@ import {
   Table, Space, Modal, Popconfirm, Alert, Row, Col
 } from 'antd'
 import { ShopOutlined, SaveOutlined, PlusOutlined, EditOutlined, DeleteOutlined, DatabaseOutlined, ClearOutlined } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 import { useClientStore } from '../store/clientStore'
 
 const { Title, Text } = Typography
 
-function GestionCategorias() {
+const GestionCategorias = () => {
   const [categorias, setCategorias] = useState([])
   const [loading, setLoading] = useState(false)
   const [modal, setModal] = useState({ open: false, record: null })
   const [form] = Form.useForm()
+  const { t } = useTranslation()
 
   useEffect(() => { loadCategorias() }, [])
 
-  async function loadCategorias() {
+  const loadCategorias = async () => {
     setLoading(true)
     const res = await window.api.categorias.getAll()
     setCategorias(res.data || [])
     setLoading(false)
   }
 
-  function openModal(record = null) {
+  const openModal = (record = null) => {
     setModal({ open: true, record })
     record ? form.setFieldsValue(record) : form.resetFields()
   }
 
-  async function handleSave() {
+  const handleSave = async () => {
     const values = await form.validateFields()
     const res = modal.record
       ? await window.api.categorias.update({ ...values, id: modal.record.id })
       : await window.api.categorias.create(values)
     if (res.ok) {
-      message.success(modal.record ? 'Categoría actualizada' : 'Categoría creada')
+      message.success(modal.record ? t('configuracion.catSaveSuccess', { action: t('configuracion.catUpdated') }) : t('configuracion.catSaveSuccess', { action: t('configuracion.catCreated') }))
       setModal({ open: false, record: null })
       loadCategorias()
     } else {
-      message.error(res.error || 'Error al guardar')
+      message.error(res.error || t('common.error'))
     }
   }
 
-  async function handleDelete(id) {
+  const handleDelete = async (id) => {
     const res = await window.api.categorias.delete(id)
-    if (res.ok) { message.success('Categoría eliminada'); loadCategorias() }
-    else message.error(res.error || 'No se puede eliminar (puede tener productos asociados)')
+    if (res.ok) { message.success(t('configuracion.catDeleteSuccess')); loadCategorias() }
+    else message.error(res.error || t('configuracion.catDeleteError'))
   }
 
   const columns = [
-    { title: 'Nombre', dataIndex: 'nombre' },
-    { title: 'Descripción', dataIndex: 'descripcion', render: v => v || <Text type="secondary">—</Text> },
+    { title: t('configuracion.fieldCatName'), dataIndex: 'nombre' },
+    { title: t('configuracion.fieldCatDesc'), dataIndex: 'descripcion', render: v => v || <Text type="secondary">—</Text> },
     {
-      title: 'Acciones', key: 'acc', width: 100, align: 'center',
+      title: t('common.actions'), key: 'acc', width: 100, align: 'center',
       render: (_, r) => (
         <Space>
           <Button size="small" icon={<EditOutlined />} onClick={() => openModal(r)} />
           <Popconfirm
-            title="¿Eliminar esta categoría?"
-            description="Solo se puede eliminar si no tiene productos asociados."
+            title={t('configuracion.catDeleteConfirm')}
+            description={t('configuracion.catDeleteDesc')}
             onConfirm={() => handleDelete(r.id)}
-            okText="Sí" cancelText="No"
+            okText={t('common.yes')} cancelText={t('common.no')}
           >
             <Button size="small" danger icon={<DeleteOutlined />} />
           </Popconfirm>
@@ -73,7 +75,7 @@ function GestionCategorias() {
     <>
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()}>
-          Nueva Categoría
+          {t('configuracion.newCategory')}
         </Button>
       </div>
       <Table
@@ -83,23 +85,23 @@ function GestionCategorias() {
         loading={loading}
         size="small"
         pagination={false}
-        locale={{ emptyText: 'Sin categorías. Creá la primera.' }}
+        locale={{ emptyText: t('configuracion.catEmpty') }}
       />
       <Modal
-        title={modal.record ? 'Editar Categoría' : 'Nueva Categoría'}
+        title={modal.record ? t('configuracion.editCategory') : t('configuracion.newCategory')}
         open={modal.open}
         onOk={handleSave}
         onCancel={() => setModal({ open: false, record: null })}
-        okText="Guardar"
-        cancelText="Cancelar"
+        okText={t('common.save')}
+        cancelText={t('common.cancel')}
         destroyOnClose
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
-          <Form.Item name="nombre" label="Nombre" rules={[{ required: true, message: 'Ingresá un nombre' }]}>
-            <Input placeholder="Ej: Bebidas, Electrónica, Limpieza..." />
+          <Form.Item name="nombre" label={t('configuracion.fieldCatName')} rules={[{ required: true, message: t('configuracion.catNameRequired') }]}>
+            <Input placeholder={t('configuracion.catNamePlaceholder')} />
           </Form.Item>
-          <Form.Item name="descripcion" label="Descripción">
-            <Input.TextArea rows={2} placeholder="Descripción opcional" />
+          <Form.Item name="descripcion" label={t('configuracion.fieldCatDesc')}>
+            <Input.TextArea rows={2} placeholder={t('configuracion.catDescPlaceholder')} />
           </Form.Item>
         </Form>
       </Modal>
@@ -107,31 +109,32 @@ function GestionCategorias() {
   )
 }
 
-function DatosDemoAdmin({ onRefresh }) {
+const DatosDemoAdmin = ({ onRefresh }) => {
   const [loading, setLoading] = useState({ run: false, clear: false })
+  const { t } = useTranslation()
 
-  async function cargarDemo() {
+  const cargarDemo = async () => {
     setLoading(l => ({ ...l, run: true }))
     const res = await window.api.seed.run()
     setLoading(l => ({ ...l, run: false }))
     if (res.ok) {
       const { creados, omitidos, categorias, proveedores } = res.data
-      message.success(`Demo cargada: ${creados} productos, ${categorias} categorías, ${proveedores} proveedores (${omitidos} ya existían)`)
+      message.success(t('configuracion.loadDemoSuccess', { creados, omitidos, categorias, proveedores }))
       onRefresh?.()
     } else {
-      message.error(res.error || 'Error al cargar demo')
+      message.error(res.error || t('common.error'))
     }
   }
 
-  async function limpiarDemo() {
+  const limpiarDemo = async () => {
     setLoading(l => ({ ...l, clear: true }))
     const res = await window.api.seed.clear()
     setLoading(l => ({ ...l, clear: false }))
     if (res.ok) {
-      message.success(`Demo eliminada: ${res.data.eliminados} productos removidos`)
+      message.success(t('configuracion.clearDemoSuccess', { eliminados: res.data.eliminados }))
       onRefresh?.()
     } else {
-      message.error(res.error || 'Error al limpiar demo')
+      message.error(res.error || t('common.error'))
     }
   }
 
@@ -140,8 +143,8 @@ function DatosDemoAdmin({ onRefresh }) {
       <Alert
         type="info"
         showIcon
-        message="Datos de demostración"
-        description="Cargá productos, categorías y proveedores de ejemplo para mostrarle el sistema a un cliente. Al limpiar, solo se elimina la data de demo (no afecta datos reales)."
+        message={t('configuracion.demoInfo')}
+        description={t('configuracion.demoDescription')}
       />
       <Space>
         <Button
@@ -150,17 +153,17 @@ function DatosDemoAdmin({ onRefresh }) {
           loading={loading.run}
           onClick={cargarDemo}
         >
-          Cargar datos demo
+          {t('configuracion.loadDemo')}
         </Button>
         <Popconfirm
-          title="¿Limpiar datos de demo?"
-          description="Se eliminarán los productos, categorías y proveedores de demostración."
+          title={t('configuracion.clearDemoConfirm')}
+          description={t('configuracion.clearDemoDesc')}
           onConfirm={limpiarDemo}
-          okText="Sí, limpiar"
-          cancelText="Cancelar"
+          okText={t('configuracion.clearDemoOk')}
+          cancelText={t('common.cancel')}
         >
           <Button icon={<ClearOutlined />} danger loading={loading.clear}>
-            Limpiar demo
+            {t('configuracion.clearDemo')}
           </Button>
         </Popconfirm>
       </Space>
@@ -168,74 +171,75 @@ function DatosDemoAdmin({ onRefresh }) {
   )
 }
 
-export default function Configuracion() {
+const Configuracion = () => {
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
   const [catKey, setCatKey] = useState(0)
   const isAdmin = useClientStore(s => s.isAdmin)
+  const { t } = useTranslation()
 
   useEffect(() => { loadConfig() }, [])
 
-  async function loadConfig() {
+  const loadConfig = async () => {
     const res = await window.api.config.getAll()
     if (res.ok && res.data) form.setFieldsValue(res.data)
   }
 
-  async function handleSave() {
+  const handleSave = async () => {
     const values = await form.validateFields()
     setLoading(true)
     const res = await window.api.config.setMany(values)
     setLoading(false)
-    if (res.ok) message.success('Configuración guardada')
-    else message.error(res.error || 'Error al guardar')
+    if (res.ok) message.success(t('configuracion.saveSuccess'))
+    else message.error(res.error || t('common.error'))
   }
 
   return (
     <div>
       <div className="page-header">
-        <Title level={4} style={{ margin: 0 }}>Configuración</Title>
+        <Title level={4} style={{ margin: 0 }}>{t('configuracion.title')}</Title>
       </div>
 
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={12}>
-          <Card title={<><ShopOutlined style={{ marginRight: 8 }} />Datos del Comercio</>}>
+          <Card title={<><ShopOutlined style={{ marginRight: 8 }} />{t('configuracion.commerceDataTitle')}</>}>
             <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
-              Estos datos aparecen en los tickets de venta.
+              {t('configuracion.commerceDataSubtitle')}
             </Text>
             <Form form={form} layout="vertical">
-              <Form.Item name="nombreComercio" label="Nombre del comercio" rules={[{ required: true }]}>
-                <Input placeholder="Ej: Mi Comercio" />
+              <Form.Item name="nombreComercio" label={t('configuracion.fieldCommerceName')} rules={[{ required: true }]}>
+                <Input placeholder={t('configuracion.commerceNamePlaceholder')} />
               </Form.Item>
-              <Form.Item name="direccion" label="Dirección">
-                <Input placeholder="Ej: Av. Corrientes 1234, Buenos Aires" />
+              <Form.Item name="direccion" label={t('configuracion.fieldAddress')}>
+                <Input placeholder={t('configuracion.addressPlaceholder')} />
               </Form.Item>
-              <Form.Item name="telefono" label="Teléfono">
-                <Input placeholder="Ej: (011) 4123-4567" />
+              <Form.Item name="telefono" label={t('configuracion.fieldPhone')}>
+                <Input placeholder={t('configuracion.phonePlaceholder')} />
               </Form.Item>
-              <Form.Item name="cuit" label="CUIT">
-                <Input placeholder="Ej: 20-12345678-9" />
+              <Form.Item name="cuit" label={t('configuracion.fieldCuit')}>
+                <Input placeholder={t('configuracion.cuitPlaceholder')} />
               </Form.Item>
               <Divider />
-              <Form.Item name="ticketFooter" label="Mensaje de pie de ticket">
-                <Input placeholder="Ej: Gracias por su compra!" />
+              <Form.Item name="ticketFooter" label={t('configuracion.fieldTicketFooter')}>
+                <Input placeholder={t('configuracion.ticketFooterPlaceholder')} />
               </Form.Item>
               <Form.Item style={{ marginBottom: 0 }}>
                 <Button type="primary" icon={<SaveOutlined />} loading={loading} onClick={handleSave}>
-                  Guardar Configuración
+                  {t('configuracion.saveConfig')}
                 </Button>
               </Form.Item>
             </Form>
           </Card>
 
           {isAdmin && (
-            <Card title="Administración — Datos de Demo" style={{ marginTop: 16 }}>
+            <Card title={t('configuracion.demoTitle')} style={{ marginTop: 16 }}>
               <DatosDemoAdmin onRefresh={() => setCatKey(k => k + 1)} />
             </Card>
           )}
         </Col>
 
         <Col xs={24} lg={12}>
-          <Card title="Categorías de Productos">
+          <Card title={t('configuracion.categoriesTitle')}>
             <GestionCategorias key={catKey} />
           </Card>
         </Col>
@@ -243,3 +247,5 @@ export default function Configuracion() {
     </div>
   )
 }
+
+export default Configuracion

@@ -3,7 +3,7 @@ import { Modal, Button, Space, Select, message, Spin } from 'antd'
 import { PrinterOutlined } from '@ant-design/icons'
 import { generateReceiptHTML } from '../utils/receipt'
 
-export default function TicketPreview({ open, onClose, venta, items }) {
+const TicketPreview = ({ open, onClose, venta, items }) => {
   const [config, setConfig] = useState({})
   const [pageSize, setPageSize] = useState('80mm')
   const [printing, setPrinting] = useState(false)
@@ -19,12 +19,12 @@ export default function TicketPreview({ open, onClose, venta, items }) {
     }
   }, [venta, items, config, pageSize])
 
-  async function loadConfig() {
+  const loadConfig = async () => {
     const res = await window.api.config.getAll()
     if (res.ok) setConfig(res.data || {})
   }
 
-  async function handlePrint() {
+  const handlePrint = async () => {
     if (!html) return
     setPrinting(true)
     const res = await window.api.print.ticket(html, {
@@ -110,3 +110,5 @@ export default function TicketPreview({ open, onClose, venta, items }) {
     </Modal>
   )
 }
+
+export default TicketPreview

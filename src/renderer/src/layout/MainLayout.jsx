@@ -6,59 +6,68 @@ import {
   ShoppingCartOutlined, TeamOutlined, WalletOutlined,
   BarChartOutlined, UserOutlined, LogoutOutlined,
   MenuFoldOutlined, MenuUnfoldOutlined, BellOutlined,
-  ShopOutlined, SettingOutlined, CloudUploadOutlined,
+  SettingOutlined, CloudUploadOutlined,
   BulbOutlined, BulbFilled, FileTextOutlined, SafetyCertificateOutlined,
   QuestionCircleOutlined
 } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../store/authStore'
 import nexoLogo from '../assets/nexo-commerce-logo.png'
 import nexoIcon from '../assets/nexo-commerce-icon.png'
 import { useThemeStore } from '../store/themeStore'
 import { useClientStore } from '../store/clientStore'
+import { useLanguageStore } from '../store/languageStore'
 
 const { Sider, Header, Content } = Layout
 const { Text } = Typography
 
-const ALL_MENU_ITEMS = [
-  { key: '/dashboard',    icon: <DashboardOutlined />,   label: 'Dashboard',      feature: null },
+const MENU_DEFS = [
+  { key: '/dashboard',    icon: <DashboardOutlined />,          navKey: 'dashboard',     feature: null },
   { type: 'divider' },
-  { key: '/ventas',       icon: <ShoppingCartOutlined />, label: 'Ventas',         feature: 'ventas' },
-  { key: '/cotizaciones', icon: <FileTextOutlined />,     label: 'Cotizaciones',   feature: 'cotizaciones' },
-  { key: '/productos',    icon: <AppstoreOutlined />,     label: 'Productos',      feature: 'productos' },
-  { key: '/stock',        icon: <InboxOutlined />,        label: 'Stock',          feature: 'stock' },
-  { key: '/proveedores',  icon: <TeamOutlined />,         label: 'Proveedores',    feature: 'proveedores' },
-  { key: '/caja',         icon: <WalletOutlined />,       label: 'Caja',           feature: 'caja' },
+  { key: '/ventas',       icon: <ShoppingCartOutlined />,        navKey: 'ventas',        feature: 'ventas' },
+  { key: '/cotizaciones', icon: <FileTextOutlined />,            navKey: 'cotizaciones',  feature: 'cotizaciones' },
+  { key: '/productos',    icon: <AppstoreOutlined />,            navKey: 'productos',     feature: 'productos' },
+  { key: '/stock',        icon: <InboxOutlined />,               navKey: 'stock',         feature: 'stock' },
+  { key: '/proveedores',  icon: <TeamOutlined />,                navKey: 'proveedores',   feature: 'proveedores' },
+  { key: '/caja',         icon: <WalletOutlined />,              navKey: 'caja',          feature: 'caja' },
   { type: 'divider' },
-  { key: '/reportes',     icon: <BarChartOutlined />,     label: 'Reportes',       feature: 'reportes' },
-  { key: '/usuarios',     icon: <UserOutlined />,         label: 'Usuarios',       feature: 'usuarios' },
+  { key: '/reportes',     icon: <BarChartOutlined />,            navKey: 'reportes',      feature: 'reportes' },
+  { key: '/usuarios',     icon: <UserOutlined />,                navKey: 'usuarios',      feature: 'usuarios' },
   { type: 'divider' },
-  { key: '/backup',       icon: <CloudUploadOutlined />,        label: 'Backup',         feature: 'backup' },
-  { key: '/configuracion',icon: <SettingOutlined />,            label: 'Configuración',  feature: 'configuracion' },
-  { key: '/licencias',    icon: <SafetyCertificateOutlined />,  label: 'Licencias',      feature: '__admin__' },
+  { key: '/backup',       icon: <CloudUploadOutlined />,         navKey: 'backup',        feature: 'backup' },
+  { key: '/configuracion',icon: <SettingOutlined />,             navKey: 'configuracion', feature: 'configuracion' },
+  { key: '/licencias',    icon: <SafetyCertificateOutlined />,   navKey: 'licencias',     feature: '__admin__' },
   { type: 'divider' },
-  { key: '/ayuda',        icon: <QuestionCircleOutlined />,     label: 'Ayuda',          feature: null }
+  { key: '/ayuda',        icon: <QuestionCircleOutlined />,      navKey: 'ayuda',         feature: null }
 ]
 
-export default function MainLayout({ children }) {
+const MainLayout = ({ children }) => {
   const [collapsed, setCollapsed] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
   const { user, logout } = useAuthStore()
   const { dark, toggle } = useThemeStore()
-  const { features, isAdmin, clientName, logo, logoIcon } = useClientStore()
+  const { features, isAdmin, logo, logoIcon } = useClientStore()
+  const { language, setLanguage } = useLanguageStore()
   const { token } = antTheme.useToken()
+  const { t } = useTranslation()
 
-  const menuItems = ALL_MENU_ITEMS.filter(item => {
-    if (item.type === 'divider') return true
-    if (item.feature === '__admin__') return isAdmin
-    return item.feature === null || features[item.feature]
-  })
+  const menuItems = MENU_DEFS
+    .filter(item => {
+      if (item.type === 'divider') return true
+      if (item.feature === '__admin__') return isAdmin
+      return item.feature === null || features[item.feature]
+    })
+    .map(item => item.type === 'divider'
+      ? { type: 'divider' }
+      : { key: item.key, icon: item.icon, label: t(`nav.${item.navKey}`) }
+    )
 
   const userMenu = {
     items: [
       { key: 'profile', icon: <UserOutlined />, label: user?.nombre },
       { type: 'divider' },
-      { key: 'logout', icon: <LogoutOutlined />, label: 'Cerrar sesión', danger: true }
+      { key: 'logout', icon: <LogoutOutlined />, label: t('nav.logout'), danger: true }
     ],
     onClick: ({ key }) => {
       if (key === 'logout') logout()
@@ -111,7 +120,7 @@ export default function MainLayout({ children }) {
             borderTop: '1px solid rgba(255,255,255,0.1)'
           }}>
             <Text style={{ color: 'rgba(255,255,255,0.65)', fontSize: 11 }}>
-              © 2026 ShangoTech · Todos los derechos reservados
+              {t('nav.copyright')}
             </Text>
           </div>
         )}
@@ -140,7 +149,17 @@ export default function MainLayout({ children }) {
           />
 
           <Space size={16}>
-            <Tooltip title={dark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}>
+            <Tooltip title={language === 'es' ? 'Switch to English' : 'Cambiar a Español'}>
+              <Button
+                type="text"
+                onClick={() => setLanguage(language === 'es' ? 'en' : 'es')}
+                style={{ fontWeight: 600, fontSize: 13, padding: '0 8px', minWidth: 40 }}
+              >
+                {language === 'es' ? 'EN' : 'ES'}
+              </Button>
+            </Tooltip>
+
+            <Tooltip title={dark ? t('theme.switchToLight') : t('theme.switchToDark')}>
               <Button
                 type="text"
                 onClick={toggle}
@@ -172,3 +191,5 @@ export default function MainLayout({ children }) {
     </Layout>
   )
 }
+
+export default MainLayout

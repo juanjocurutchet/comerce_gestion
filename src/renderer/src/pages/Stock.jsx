@@ -4,12 +4,13 @@ import {
   InputNumber, Input, Tag, message, Card, Tabs, Alert, DatePicker
 } from 'antd'
 import { PlusOutlined, MinusOutlined, WarningOutlined, CalendarOutlined } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../store/authStore'
 import dayjs from 'dayjs'
 
 const { Title, Text } = Typography
 
-export default function Stock() {
+const Stock = () => {
   const [productos, setProductos] = useState([])
   const [stockBajo, setStockBajo] = useState([])
   const [movimientos, setMovimientos] = useState([])
@@ -17,10 +18,11 @@ export default function Stock() {
   const [modal, setModal] = useState({ open: false, tipo: 'ingreso' })
   const [form] = Form.useForm()
   const user = useAuthStore(s => s.user)
+  const { t } = useTranslation()
 
   useEffect(() => { loadAll() }, [])
 
-  async function loadAll() {
+  const loadAll = async () => {
     setLoading(true)
     const [p, sb, m] = await Promise.all([
       window.api.productos.getAll(),
@@ -33,33 +35,33 @@ export default function Stock() {
     setLoading(false)
   }
 
-  function openModal(tipo) {
+  const openModal = (tipo) => {
     setModal({ open: true, tipo })
     form.resetFields()
     form.setFieldValue('tipo', tipo)
   }
 
-  async function handleAjuste() {
+  const handleAjuste = async () => {
     const values = await form.validateFields()
     if (values.fecha_vencimiento) {
       values.fecha_vencimiento = values.fecha_vencimiento.format('YYYY-MM-DD')
     }
     const res = await window.api.stock.ajuste(values, user?.id)
     if (res.ok) {
-      message.success('Ajuste de stock registrado')
+      message.success(t('stock.adjustSuccess'))
       setModal({ open: false })
       loadAll()
     } else {
-      message.error(res.error || 'Error al ajustar stock')
+      message.error(res.error || t('stock.adjustError'))
     }
   }
 
   const colsProductos = [
-    { title: 'Nombre', dataIndex: 'nombre' },
-    { title: 'Código', dataIndex: 'codigo', render: v => v || '-' },
-    { title: 'Categoría', dataIndex: 'categoria_nombre', render: v => v ? <Tag>{v}</Tag> : '-' },
+    { title: t('stock.colName'), dataIndex: 'nombre' },
+    { title: t('stock.colCode'), dataIndex: 'codigo', render: v => v || '-' },
+    { title: t('stock.colCategory'), dataIndex: 'categoria_nombre', render: v => v ? <Tag>{v}</Tag> : '-' },
     {
-      title: 'Stock Actual', dataIndex: 'stock_actual',
+      title: t('stock.colCurrentStock'), dataIndex: 'stock_actual',
       render: (v, r) => (
         <Tag color={v <= 0 ? 'error' : v <= r.stock_minimo ? 'warning' : 'success'}>
           {v} {r.unidad}
@@ -68,34 +70,34 @@ export default function Stock() {
       align: 'center',
       sorter: (a, b) => a.stock_actual - b.stock_actual
     },
-    { title: 'Stock Mínimo', dataIndex: 'stock_minimo', align: 'center' },
+    { title: t('stock.colMinStock'), dataIndex: 'stock_minimo', align: 'center' },
     {
-      title: 'Estado', key: 'estado',
+      title: t('stock.colStatus'), key: 'estado',
       render: (_, r) => r.stock_actual <= 0
-        ? <Tag color="error">Sin stock</Tag>
+        ? <Tag color="error">{t('stock.statusEmpty')}</Tag>
         : r.stock_actual <= r.stock_minimo
-          ? <Tag color="warning">Stock bajo</Tag>
-          : <Tag color="success">OK</Tag>,
+          ? <Tag color="warning">{t('stock.statusLow')}</Tag>
+          : <Tag color="success">{t('stock.statusOk')}</Tag>,
       align: 'center'
     }
   ]
 
   const colsMovimientos = [
-    { title: 'Fecha', dataIndex: 'fecha', render: v => dayjs(v).format('DD/MM/YYYY HH:mm'), width: 140 },
-    { title: 'Producto', dataIndex: 'producto_nombre' },
+    { title: t('stock.colDate'), dataIndex: 'fecha', render: v => dayjs(v).format('DD/MM/YYYY HH:mm'), width: 140 },
+    { title: t('stock.colProduct'), dataIndex: 'producto_nombre' },
     {
-      title: 'Tipo', dataIndex: 'tipo',
-      render: v => <Tag color={v === 'ingreso' ? 'success' : 'error'}>{v.toUpperCase()}</Tag>,
+      title: t('stock.colType'), dataIndex: 'tipo',
+      render: v => <Tag color={v === 'ingreso' ? 'success' : 'error'}>{v === 'ingreso' ? t('stock.typeIngreso') : t('stock.typeEgreso')}</Tag>,
       width: 90, align: 'center'
     },
-    { title: 'Cantidad', dataIndex: 'cantidad', align: 'right' },
-    { title: 'Stock Ant.', dataIndex: 'stock_anterior', align: 'right' },
-    { title: 'Stock Nuevo', dataIndex: 'stock_nuevo', align: 'right' },
-    { title: 'Motivo', dataIndex: 'motivo', render: v => v || '-' },
+    { title: t('stock.colQuantity'), dataIndex: 'cantidad', align: 'right' },
+    { title: t('stock.colPrevStock'), dataIndex: 'stock_anterior', align: 'right' },
+    { title: t('stock.colNewStock'), dataIndex: 'stock_nuevo', align: 'right' },
+    { title: t('stock.colReason'), dataIndex: 'motivo', render: v => v || '-' },
     {
-      title: 'Vencimiento lote', dataIndex: 'fecha_vencimiento',
+      title: t('stock.colExpiry'), dataIndex: 'fecha_vencimiento',
       render: (v, r) => {
-        if (!v || r.tipo !== 'ingreso') return '-'
+        if (!v || r.tipo !== 'ingreso') return t('stock.noExpiry')
         const dias = dayjs(v).diff(dayjs(), 'day')
         const color = dias < 0 ? 'error' : dias <= 7 ? 'error' : dias <= 30 ? 'warning' : 'default'
         return <Tag color={color} icon={<CalendarOutlined />}>{dayjs(v).format('DD/MM/YY')}</Tag>
@@ -107,12 +109,12 @@ export default function Stock() {
   const tabItems = [
     {
       key: 'inventario',
-      label: 'Inventario',
+      label: t('stock.tabInventory'),
       children: (
         <>
           {stockBajo.length > 0 && (
             <Alert
-              message={`${stockBajo.length} producto(s) con stock bajo o agotado`}
+              message={t('stock.lowStockAlert', { count: stockBajo.length })}
               type="warning"
               showIcon
               icon={<WarningOutlined />}
@@ -120,7 +122,7 @@ export default function Stock() {
             />
           )}
           <Table columns={colsProductos} dataSource={productos} rowKey="id" loading={loading} size="small"
-            pagination={{ pageSize: 15, showTotal: t => `${t} productos` }}
+            pagination={{ pageSize: 15, showTotal: total => t('stock.pagProducts', { total }) }}
             rowClassName={(r) => r.stock_actual <= 0 ? 'ant-table-row-danger' : r.stock_actual <= r.stock_minimo ? 'ant-table-row-warning' : ''}
           />
         </>
@@ -128,10 +130,10 @@ export default function Stock() {
     },
     {
       key: 'movimientos',
-      label: 'Historial de Movimientos',
+      label: t('stock.tabMovements'),
       children: (
         <Table columns={colsMovimientos} dataSource={movimientos} rowKey="id" loading={loading} size="small"
-          pagination={{ pageSize: 15, showTotal: t => `${t} movimientos` }}
+          pagination={{ pageSize: 15, showTotal: total => t('stock.pagMovements', { total }) }}
         />
       )
     }
@@ -140,10 +142,10 @@ export default function Stock() {
   return (
     <div>
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Title level={4} style={{ margin: 0 }}>Control de Stock</Title>
+        <Title level={4} style={{ margin: 0 }}>{t('stock.title')}</Title>
         <Space>
-          <Button icon={<PlusOutlined />} type="primary" onClick={() => openModal('ingreso')}>Ingreso</Button>
-          <Button icon={<MinusOutlined />} danger onClick={() => openModal('egreso')}>Egreso</Button>
+          <Button icon={<PlusOutlined />} type="primary" onClick={() => openModal('ingreso')}>{t('stock.btnIngreso')}</Button>
+          <Button icon={<MinusOutlined />} danger onClick={() => openModal('egreso')}>{t('stock.btnEgreso')}</Button>
         </Space>
       </div>
 
@@ -152,34 +154,34 @@ export default function Stock() {
       </Card>
 
       <Modal
-        title={modal.tipo === 'ingreso' ? 'Ingreso de Stock' : 'Egreso de Stock'}
+        title={modal.tipo === 'ingreso' ? t('stock.modalIngresoTitle') : t('stock.modalEgresoTitle')}
         open={modal.open}
         onOk={handleAjuste}
         onCancel={() => setModal({ open: false })}
-        okText="Registrar"
-        cancelText="Cancelar"
+        okText={t('stock.registerBtn')}
+        cancelText={t('common.cancel')}
         destroyOnClose
       >
         <Form form={form} layout="vertical" style={{ marginTop: 16 }}>
           <Form.Item name="tipo" hidden><Input /></Form.Item>
-          <Form.Item name="producto_id" label="Producto" rules={[{ required: true, message: 'Seleccioná un producto' }]}>
+          <Form.Item name="producto_id" label={t('stock.fieldProduct')} rules={[{ required: true }]}>
             <Select
               showSearch
-              placeholder="Buscar producto..."
+              placeholder={t('stock.searchProduct')}
               filterOption={(input, option) => option.label.toLowerCase().includes(input.toLowerCase())}
               options={productos.map(p => ({ value: p.id, label: `${p.nombre}${p.codigo ? ' - ' + p.codigo : ''}` }))}
             />
           </Form.Item>
-          <Form.Item name="cantidad" label="Cantidad" rules={[{ required: true }, { type: 'number', min: 0.01 }]}>
+          <Form.Item name="cantidad" label={t('stock.fieldQuantity')} rules={[{ required: true }, { type: 'number', min: 0.01 }]}>
             <InputNumber min={0.01} style={{ width: '100%' }} placeholder="0" />
           </Form.Item>
-          <Form.Item name="motivo" label="Motivo / Observación">
-            <Input placeholder={modal.tipo === 'ingreso' ? 'Ej: Compra a proveedor' : 'Ej: Merma, rotura...'} />
+          <Form.Item name="motivo" label={t('stock.fieldReason')}>
+            <Input placeholder={modal.tipo === 'ingreso' ? t('stock.reasonPlaceholderIngreso') : t('stock.reasonPlaceholderEgreso')} />
           </Form.Item>
           {modal.tipo === 'ingreso' && (
-            <Form.Item name="fecha_vencimiento" label="Vencimiento de este lote"
-              extra="Opcional — actualiza automáticamente la alerta del producto">
-              <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder="Sin vencimiento" allowClear />
+            <Form.Item name="fecha_vencimiento" label={t('stock.fieldExpiry')}
+              extra={t('stock.expiryExtra')}>
+              <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" placeholder={t('common.never')} allowClear />
             </Form.Item>
           )}
         </Form>
@@ -187,3 +189,5 @@ export default function Stock() {
     </div>
   )
 }
+
+export default Stock

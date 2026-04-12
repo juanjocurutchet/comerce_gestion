@@ -9,6 +9,7 @@ import {
   RollbackOutlined, FolderOpenOutlined, CheckCircleOutlined,
   ClockCircleOutlined, WarningOutlined
 } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 
@@ -16,16 +17,17 @@ dayjs.extend(relativeTime)
 
 const { Title, Text } = Typography
 
-export default function Backup() {
+const Backup = () => {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [runningBackup, setRunningBackup] = useState(false)
   const [autoBackup, setAutoBackup] = useState(true)
   const [keepLast, setKeepLast] = useState(10)
+  const { t } = useTranslation()
 
   useEffect(() => { loadData() }, [])
 
-  async function loadData() {
+  const loadData = async () => {
     setLoading(true)
     const res = await window.api.backup.getList()
     if (res.ok) {
@@ -36,74 +38,74 @@ export default function Backup() {
     setLoading(false)
   }
 
-  async function handleBackupNow() {
+  const handleBackupNow = async () => {
     setRunningBackup(true)
     const res = await window.api.backup.run()
     setRunningBackup(false)
     if (res.ok) {
-      message.success(`Backup creado: ${res.data.file}`)
+      message.success(t('backup.backupSuccess', { file: res.data.file }))
       loadData()
     } else {
-      message.error(res.error || 'Error al crear backup')
+      message.error(res.error || t('backup.backupError'))
     }
   }
 
-  async function handleChooseDir() {
+  const handleChooseDir = async () => {
     const res = await window.api.backup.chooseDir()
     if (res.ok) {
       await window.api.config.setMany({ backupDir: res.data })
-      message.success('Carpeta de backup actualizada')
+      message.success(t('backup.configDirUpdated'))
       loadData()
     }
   }
 
-  async function handleToggleAuto(checked) {
+  const handleToggleAuto = async (checked) => {
     setAutoBackup(checked)
     await window.api.config.setMany({ backupAuto: String(checked) })
-    message.success(checked ? 'Backup automático activado' : 'Backup automático desactivado')
+    message.success(checked ? t('backup.autoActivated') : t('backup.autoDeactivated'))
   }
 
-  async function handleKeepLast(val) {
+  const handleKeepLast = async (val) => {
     if (!val || val < 1) return
     setKeepLast(val)
     await window.api.config.setMany({ backupKeepLast: String(val) })
   }
 
-  async function handleRestore(backup) {
+  const handleRestore = async (backup) => {
     Modal.confirm({
-      title: 'Restaurar backup',
+      title: t('backup.restoreTitle'),
       content: (
         <div>
-          <p>¿Estás seguro de restaurar el backup del <b>{dayjs(backup.fecha).format('DD/MM/YYYY HH:mm')}</b>?</p>
+          <p>{t('backup.restoreQuestion', { date: dayjs(backup.fecha).format('DD/MM/YYYY HH:mm') })}</p>
           <Alert
             style={{ marginTop: 12 }}
             type="warning"
-            message="Se hará un backup del estado actual antes de restaurar. La app se cerrará para aplicar los cambios."
+            message={t('backup.restoreWarning')}
             showIcon
           />
         </div>
       ),
-      okText: 'Restaurar',
+      okText: t('backup.restoreBtn'),
       okButtonProps: { danger: true },
-      cancelText: 'Cancelar',
+      cancelText: t('common.cancel'),
       onOk: async () => {
         const res = await window.api.backup.restore(backup.path)
         if (res.ok) {
-          message.success('Backup restaurado. Reiniciá la aplicación para ver los cambios.')
+          message.success(t('backup.restoreSuccess'))
         } else {
-          message.error(res.error || 'Error al restaurar')
+          message.error(res.error || t('common.error'))
         }
       }
     })
   }
 
-  async function handleDelete(backup) {
+  const handleDelete = async (backup) => {
     const res = await window.api.backup.delete(backup.path)
-    if (res.ok) { message.success('Backup eliminado'); loadData() }
+    if (res.ok) { message.success(t('backup.deleteSuccess')); loadData() }
     else message.error(res.error)
   }
 
-  function formatSize(bytes) {
+  const formatSize = (bytes) => {
     if (bytes < 1024) return `${bytes} B`
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
     return `${(bytes / 1024 / 1024).toFixed(2)} MB`
@@ -118,7 +120,7 @@ export default function Backup() {
 
   const columns = [
     {
-      title: 'Archivo',
+      title: t('backup.colFile'),
       dataIndex: 'name',
       render: (v, r) => (
         <Space direction="vertical" size={0}>
@@ -128,7 +130,7 @@ export default function Backup() {
       )
     },
     {
-      title: 'Fecha',
+      title: t('backup.colDate'),
       dataIndex: 'fecha',
       width: 160,
       render: v => (
@@ -141,32 +143,32 @@ export default function Backup() {
       defaultSortOrder: 'ascend'
     },
     {
-      title: 'Tamaño',
+      title: t('backup.colSize'),
       dataIndex: 'size',
       width: 90,
       render: v => <Tag>{formatSize(v)}</Tag>,
       align: 'center'
     },
     {
-      title: 'Acciones',
+      title: t('backup.colActions'),
       key: 'acc',
       width: 100,
       align: 'center',
       render: (_, r) => (
         <Space>
-          <Tooltip title="Restaurar este backup">
+          <Tooltip title={t('backup.restoreTooltip')}>
             <Popconfirm
-              title="¿Restaurar este backup?"
-              description="El estado actual se guardará como backup antes de restaurar."
+              title={t('backup.restoreConfirmTitle')}
+              description={t('backup.restoreConfirmDesc')}
               onConfirm={() => handleRestore(r)}
-              okText="Restaurar" cancelText="Cancelar"
+              okText={t('backup.restoreBtn')} cancelText={t('common.cancel')}
               okButtonProps={{ danger: true }}
             >
               <Button size="small" icon={<RollbackOutlined />} />
             </Popconfirm>
           </Tooltip>
-          <Tooltip title="Eliminar">
-            <Popconfirm title="¿Eliminar este backup?" onConfirm={() => handleDelete(r)} okText="Sí" cancelText="No">
+          <Tooltip title={t('backup.deleteTooltip')}>
+            <Popconfirm title={t('backup.deleteConfirm')} onConfirm={() => handleDelete(r)} okText={t('common.yes')} cancelText={t('common.no')}>
               <Button size="small" danger icon={<DeleteOutlined />} />
             </Popconfirm>
           </Tooltip>
@@ -178,16 +180,16 @@ export default function Backup() {
   return (
     <div>
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Title level={4} style={{ margin: 0 }}>Backup de Base de Datos</Title>
+        <Title level={4} style={{ margin: 0 }}>{t('backup.title')}</Title>
         <Space>
-          <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Actualizar</Button>
+          <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>{t('common.refresh')}</Button>
           <Button
             type="primary"
             icon={<CloudUploadOutlined />}
             loading={runningBackup}
             onClick={handleBackupNow}
           >
-            Hacer Backup Ahora
+            {t('backup.backupNow')}
           </Button>
         </Space>
       </div>
@@ -196,8 +198,8 @@ export default function Backup() {
         <Col xs={24} sm={8}>
           <Card className="stat-card">
             <Statistic
-              title="Último Backup"
-              value={lastBackupDate ? lastBackupDate.format('DD/MM/YYYY HH:mm') : 'Nunca'}
+              title={t('backup.statLastBackup')}
+              value={lastBackupDate ? lastBackupDate.format('DD/MM/YYYY HH:mm') : t('common.never')}
               prefix={
                 backupStatus === 'ok' ? <CheckCircleOutlined style={{ color: '#52c41a' }} />
                 : backupStatus === 'warn' ? <WarningOutlined style={{ color: '#faad14' }} />
@@ -217,35 +219,35 @@ export default function Backup() {
         <Col xs={24} sm={8}>
           <Card className="stat-card">
             <Statistic
-              title="Backups Guardados"
+              title={t('backup.statSaved')}
               value={data?.backups?.length || 0}
-              suffix={`/ ${keepLast} máx`}
+              suffix={t('backup.statMax', { max: keepLast })}
             />
           </Card>
         </Col>
         <Col xs={24} sm={8}>
           <Card className="stat-card">
             <div style={{ marginBottom: 8 }}>
-              <Text strong>Backup Automático Diario</Text>
+              <Text strong>{t('backup.statAutoTitle')}</Text>
             </div>
             <Switch
               checked={autoBackup}
               onChange={handleToggleAuto}
-              checkedChildren="Activado"
-              unCheckedChildren="Desactivado"
+              checkedChildren={t('backup.autoOn')}
+              unCheckedChildren={t('backup.autoOff')}
             />
             <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 6 }}>
-              Se ejecuta al iniciar la app si pasaron más de 24hs
+              {t('backup.statAutoDesc')}
             </Text>
           </Card>
         </Col>
       </Row>
 
-      <Card title="Configuración de Backup" style={{ marginBottom: 16 }}>
+      <Card title={t('backup.configTitle')} style={{ marginBottom: 16 }}>
         <Row gutter={[24, 16]} align="middle">
           <Col xs={24} sm={12}>
             <Space direction="vertical" size={4} style={{ width: '100%' }}>
-              <Text strong>Carpeta de destino</Text>
+              <Text strong>{t('backup.configDirLabel')}</Text>
               <Space style={{ width: '100%' }}>
                 <Text
                   code
@@ -255,38 +257,38 @@ export default function Backup() {
                   {data?.backupDir || '...'}
                 </Text>
                 <Button icon={<FolderOpenOutlined />} size="small" onClick={handleChooseDir}>
-                  Cambiar
+                  {t('backup.configDirChange')}
                 </Button>
               </Space>
             </Space>
           </Col>
           <Col xs={24} sm={12}>
             <Space direction="vertical" size={4}>
-              <Text strong>Cantidad de backups a conservar</Text>
+              <Text strong>{t('backup.configKeepLabel')}</Text>
               <InputNumber
                 min={1} max={50} value={keepLast}
                 onChange={handleKeepLast}
-                addonAfter="backups"
+                addonAfter={t('backup.configKeepSuffix')}
                 style={{ width: 160 }}
               />
               <Text type="secondary" style={{ fontSize: 12 }}>
-                Los más antiguos se eliminan automáticamente
+                {t('backup.configKeepDesc')}
               </Text>
             </Space>
           </Col>
         </Row>
       </Card>
 
-      <Card title="Backups Disponibles">
+      <Card title={t('backup.availableTitle')}>
         {backupStatus === 'danger' && (
           <Alert
-            message="Hace más de 48hs que no se realiza un backup. Hacé uno ahora."
+            message={t('backup.alertDanger')}
             type="error" showIcon style={{ marginBottom: 16 }}
           />
         )}
         {backupStatus === 'never' && (
           <Alert
-            message="No hay backups registrados. Te recomendamos hacer uno ahora."
+            message={t('backup.alertNever')}
             type="warning" showIcon style={{ marginBottom: 16 }}
           />
         )}
@@ -296,10 +298,12 @@ export default function Backup() {
           rowKey="path"
           loading={loading}
           size="small"
-          pagination={{ pageSize: 10, showTotal: t => `${t} backups` }}
-          locale={{ emptyText: 'Sin backups' }}
+          pagination={{ pageSize: 10, showTotal: total => t('backup.pagTotal', { total }) }}
+          locale={{ emptyText: t('backup.noBackups') }}
         />
       </Card>
     </div>
   )
 }
+
+export default Backup

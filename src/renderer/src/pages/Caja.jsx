@@ -8,12 +8,13 @@ import {
   WalletOutlined, LockOutlined, PlusCircleOutlined,
   MinusCircleOutlined, HistoryOutlined, PrinterOutlined, EyeOutlined
 } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../store/authStore'
 import dayjs from 'dayjs'
 
 const { Title, Text } = Typography
 
-export default function Caja() {
+const Caja = () => {
   const [cajaAbierta, setCajaAbierta] = useState(null)
   const [movimientos, setMovimientos] = useState([])
   const [historial, setHistorial] = useState([])
@@ -27,10 +28,11 @@ export default function Caja() {
   const [formApertura] = Form.useForm()
   const [formMovimiento] = Form.useForm()
   const user = useAuthStore(s => s.user)
+  const { t } = useTranslation()
 
   useEffect(() => { loadData() }, [])
 
-  async function loadData() {
+  const loadData = async () => {
     setLoading(true)
     const [ca, hist] = await Promise.all([
       window.api.caja.getCajaAbierta(),
@@ -46,27 +48,27 @@ export default function Caja() {
     setLoading(false)
   }
 
-  async function abrirCaja() {
+  const abrirCaja = async () => {
     const values = await formApertura.validateFields()
     const res = await window.api.caja.abrir(values.saldo_inicial, user?.id)
     if (res.ok) {
-      message.success('Caja abierta correctamente')
+      message.success(t('caja.openSuccess'))
       setModalApertura(false)
       loadData()
     } else message.error(res.error)
   }
 
-  async function cerrarCaja() {
+  const cerrarCaja = async () => {
     const res = await window.api.caja.cerrar(cajaAbierta.id)
     if (res.ok) {
       const d = res.data
-      message.success(`Caja cerrada. Saldo final: $${d.saldoFinal?.toFixed(2)}`)
+      message.success(t('caja.closeSuccess', { amount: d.saldoFinal?.toFixed(2) }))
       setModalCierre(false)
       loadData()
     } else message.error(res.error)
   }
 
-  async function addMovimiento() {
+  const addMovimiento = async () => {
     const values = await formMovimiento.validateFields()
     const res = await window.api.caja.addMovimiento({
       caja_id: cajaAbierta.id,
@@ -74,13 +76,13 @@ export default function Caja() {
       ...values
     })
     if (res.ok) {
-      message.success('Movimiento registrado')
+      message.success(t('caja.movSuccess'))
       setModalMovimiento({ open: false })
       loadData()
     } else message.error(res.error)
   }
 
-  async function verDetalleCaja(caja) {
+  const verDetalleCaja = async (caja) => {
     setLoadingDetalle(true)
     setModalDetalle({ open: true, caja })
     const res = await window.api.caja.getMovimientos(caja.id)
@@ -88,7 +90,7 @@ export default function Caja() {
     setLoadingDetalle(false)
   }
 
-  function imprimirDetalle(caja, movs) {
+  const imprimirDetalle = (caja, movs) => {
     const ventas = movs.filter(m => m.tipo === 'venta')
     const ingresos = movs.filter(m => m.tipo === 'ingreso')
     const egresos = movs.filter(m => m.tipo === 'egreso')
@@ -195,15 +197,15 @@ export default function Caja() {
   const saldoActual = cajaAbierta ? (cajaAbierta.saldo_inicial + totalVentas + totalIngresos - totalEgresos) : 0
 
   const colsMovimientos = [
-    { title: 'Hora', dataIndex: 'fecha', render: v => dayjs(v).format('HH:mm'), width: 60 },
+    { title: t('caja.colHour'), dataIndex: 'fecha', render: v => dayjs(v).format('HH:mm'), width: 60 },
     {
-      title: 'Tipo', dataIndex: 'tipo',
-      render: v => <Tag color={v === 'venta' ? 'blue' : v === 'ingreso' ? 'success' : 'error'}>{v.toUpperCase()}</Tag>,
+      title: t('caja.colType'), dataIndex: 'tipo',
+      render: v => <Tag color={v === 'venta' ? 'blue' : v === 'ingreso' ? 'success' : 'error'}>{v === 'venta' ? t('caja.typeVenta') : v === 'ingreso' ? t('caja.typeIngreso') : t('caja.typeEgreso')}</Tag>,
       width: 90
     },
-    { title: 'Descripción', dataIndex: 'descripcion', render: v => v || '-' },
-    { title: 'Método', dataIndex: 'metodo_pago', render: v => v || '-' },
-    { title: 'Monto', dataIndex: 'monto', render: (v, r) => (
+    { title: t('caja.colDescription'), dataIndex: 'descripcion', render: v => v || '-' },
+    { title: t('caja.colMethod'), dataIndex: 'metodo_pago', render: v => v || '-' },
+    { title: t('caja.colAmount'), dataIndex: 'monto', render: (v, r) => (
       <Text style={{ color: r.tipo === 'egreso' ? '#ff4d4f' : '#52c41a', fontWeight: 600 }}>
         {r.tipo === 'egreso' ? '-' : '+'}${Number(v).toFixed(2)}
       </Text>
@@ -211,15 +213,15 @@ export default function Caja() {
   ]
 
   const colsHistorial = [
-    { title: '#', dataIndex: 'id', width: 50 },
-    { title: 'Apertura', dataIndex: 'fecha_apertura', render: v => dayjs(v).format('DD/MM/YY HH:mm') },
-    { title: 'Cierre', dataIndex: 'fecha_cierre', render: v => v ? dayjs(v).format('DD/MM/YY HH:mm') : '-' },
-    { title: 'Saldo Inicial', dataIndex: 'saldo_inicial', render: v => `$${Number(v).toFixed(2)}`, align: 'right' },
-    { title: 'Saldo Final', dataIndex: 'saldo_final', render: v => v != null ? `$${Number(v).toFixed(2)}` : '-', align: 'right' },
-    { title: 'Ventas', dataIndex: 'total_ventas', render: v => `$${Number(v || 0).toFixed(2)}`, align: 'right' },
-    { title: 'Responsable', dataIndex: 'usuario_nombre', render: v => v || '-' },
+    { title: t('caja.histColId'), dataIndex: 'id', width: 50 },
+    { title: t('caja.histColOpen'), dataIndex: 'fecha_apertura', render: v => dayjs(v).format('DD/MM/YY HH:mm') },
+    { title: t('caja.histColClose'), dataIndex: 'fecha_cierre', render: v => v ? dayjs(v).format('DD/MM/YY HH:mm') : '-' },
+    { title: t('caja.histColInitial'), dataIndex: 'saldo_inicial', render: v => `$${Number(v).toFixed(2)}`, align: 'right' },
+    { title: t('caja.histColFinal'), dataIndex: 'saldo_final', render: v => v != null ? `$${Number(v).toFixed(2)}` : '-', align: 'right' },
+    { title: t('caja.histColSales'), dataIndex: 'total_ventas', render: v => `$${Number(v || 0).toFixed(2)}`, align: 'right' },
+    { title: t('caja.histColUser'), dataIndex: 'usuario_nombre', render: v => v || '-' },
     {
-      title: 'Estado', dataIndex: 'estado',
+      title: t('caja.histColStatus'), dataIndex: 'estado',
       render: v => <Tag color={v === 'abierta' ? 'success' : 'default'}>{v}</Tag>
     },
     {
@@ -233,24 +235,24 @@ export default function Caja() {
   return (
     <div>
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Title level={4} style={{ margin: 0 }}>Caja</Title>
+        <Title level={4} style={{ margin: 0 }}>{t('caja.title')}</Title>
         {!cajaAbierta ? (
           <Button type="primary" icon={<WalletOutlined />} onClick={() => { formApertura.resetFields(); setModalApertura(true) }}>
-            Abrir Caja
+            {t('caja.openCaja')}
           </Button>
         ) : (
           <Space>
-            <Button icon={<PlusCircleOutlined />} onClick={() => { formMovimiento.resetFields(); setModalMovimiento({ open: true, tipo: 'ingreso' }) }}>Ingreso</Button>
-            <Button icon={<MinusCircleOutlined />} danger onClick={() => { formMovimiento.resetFields(); setModalMovimiento({ open: true, tipo: 'egreso' }) }}>Egreso</Button>
-            <Button icon={<LockOutlined />} onClick={() => setModalCierre(true)}>Cerrar Caja</Button>
+            <Button icon={<PlusCircleOutlined />} onClick={() => { formMovimiento.resetFields(); setModalMovimiento({ open: true, tipo: 'ingreso' }) }}>{t('caja.btnIngreso')}</Button>
+            <Button icon={<MinusCircleOutlined />} danger onClick={() => { formMovimiento.resetFields(); setModalMovimiento({ open: true, tipo: 'egreso' }) }}>{t('caja.btnEgreso')}</Button>
+            <Button icon={<LockOutlined />} onClick={() => setModalCierre(true)}>{t('caja.closeCaja')}</Button>
           </Space>
         )}
       </div>
 
       {!cajaAbierta ? (
         <>
-          <Alert message="No hay caja abierta. Abrí la caja para registrar ventas y movimientos." type="info" showIcon style={{ marginBottom: 16 }} />
-          <Card title={<Space><HistoryOutlined />Historial de Cajas</Space>}>
+          <Alert message={t('caja.noCajaAlert')} type="info" showIcon style={{ marginBottom: 16 }} />
+          <Card title={<Space><HistoryOutlined />{t('caja.historyTitle')}</Space>}>
             <Table columns={colsHistorial} dataSource={historial} rowKey="id" size="small" loading={loading}
               pagination={{ pageSize: 10 }} />
           </Card>
@@ -260,17 +262,17 @@ export default function Caja() {
           <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
             <Col xs={12} sm={6}>
               <Card className="stat-card">
-                <Statistic title="Saldo Inicial" value={cajaAbierta.saldo_inicial} prefix="$" precision={2} />
+                <Statistic title={t('caja.statInitial')} value={cajaAbierta.saldo_inicial} prefix="$" precision={2} />
               </Card>
             </Col>
             <Col xs={12} sm={6}>
               <Card className="stat-card">
-                <Statistic title="Ventas del Día" value={totalVentas} prefix="$" precision={2} valueStyle={{ color: '#1677ff' }} />
+                <Statistic title={t('caja.statSales')} value={totalVentas} prefix="$" precision={2} valueStyle={{ color: '#1677ff' }} />
               </Card>
             </Col>
             <Col xs={12} sm={6}>
               <Card className="stat-card">
-                <Statistic title="Ingresos / Egresos"
+                <Statistic title={t('caja.statInOut')}
                   value={totalIngresos - totalEgresos}
                   prefix="$" precision={2}
                   valueStyle={{ color: totalIngresos - totalEgresos >= 0 ? '#52c41a' : '#ff4d4f' }}
@@ -280,7 +282,7 @@ export default function Caja() {
             <Col xs={12} sm={6}>
               <Card className="stat-card" style={{ background: 'linear-gradient(135deg, #1677ff, #003a8c)', border: 'none' }}>
                 <Statistic
-                  title={<Text style={{ color: 'rgba(255,255,255,0.85)' }}>Saldo Actual</Text>}
+                  title={<Text style={{ color: 'rgba(255,255,255,0.85)' }}>{t('caja.statCurrent')}</Text>}
                   value={saldoActual} prefix="$" precision={2}
                   valueStyle={{ color: '#fff', fontSize: 24 }}
                 />
@@ -288,50 +290,50 @@ export default function Caja() {
             </Col>
           </Row>
 
-          <Card title="Movimientos de la Caja Actual">
+          <Card title={t('caja.currentMovements')}>
             <Table columns={colsMovimientos} dataSource={movimientos} rowKey="id" size="small" loading={loading}
-              pagination={{ pageSize: 15, showTotal: t => `${t} movimientos` }}
+              pagination={{ pageSize: 15, showTotal: total => t('caja.pagMovements', { total }) }}
             />
           </Card>
         </>
       )}
 
-      <Modal title="Abrir Caja" open={modalApertura} onOk={abrirCaja}
-        onCancel={() => setModalApertura(false)} okText="Abrir" cancelText="Cancelar">
+      <Modal title={t('caja.modalOpenTitle')} open={modalApertura} onOk={abrirCaja}
+        onCancel={() => setModalApertura(false)} okText={t('caja.openBtn')} cancelText={t('common.cancel')}>
         <Form form={formApertura} layout="vertical" style={{ marginTop: 16 }}>
-          <Form.Item name="saldo_inicial" label="Saldo Inicial (efectivo en caja)" rules={[{ required: true }]} initialValue={0}>
+          <Form.Item name="saldo_inicial" label={t('caja.fieldInitialBalance')} rules={[{ required: true }]} initialValue={0}>
             <InputNumber min={0} precision={2} prefix="$" style={{ width: '100%' }} size="large" />
           </Form.Item>
         </Form>
       </Modal>
 
       <Modal
-        title={modalMovimiento.tipo === 'ingreso' ? 'Registrar Ingreso' : 'Registrar Egreso'}
+        title={modalMovimiento.tipo === 'ingreso' ? t('caja.modalIngresoTitle') : t('caja.modalEgresoTitle')}
         open={modalMovimiento.open}
         onOk={addMovimiento}
         onCancel={() => setModalMovimiento({ open: false })}
-        okText="Guardar" cancelText="Cancelar"
+        okText={t('common.save')} cancelText={t('common.cancel')}
         destroyOnClose
       >
         <Form form={formMovimiento} layout="vertical" style={{ marginTop: 16 }}>
-          <Form.Item name="monto" label="Monto" rules={[{ required: true }, { type: 'number', min: 0.01 }]}>
+          <Form.Item name="monto" label={t('caja.fieldAmount')} rules={[{ required: true }, { type: 'number', min: 0.01 }]}>
             <InputNumber min={0.01} precision={2} prefix="$" style={{ width: '100%' }} />
           </Form.Item>
-          <Form.Item name="descripcion" label="Descripción" rules={[{ required: true }]}>
-            <Input placeholder={modalMovimiento.tipo === 'ingreso' ? 'Ej: Retiro del banco' : 'Ej: Pago de servicios'} />
+          <Form.Item name="descripcion" label={t('caja.fieldDescription')} rules={[{ required: true }]}>
+            <Input placeholder={modalMovimiento.tipo === 'ingreso' ? t('caja.ingresoPlaceholder') : t('caja.egresoPlaceholder')} />
           </Form.Item>
-          <Form.Item name="metodo_pago" label="Método" initialValue="efectivo">
+          <Form.Item name="metodo_pago" label={t('caja.fieldMethod')} initialValue="efectivo">
             <Select options={[
-              { value: 'efectivo', label: 'Efectivo' },
-              { value: 'transferencia', label: 'Transferencia' },
-              { value: 'otro', label: 'Otro' }
+              { value: 'efectivo', label: t('caja.methods.efectivo') },
+              { value: 'transferencia', label: t('caja.methods.transferencia') },
+              { value: 'otro', label: t('caja.methods.otro') }
             ]} />
           </Form.Item>
         </Form>
       </Modal>
 
       <Modal
-        title={`Detalle Caja #${modalDetalle.caja?.id}`}
+        title={t('caja.detailTitle', { id: modalDetalle.caja?.id })}
         open={modalDetalle.open}
         onCancel={() => setModalDetalle({ open: false, caja: null })}
         width={780}
@@ -343,9 +345,9 @@ export default function Caja() {
               onClick={() => imprimirDetalle(modalDetalle.caja, movDetalle)}
               disabled={loadingDetalle}
             >
-              Imprimir / Guardar PDF
+              {t('caja.printPDF')}
             </Button>
-            <Button onClick={() => setModalDetalle({ open: false, caja: null })}>Cerrar</Button>
+            <Button onClick={() => setModalDetalle({ open: false, caja: null })}>{t('common.close')}</Button>
           </Space>
         }
         destroyOnClose
@@ -371,21 +373,21 @@ export default function Caja() {
           return (
             <>
               <Descriptions column={2} size="small" bordered style={{ marginBottom: 16 }}>
-                <Descriptions.Item label="Responsable">{caja.usuario_nombre || '-'}</Descriptions.Item>
-                <Descriptions.Item label="Estado">
+                <Descriptions.Item label={t('caja.detailUser')}>{caja.usuario_nombre || '-'}</Descriptions.Item>
+                <Descriptions.Item label={t('caja.detailStatus')}>
                   <Tag color={caja.estado === 'abierta' ? 'success' : 'default'}>{caja.estado}</Tag>
                 </Descriptions.Item>
-                <Descriptions.Item label="Apertura">{dayjs(caja.fecha_apertura).format('DD/MM/YYYY HH:mm')}</Descriptions.Item>
-                <Descriptions.Item label="Cierre">{caja.fecha_cierre ? dayjs(caja.fecha_cierre).format('DD/MM/YYYY HH:mm') : '-'}</Descriptions.Item>
+                <Descriptions.Item label={t('caja.detailOpen')}>{dayjs(caja.fecha_apertura).format('DD/MM/YYYY HH:mm')}</Descriptions.Item>
+                <Descriptions.Item label={t('caja.detailClose')}>{caja.fecha_cierre ? dayjs(caja.fecha_cierre).format('DD/MM/YYYY HH:mm') : '-'}</Descriptions.Item>
               </Descriptions>
 
               <Row gutter={12} style={{ marginBottom: 16 }}>
                 {[
-                  { label: 'Saldo Inicial', value: caja.saldo_inicial, color: undefined },
-                  { label: 'Total Ventas', value: totalV, color: '#1677ff' },
-                  { label: 'Ingresos', value: totalI, color: '#52c41a' },
-                  { label: 'Egresos', value: totalE, color: '#ff4d4f' },
-                  { label: 'Saldo Final', value: saldoFinal, color: '#1677ff', bold: true },
+                  { label: t('caja.statInitial'), value: caja.saldo_inicial, color: undefined },
+                  { label: t('caja.statSales'), value: totalV, color: '#1677ff' },
+                  { label: t('caja.btnIngreso'), value: totalI, color: '#52c41a' },
+                  { label: t('caja.btnEgreso'), value: totalE, color: '#ff4d4f' },
+                  { label: t('caja.statCurrent'), value: saldoFinal, color: '#1677ff', bold: true },
                 ].map(({ label, value, color, bold }) => (
                   <Col span={4} key={label}>
                     <Card size="small" styles={{ body: { padding: '8px 10px' } }}>
@@ -398,7 +400,7 @@ export default function Caja() {
                 ))}
               </Row>
 
-              <Divider orientation="left" style={{ margin: '8px 0 12px' }}>Ventas por Método de Pago</Divider>
+              <Divider orientation="left" style={{ margin: '8px 0 12px' }}>{t('caja.salesByMethod')}</Divider>
               <Table
                 size="small"
                 loading={loadingDetalle}
@@ -407,36 +409,36 @@ export default function Caja() {
                 pagination={false}
                 style={{ marginBottom: 16 }}
                 columns={[
-                  { title: 'Método', dataIndex: 'metodo', render: v => <Tag>{v}</Tag> },
-                  { title: 'Cantidad', dataIndex: 'cantidad', align: 'center' },
-                  { title: 'Total', dataIndex: 'total', render: v => <Text strong>${Number(v).toFixed(2)}</Text>, align: 'right' },
+                  { title: t('caja.colMethod2'), dataIndex: 'metodo', render: v => <Tag>{v}</Tag> },
+                  { title: t('caja.colQty'), dataIndex: 'cantidad', align: 'center' },
+                  { title: t('caja.colTotal'), dataIndex: 'total', render: v => <Text strong>${Number(v).toFixed(2)}</Text>, align: 'right' },
                 ]}
                 summary={() => (
                   <Table.Summary.Row>
-                    <Table.Summary.Cell colSpan={2}><Text strong>Total</Text></Table.Summary.Cell>
+                    <Table.Summary.Cell colSpan={2}><Text strong>{t('caja.totalLabel')}</Text></Table.Summary.Cell>
                     <Table.Summary.Cell align="right"><Text strong style={{ color: '#1677ff' }}>${totalV.toFixed(2)}</Text></Table.Summary.Cell>
                   </Table.Summary.Row>
                 )}
-                locale={{ emptyText: 'Sin ventas' }}
+                locale={{ emptyText: t('caja.noSales') }}
               />
 
-              <Divider orientation="left" style={{ margin: '8px 0 12px' }}>Todos los Movimientos</Divider>
+              <Divider orientation="left" style={{ margin: '8px 0 12px' }}>{t('caja.allMovements')}</Divider>
               <Table
                 size="small"
                 loading={loadingDetalle}
                 dataSource={movDetalle}
                 rowKey="id"
-                pagination={{ pageSize: 10, showTotal: t => `${t} movimientos` }}
+                pagination={{ pageSize: 10, showTotal: total => t('caja.pagMovements', { total }) }}
                 columns={[
-                  { title: 'Hora', dataIndex: 'fecha', width: 70, render: v => dayjs(v).format('HH:mm') },
+                  { title: t('caja.colHour'), dataIndex: 'fecha', width: 70, render: v => dayjs(v).format('HH:mm') },
                   {
-                    title: 'Tipo', dataIndex: 'tipo', width: 90,
-                    render: v => <Tag color={v === 'venta' ? 'blue' : v === 'ingreso' ? 'success' : 'error'}>{v.toUpperCase()}</Tag>
+                    title: t('caja.colType'), dataIndex: 'tipo', width: 90,
+                    render: v => <Tag color={v === 'venta' ? 'blue' : v === 'ingreso' ? 'success' : 'error'}>{v === 'venta' ? t('caja.typeVenta') : v === 'ingreso' ? t('caja.typeIngreso') : t('caja.typeEgreso')}</Tag>
                   },
-                  { title: 'Descripción', dataIndex: 'descripcion', render: v => v || '-' },
-                  { title: 'Método', dataIndex: 'metodo_pago', width: 100, render: v => v || '-' },
+                  { title: t('caja.colDescription'), dataIndex: 'descripcion', render: v => v || '-' },
+                  { title: t('caja.colMethod'), dataIndex: 'metodo_pago', width: 100, render: v => v || '-' },
                   {
-                    title: 'Monto', dataIndex: 'monto', align: 'right', width: 100,
+                    title: t('caja.colAmount'), dataIndex: 'monto', align: 'right', width: 100,
                     render: (v, r) => (
                       <Text style={{ color: r.tipo === 'egreso' ? '#ff4d4f' : '#52c41a', fontWeight: 600 }}>
                         {r.tipo === 'egreso' ? '-' : '+'}${Number(v).toFixed(2)}
@@ -450,18 +452,20 @@ export default function Caja() {
         })()}
       </Modal>
 
-      <Modal title="Cerrar Caja" open={modalCierre} onOk={cerrarCaja}
-        onCancel={() => setModalCierre(false)} okText="Confirmar Cierre" cancelText="Cancelar"
+      <Modal title={t('caja.closeCajaTitle')} open={modalCierre} onOk={cerrarCaja}
+        onCancel={() => setModalCierre(false)} okText={t('caja.closeConfirmBtn')} cancelText={t('common.cancel')}
         okButtonProps={{ danger: true }}>
-        <Alert message="Esta acción cerrará la caja del día. No podrás registrar más movimientos en esta caja." type="warning" showIcon style={{ marginBottom: 16 }} />
+        <Alert message={t('caja.closeWarning')} type="warning" showIcon style={{ marginBottom: 16 }} />
         <Descriptions column={1} bordered size="small">
-          <Descriptions.Item label="Saldo Inicial">${Number(cajaAbierta?.saldo_inicial || 0).toFixed(2)}</Descriptions.Item>
-          <Descriptions.Item label="Total Ventas">${totalVentas.toFixed(2)}</Descriptions.Item>
-          <Descriptions.Item label="Ingresos Extra">${totalIngresos.toFixed(2)}</Descriptions.Item>
-          <Descriptions.Item label="Egresos">${totalEgresos.toFixed(2)}</Descriptions.Item>
-          <Descriptions.Item label={<Text strong>Saldo Final Estimado</Text>}><Text strong>${saldoActual.toFixed(2)}</Text></Descriptions.Item>
+          <Descriptions.Item label={t('caja.closeLabelInitial')}>${Number(cajaAbierta?.saldo_inicial || 0).toFixed(2)}</Descriptions.Item>
+          <Descriptions.Item label={t('caja.closeLabelSales')}>${totalVentas.toFixed(2)}</Descriptions.Item>
+          <Descriptions.Item label={t('caja.closeLabelExtra')}>${totalIngresos.toFixed(2)}</Descriptions.Item>
+          <Descriptions.Item label={t('caja.closeLabelEgresos')}>${totalEgresos.toFixed(2)}</Descriptions.Item>
+          <Descriptions.Item label={<Text strong>{t('caja.closeLabelFinal')}</Text>}><Text strong>${saldoActual.toFixed(2)}</Text></Descriptions.Item>
         </Descriptions>
       </Modal>
     </div>
   )
 }
+
+export default Caja

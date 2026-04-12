@@ -1,391 +1,296 @@
-import React, { useState } from 'react'
+import React from 'react'
 import {
-  Typography, Card, Collapse, Tag, Space, Divider, Alert, Steps, Table
+  Typography, Collapse, Alert, Table
 } from 'antd'
 import {
   ShoppingCartOutlined, AppstoreOutlined, InboxOutlined,
   TeamOutlined, WalletOutlined, BarChartOutlined, UserOutlined,
   SettingOutlined, CloudUploadOutlined, FileTextOutlined,
   BarcodeOutlined, ScanOutlined, PrinterOutlined,
-  PlusOutlined, DollarOutlined, CalendarOutlined,
+  DollarOutlined, CalendarOutlined,
   QuestionCircleOutlined, WarningOutlined
 } from '@ant-design/icons'
+import { useTranslation } from 'react-i18next'
+import { Section, Paso, Tip } from '../components/AyudaHelpers'
 
 const { Title, Text, Paragraph } = Typography
 const { Panel } = Collapse
 
-function Section({ icon, title, color = '#1677ff', children }) {
-  return (
-    <Card
-      style={{ marginBottom: 16 }}
-      styles={{ header: { borderBottom: `3px solid ${color}` } }}
-      title={
-        <Space>
-          {React.cloneElement(icon, { style: { color, fontSize: 18 } })}
-          <Text strong style={{ fontSize: 16 }}>{title}</Text>
-        </Space>
-      }
-    >
-      {children}
-    </Card>
-  )
-}
+const Ayuda = () => {
+  const { t } = useTranslation()
+  const s = (key) => t(`ayuda.sections.${key}`)
 
-function Paso({ numero, texto }) {
-  return (
-    <div style={{ display: 'flex', gap: 12, marginBottom: 10, alignItems: 'flex-start' }}>
-      <div style={{
-        minWidth: 26, height: 26, borderRadius: '50%',
-        background: '#1677ff', color: '#fff',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 12, fontWeight: 700, flexShrink: 0
-      }}>
-        {numero}
-      </div>
-      <Text style={{ paddingTop: 4 }}>{texto}</Text>
-    </div>
-  )
-}
-
-function Tip({ children }) {
-  return (
-    <Alert
-      type="info"
-      showIcon
-      style={{ marginTop: 12, marginBottom: 4 }}
-      message={children}
-    />
-  )
-}
-
-export default function Ayuda() {
   return (
     <div style={{ maxWidth: 900, margin: '0 auto' }}>
       <div style={{ marginBottom: 24 }}>
         <Title level={3} style={{ margin: 0 }}>
           <QuestionCircleOutlined style={{ marginRight: 10, color: '#1677ff' }} />
-          Ayuda y manual de uso
+          {t('ayuda.title')}
         </Title>
-        <Text type="secondary">
-          Guía completa para el uso del sistema de gestión comercial.
-        </Text>
+        <Text type="secondary">{t('ayuda.subtitle')}</Text>
       </div>
 
-      {/* PRODUCTOS */}
-      <Section icon={<AppstoreOutlined />} title="Productos" color="#1677ff">
+      <Section icon={<AppstoreOutlined />} title={s('productos.title')} color="#1677ff">
         <Collapse ghost defaultActiveKey={[]}>
-          <Panel header={<Text strong>Crear un producto nuevo</Text>} key="prod-nuevo">
-            <Paso numero={1} texto='Ir al menú lateral → "Productos" → botón "Nuevo Producto".' />
-            <Paso numero={2} texto='Completar el nombre del producto. El sistema sugiere productos existentes mientras escribís.' />
-            <Paso numero={3} texto='Si el sistema detecta un producto similar, te preguntará si querés sumar stock al existente o crear uno nuevo.' />
-            <Paso numero={4} texto='Completar precio de compra, precio de venta, categoría, proveedor, unidad y stock inicial.' />
-            <Paso numero={5} texto='Hacer clic en "Guardar". El stock inicial queda registrado en el historial de movimientos.' />
-            <Tip>El stock inicial solo se puede ingresar al crear el producto. Para agregar más stock después, usá el campo "Agregar stock" al editar.</Tip>
+          <Panel header={<Text strong>{s('productos.panelNew')}</Text>} key="prod-nuevo">
+            <Paso numero={1} texto={s('productos.step1New')} />
+            <Paso numero={2} texto={s('productos.step2New')} />
+            <Paso numero={3} texto={s('productos.step3New')} />
+            <Paso numero={4} texto={s('productos.step4New')} />
+            <Paso numero={5} texto={s('productos.step5New')} />
+            <Tip>{s('productos.tipNew')}</Tip>
           </Panel>
 
-          <Panel header={<Text strong><BarcodeOutlined /> Cargar código de barras con lector USB</Text>} key="prod-scan">
+          <Panel header={<Text strong><BarcodeOutlined /> {s('productos.panelScan')}</Text>} key="prod-scan">
             <Alert
               type="success"
               showIcon
               icon={<ScanOutlined />}
-              message="El lector USB se activa automáticamente al abrir el formulario de producto."
+              message={s('productos.scanAlert')}
               style={{ marginBottom: 12 }}
             />
-            <Paso numero={1} texto='Abrir el formulario de "Nuevo Producto" o "Editar Producto".' />
-            <Paso numero={2} texto='Apuntar el lector al código de barras del producto y escanear.' />
-            <Paso numero={3} texto='El código se completa automáticamente en el campo "Código de barras". El borde se pone verde como confirmación.' />
-            <Paso numero={4} texto='Completar el resto de los campos normalmente.' />
-            <Tip>Si el lector no responde, asegurate de que el formulario esté abierto y en foco. El lector funciona como un teclado — no hace falta ningún driver especial.</Tip>
+            <Paso numero={1} texto={s('productos.step1Scan')} />
+            <Paso numero={2} texto={s('productos.step2Scan')} />
+            <Paso numero={3} texto={s('productos.step3Scan')} />
+            <Paso numero={4} texto={s('productos.step4Scan')} />
+            <Tip>{s('productos.tipScan')}</Tip>
           </Panel>
 
-          <Panel header={<Text strong>Cargar código de barras manualmente</Text>} key="prod-manual">
-            <Paso numero={1} texto='Abrir el formulario de producto.' />
-            <Paso numero={2} texto='Hacer clic en el campo "Código de barras".' />
-            <Paso numero={3} texto='Escribir el código manualmente y presionar Enter o Tab.' />
+          <Panel header={<Text strong>{s('productos.panelManual')}</Text>} key="prod-manual">
+            <Paso numero={1} texto={s('productos.step1Manual')} />
+            <Paso numero={2} texto={s('productos.step2Manual')} />
+            <Paso numero={3} texto={s('productos.step3Manual')} />
           </Panel>
 
-          <Panel header={<Text strong>Editar un producto o sumar stock</Text>} key="prod-editar">
-            <Paso numero={1} texto='En la lista de productos, hacer clic en el ícono de edición (lápiz) del producto.' />
-            <Paso numero={2} texto='Modificar los campos que necesitás (precio, categoría, proveedor, etc.).' />
-            <Paso numero={3} texto='Para sumar stock, usá el campo "Agregar stock" e ingresá la cantidad a sumar. Se suma al stock actual al guardar.' />
-            <Paso numero={4} texto='Si el producto tiene vencimiento, al ingresar una cantidad en "Agregar stock" aparece el campo "Vencimiento de este lote" para registrar la fecha del nuevo lote.' />
-            <Paso numero={5} texto='Hacer clic en "Guardar".' />
-            <Tip>El campo "Stock Actual" está deshabilitado al editar — solo podés sumarlo usando "Agregar stock". Esto garantiza que el historial de movimientos quede registrado correctamente.</Tip>
+          <Panel header={<Text strong>{s('productos.panelEdit')}</Text>} key="prod-editar">
+            <Paso numero={1} texto={s('productos.step1Edit')} />
+            <Paso numero={2} texto={s('productos.step2Edit')} />
+            <Paso numero={3} texto={s('productos.step3Edit')} />
+            <Paso numero={4} texto={s('productos.step4Edit')} />
+            <Paso numero={5} texto={s('productos.step5Edit')} />
+            <Tip>{s('productos.tipEdit')}</Tip>
           </Panel>
 
-          <Panel header={<Text strong><CalendarOutlined /> Control de vencimiento de productos</Text>} key="prod-vencimiento">
-            <Paragraph>
-              Para productos perecederos (alimentos, medicamentos, cosméticos, etc.) podés configurar
-              una fecha de vencimiento y un umbral de alerta por producto.
-            </Paragraph>
-            <Paso numero={1} texto='Al crear o editar un producto, completar el campo "Fecha de vencimiento" con la fecha del lote actual.' />
-            <Paso numero={2} texto='Una vez ingresada la fecha, aparece el campo "Días de alerta previos" (por defecto 7 días). Define con cuántos días de anticipación querés que el sistema alerte sobre el vencimiento.' />
-            <Paso numero={3} texto='Al guardar, el Dashboard mostrará este producto en el panel "Próximos a vencer" cuando la fecha se encuentre dentro del umbral configurado.' />
-            <Paso numero={4} texto='La columna "Vencimiento" en la lista de productos muestra el estado con colores: gris (más de 30 días), naranja (≤ 30 días), rojo (≤ 7 días o ya vencido).' />
-            <Tip>Si no cargás fecha de vencimiento, el campo se ignora. Esta funcionalidad es completamente opcional.</Tip>
+          <Panel header={<Text strong><CalendarOutlined /> {s('productos.panelExpiry')}</Text>} key="prod-vencimiento">
+            <Paragraph>{s('productos.expiryIntro')}</Paragraph>
+            <Paso numero={1} texto={s('productos.step1Expiry')} />
+            <Paso numero={2} texto={s('productos.step2Expiry')} />
+            <Paso numero={3} texto={s('productos.step3Expiry')} />
+            <Paso numero={4} texto={s('productos.step4Expiry')} />
+            <Tip>{s('productos.tipExpiry')}</Tip>
           </Panel>
 
-          <Panel header={<Text strong>Gestión de lotes con vencimiento diferente</Text>} key="prod-lotes">
-            <Paragraph>
-              Cuando recibís un nuevo lote del mismo producto con una fecha de vencimiento distinta,
-              el sistema registra cada ingreso con su propia fecha y mantiene siempre la alerta
-              sobre el lote más urgente.
-            </Paragraph>
-            <Paso numero={1} texto='Editar el producto y usar el campo "Agregar stock".' />
-            <Paso numero={2} texto='Aparece el campo "Vencimiento de este lote" — ingresá la fecha del nuevo lote.' />
-            <Paso numero={3} texto='Al guardar, el sistema actualiza automáticamente la fecha del producto a la del lote que vence primero.' />
-            <Alert
-              type="info" showIcon style={{ marginTop: 12 }}
-              message='Ejemplo: tenés leche con lote A (vence 15/04) y llega el lote B (vence 30/04). El sistema guarda ambos en el historial y mantiene la alerta en 15/04. Al agotarse el lote A, el próximo ingreso actualizará la alerta a 30/04.'
-            />
+          <Panel header={<Text strong>{s('productos.panelLots')}</Text>} key="prod-lotes">
+            <Paragraph>{s('productos.lotsIntro')}</Paragraph>
+            <Paso numero={1} texto={s('productos.step1Lots')} />
+            <Paso numero={2} texto={s('productos.step2Lots')} />
+            <Paso numero={3} texto={s('productos.step3Lots')} />
+            <Alert type="info" showIcon style={{ marginTop: 12 }} message={s('productos.lotsExample')} />
           </Panel>
 
-          <Panel header={<Text strong>Eliminar un producto</Text>} key="prod-eliminar">
-            <Paso numero={1} texto='En la lista, hacer clic en el ícono de eliminación (papelera roja) del producto.' />
-            <Paso numero={2} texto='Confirmar la acción en el diálogo que aparece.' />
-            <Alert type="warning" showIcon message="Eliminar un producto es una acción irreversible." style={{ marginTop: 8 }} />
+          <Panel header={<Text strong>{s('productos.panelDelete')}</Text>} key="prod-eliminar">
+            <Paso numero={1} texto={s('productos.step1Delete')} />
+            <Paso numero={2} texto={s('productos.step2Delete')} />
+            <Alert type="warning" showIcon message={s('productos.deleteWarning')} style={{ marginTop: 8 }} />
           </Panel>
         </Collapse>
       </Section>
 
-      {/* VENTAS */}
-      <Section icon={<ShoppingCartOutlined />} title="Ventas" color="#52c41a">
+      <Section icon={<ShoppingCartOutlined />} title={s('ventas.title')} color="#52c41a">
         <Collapse ghost>
-          <Panel header={<Text strong>Realizar una venta</Text>} key="venta-nueva">
-            <Paso numero={1} texto='Ir al menú → "Ventas".' />
-            <Paso numero={2} texto='Buscar el producto por nombre, código o escanear el código de barras con el lector USB.' />
-            <Paso numero={3} texto='El producto se agrega al carrito. Podés ajustar la cantidad directamente en el carrito.' />
-            <Paso numero={4} texto='Si querés aplicar un descuento, ingresalo en el campo correspondiente (monto fijo o porcentaje).' />
-            <Paso numero={5} texto='Seleccionar el método de pago: efectivo, tarjeta, transferencia, Mercado Pago, etc.' />
-            <Paso numero={6} texto='Confirmar la venta. El sistema descuenta el stock automáticamente.' />
+          <Panel header={<Text strong>{s('ventas.panelNew')}</Text>} key="venta-nueva">
+            <Paso numero={1} texto={s('ventas.step1')} />
+            <Paso numero={2} texto={s('ventas.step2')} />
+            <Paso numero={3} texto={s('ventas.step3')} />
+            <Paso numero={4} texto={s('ventas.step4')} />
+            <Paso numero={5} texto={s('ventas.step5')} />
+            <Paso numero={6} texto={s('ventas.step6')} />
           </Panel>
 
-          <Panel header={<Text strong><DollarOutlined /> Calcular vuelto en efectivo</Text>} key="venta-vuelto">
-            <Paso numero={1} texto='Seleccionar "Efectivo" como método de pago.' />
-            <Paso numero={2} texto='Aparece el campo "Monto recibido" debajo del método de pago.' />
-            <Paso numero={3} texto='Ingresar el monto entregado por el cliente.' />
-            <Paso numero={4} texto='El sistema muestra el vuelto en tiempo real: verde si el monto alcanza, rojo si es insuficiente.' />
-            <Tip>El campo de vuelto es solo informativo para el vendedor — no afecta el registro de la venta.</Tip>
+          <Panel header={<Text strong><DollarOutlined /> {s('ventas.panelChange')}</Text>} key="venta-vuelto">
+            <Paso numero={1} texto={s('ventas.step1Change')} />
+            <Paso numero={2} texto={s('ventas.step2Change')} />
+            <Paso numero={3} texto={s('ventas.step3Change')} />
+            <Paso numero={4} texto={s('ventas.step4Change')} />
+            <Tip>{s('ventas.tipChange')}</Tip>
           </Panel>
 
-          <Panel header={<Text strong><WarningOutlined /> Productos con vencimiento próximo en la venta</Text>} key="venta-venc">
-            <Paragraph>
-              Si un producto tiene fecha de vencimiento cargada y está próximo a vencer o ya venció,
-              el sistema muestra una advertencia en la lista de productos del punto de venta.
-            </Paragraph>
-            <Alert type="warning" showIcon style={{ marginTop: 8 }}
-              message='Si agregás al carrito un producto ya vencido, el sistema muestra un aviso pero no bloquea la venta. Decidís vos si continuar (por ejemplo, con un descuento).'
-            />
+          <Panel header={<Text strong><WarningOutlined /> {s('ventas.panelExpiry')}</Text>} key="venta-venc">
+            <Paragraph>{s('ventas.expiryText')}</Paragraph>
+            <Alert type="warning" showIcon style={{ marginTop: 8 }} message={s('ventas.expiryAlert')} />
           </Panel>
 
-          <Panel header={<Text strong><BarcodeOutlined /> Escanear productos en la venta</Text>} key="venta-scan">
-            <Paso numero={1} texto='Con la pantalla de Ventas abierta, escanear el código de barras del producto.' />
-            <Paso numero={2} texto='Si el producto está cargado en el sistema, se agrega automáticamente al carrito.' />
-            <Paso numero={3} texto='Escanear el mismo código nuevamente suma una unidad más.' />
-            <Tip>El lector USB funciona directamente en la pantalla de ventas sin necesidad de hacer clic en ningún campo primero.</Tip>
+          <Panel header={<Text strong><BarcodeOutlined /> {s('ventas.panelScan')}</Text>} key="venta-scan">
+            <Paso numero={1} texto={s('ventas.step1Scan')} />
+            <Paso numero={2} texto={s('ventas.step2Scan')} />
+            <Paso numero={3} texto={s('ventas.step3Scan')} />
+            <Tip>{s('ventas.tipScan')}</Tip>
           </Panel>
 
-          <Panel header={<Text strong><PrinterOutlined /> Imprimir ticket o comprobante</Text>} key="venta-ticket">
-            <Paso numero={1} texto='Al finalizar la venta, el sistema ofrece imprimir el comprobante.' />
-            <Paso numero={2} texto='El ticket incluye: datos del comercio, detalle de productos, subtotal, descuento, total y método de pago.' />
-            <Tip>Los datos del comercio (nombre, dirección, teléfono, mensaje de pie de página) se configuran en Configuración → datos del ticket.</Tip>
+          <Panel header={<Text strong><PrinterOutlined /> {s('ventas.panelTicket')}</Text>} key="venta-ticket">
+            <Paso numero={1} texto={s('ventas.step1Ticket')} />
+            <Paso numero={2} texto={s('ventas.step2Ticket')} />
+            <Tip>{s('ventas.tipTicket')}</Tip>
           </Panel>
         </Collapse>
       </Section>
 
-      {/* COTIZACIONES */}
-      <Section icon={<FileTextOutlined />} title="Cotizaciones" color="#722ed1">
+      <Section icon={<FileTextOutlined />} title={s('cotizaciones.title')} color="#722ed1">
         <Collapse ghost>
-          <Panel header={<Text strong>Crear un presupuesto</Text>} key="cot-nueva">
-            <Paso numero={1} texto='Ir al menú → "Cotizaciones" → "Nueva Cotización".' />
-            <Paso numero={2} texto='Agregar el nombre del cliente (opcional).' />
-            <Paso numero={3} texto='Buscar y agregar los productos igual que en una venta.' />
-            <Paso numero={4} texto='Podés aplicar descuentos por ítem o sobre el total.' />
-            <Paso numero={5} texto='Guardar la cotización. No descuenta stock.' />
+          <Panel header={<Text strong>{s('cotizaciones.panelNew')}</Text>} key="cot-nueva">
+            <Paso numero={1} texto={s('cotizaciones.step1')} />
+            <Paso numero={2} texto={s('cotizaciones.step2')} />
+            <Paso numero={3} texto={s('cotizaciones.step3')} />
+            <Paso numero={4} texto={s('cotizaciones.step4')} />
+            <Paso numero={5} texto={s('cotizaciones.step5')} />
           </Panel>
-          <Panel header={<Text strong>Convertir una cotización en venta</Text>} key="cot-convertir">
-            <Paso numero={1} texto='Abrir la cotización desde la lista.' />
-            <Paso numero={2} texto='Hacer clic en "Convertir a Venta".' />
-            <Paso numero={3} texto='Confirmar el método de pago y finalizar.' />
-            <Tip>Al convertir una cotización en venta, el stock se descuenta y la cotización queda marcada como "Vendida".</Tip>
+          <Panel header={<Text strong>{s('cotizaciones.panelConvert')}</Text>} key="cot-convertir">
+            <Paso numero={1} texto={s('cotizaciones.step1Convert')} />
+            <Paso numero={2} texto={s('cotizaciones.step2Convert')} />
+            <Paso numero={3} texto={s('cotizaciones.step3Convert')} />
+            <Tip>{s('cotizaciones.tipConvert')}</Tip>
           </Panel>
         </Collapse>
       </Section>
 
-      {/* STOCK */}
-      <Section icon={<InboxOutlined />} title="Stock e inventario" color="#fa8c16">
+      <Section icon={<InboxOutlined />} title={s('stock.title')} color="#fa8c16">
         <Collapse ghost>
-          <Panel header={<Text strong>Ver el estado del stock</Text>} key="stock-ver">
-            <Paso numero={1} texto='Ir al menú → "Stock".' />
-            <Paso numero={2} texto='La tabla muestra todos los productos con su stock actual, mínimo y estado.' />
-            <Paso numero={3} texto='Los productos en rojo tienen stock en 0. Los en naranja están por debajo del mínimo configurado.' />
+          <Panel header={<Text strong>{s('stock.panelView')}</Text>} key="stock-ver">
+            <Paso numero={1} texto={s('stock.step1View')} />
+            <Paso numero={2} texto={s('stock.step2View')} />
+            <Paso numero={3} texto={s('stock.step3View')} />
           </Panel>
-          <Panel header={<Text strong>Ingreso de stock con lote de vencimiento</Text>} key="stock-lote">
-            <Paso numero={1} texto='Ir al menú → "Stock" → botón "Ingreso".' />
-            <Paso numero={2} texto='Seleccionar el producto, ingresar la cantidad y el motivo.' />
-            <Paso numero={3} texto='Si el lote tiene fecha de vencimiento, completar el campo "Vencimiento de este lote".' />
-            <Paso numero={4} texto='Confirmar. El movimiento queda registrado con la fecha del lote.' />
-            <Tip>Al ingresar un lote con vencimiento, el producto actualiza automáticamente su alerta a la fecha más urgente entre todos los lotes registrados.</Tip>
+          <Panel header={<Text strong>{s('stock.panelLot')}</Text>} key="stock-lote">
+            <Paso numero={1} texto={s('stock.step1Lot')} />
+            <Paso numero={2} texto={s('stock.step2Lot')} />
+            <Paso numero={3} texto={s('stock.step3Lot')} />
+            <Paso numero={4} texto={s('stock.step4Lot')} />
+            <Tip>{s('stock.tipLot')}</Tip>
           </Panel>
-
-          <Panel header={<Text strong>Historial de movimientos</Text>} key="stock-historial">
-            <Paragraph>
-              Cada ingreso, egreso, ajuste o venta queda registrado en el historial con: fecha, usuario, motivo y
-              — cuando aplica — la fecha de vencimiento del lote ingresado.
-              La columna "Vencimiento lote" en el historial muestra con colores si el lote está vencido (rojo),
-              por vencer pronto (naranja) o vigente (gris).
-            </Paragraph>
+          <Panel header={<Text strong>{s('stock.panelHistory')}</Text>} key="stock-historial">
+            <Paragraph>{s('stock.historyText')}</Paragraph>
           </Panel>
-
-          <Panel header={<Text strong>Alertas de stock bajo</Text>} key="stock-alertas">
-            <Paragraph>
-              En el <strong>Dashboard</strong>, el panel "Stock Bajo" muestra los productos con stock igual o menor
-              al mínimo configurado. Haciendo clic en el panel o en "Ver todos" se abre el listado completo
-              con el stock actual y el mínimo de cada producto.
-            </Paragraph>
+          <Panel header={<Text strong>{s('stock.panelAlerts')}</Text>} key="stock-alertas">
+            <Paragraph>{s('stock.alertsText')}</Paragraph>
           </Panel>
         </Collapse>
       </Section>
 
-      {/* CAJA */}
-      <Section icon={<WalletOutlined />} title="Caja" color="#eb2f96">
+      <Section icon={<WalletOutlined />} title={s('caja.title')} color="#eb2f96">
         <Collapse ghost>
-          <Panel header={<Text strong>Apertura de caja</Text>} key="caja-apertura">
-            <Paso numero={1} texto='Ir al menú → "Caja".' />
-            <Paso numero={2} texto='Si no hay una caja abierta, hacer clic en "Abrir Caja".' />
-            <Paso numero={3} texto='Ingresar el monto de apertura (efectivo en caja al inicio del día).' />
-            <Paso numero={4} texto='Confirmar. A partir de ese momento las ventas en efectivo quedan registradas en esta caja.' />
+          <Panel header={<Text strong>{s('caja.panelOpen')}</Text>} key="caja-apertura">
+            <Paso numero={1} texto={s('caja.step1Open')} />
+            <Paso numero={2} texto={s('caja.step2Open')} />
+            <Paso numero={3} texto={s('caja.step3Open')} />
+            <Paso numero={4} texto={s('caja.step4Open')} />
           </Panel>
-          <Panel header={<Text strong>Cierre de caja</Text>} key="caja-cierre">
-            <Paso numero={1} texto='Ir al menú → "Caja" con la caja abierta.' />
-            <Paso numero={2} texto='Hacer clic en "Cerrar Caja".' />
-            <Paso numero={3} texto='El sistema muestra el resumen: monto de apertura, ventas en efectivo, total esperado.' />
-            <Paso numero={4} texto='Ingresar el monto real contado y confirmar el cierre.' />
-            <Tip>La diferencia entre el monto esperado y el contado queda registrada en el historial de cierres de caja.</Tip>
+          <Panel header={<Text strong>{s('caja.panelClose')}</Text>} key="caja-cierre">
+            <Paso numero={1} texto={s('caja.step1Close')} />
+            <Paso numero={2} texto={s('caja.step2Close')} />
+            <Paso numero={3} texto={s('caja.step3Close')} />
+            <Paso numero={4} texto={s('caja.step4Close')} />
+            <Tip>{s('caja.tipClose')}</Tip>
           </Panel>
         </Collapse>
       </Section>
 
-      {/* PROVEEDORES */}
-      <Section icon={<TeamOutlined />} title="Proveedores" color="#13c2c2">
+      <Section icon={<TeamOutlined />} title={s('proveedores.title')} color="#13c2c2">
         <Collapse ghost>
-          <Panel header={<Text strong>Gestionar proveedores</Text>} key="prov-gestionar">
-            <Paso numero={1} texto='Ir al menú → "Proveedores" → "Nuevo Proveedor".' />
-            <Paso numero={2} texto='Completar nombre, contacto, teléfono, email y dirección.' />
-            <Paso numero={3} texto='Guardar. Los proveedores quedan disponibles para asignarlos a los productos.' />
-            <Tip>Al asignar un proveedor a un producto podés filtrar y ordenar el catálogo por proveedor fácilmente.</Tip>
+          <Panel header={<Text strong>{s('proveedores.panelManage')}</Text>} key="prov-gestionar">
+            <Paso numero={1} texto={s('proveedores.step1')} />
+            <Paso numero={2} texto={s('proveedores.step2')} />
+            <Paso numero={3} texto={s('proveedores.step3')} />
+            <Tip>{s('proveedores.tip')}</Tip>
           </Panel>
         </Collapse>
       </Section>
 
-      {/* REPORTES */}
-      <Section icon={<BarChartOutlined />} title="Reportes" color="#fa541c">
+      <Section icon={<BarChartOutlined />} title={s('reportes.title')} color="#fa541c">
         <Collapse ghost>
-          <Panel header={<Text strong>Ver reportes de ventas</Text>} key="rep-ventas">
-            <Paso numero={1} texto='Ir al menú → "Reportes".' />
-            <Paso numero={2} texto='Seleccionar el rango de fechas que querés analizar.' />
-            <Paso numero={3} texto='El sistema muestra: total de ventas, cantidad de transacciones, productos más vendidos y evolución diaria.' />
+          <Panel header={<Text strong>{s('reportes.panelSales')}</Text>} key="rep-ventas">
+            <Paso numero={1} texto={s('reportes.step1')} />
+            <Paso numero={2} texto={s('reportes.step2')} />
+            <Paso numero={3} texto={s('reportes.step3')} />
           </Panel>
-          <Panel header={<Text strong>Dashboard de resumen diario</Text>} key="rep-dashboard">
-            <Paragraph>
-              El <strong>Dashboard</strong> (pantalla principal) muestra:
-            </Paragraph>
+          <Panel header={<Text strong>{s('reportes.panelDashboard')}</Text>} key="rep-dashboard">
+            <Paragraph>{s('reportes.dashboardText')}</Paragraph>
             <ul style={{ paddingLeft: 20, lineHeight: 2 }}>
-              <li>Ventas del día y monto recaudado</li>
-              <li>Total de productos activos</li>
-              <li>Cantidad de productos con stock bajo (clickeable → abre el listado completo)</li>
-              <li>Gráfico de ventas de los últimos 7 días</li>
-              <li>Panel <strong>Stock Bajo</strong>: lista los productos con stock en alerta. Clic en "Ver todos" para el detalle.</li>
-              <li>Panel <strong>Próximos a vencer</strong>: muestra productos cuya fecha de vencimiento está dentro del umbral de alerta configurado. Clic en "Ver todos" para el detalle completo con fechas exactas.</li>
+              <li>{s('reportes.item1')}</li>
+              <li>{s('reportes.item2')}</li>
+              <li>{s('reportes.item3')}</li>
+              <li>{s('reportes.item4')}</li>
+              <li>{s('reportes.item5')}</li>
+              <li>{s('reportes.item6')}</li>
             </ul>
-            <Tip>El panel "Próximos a vencer" solo aparece cuando hay productos con fecha de vencimiento cargada. Si ningún producto tiene vencimiento configurado, el panel muestra "Sin alertas de vencimiento".</Tip>
+            <Tip>{s('reportes.tipDashboard')}</Tip>
           </Panel>
         </Collapse>
       </Section>
 
-      {/* USUARIOS */}
-      <Section icon={<UserOutlined />} title="Usuarios" color="#597ef7">
+      <Section icon={<UserOutlined />} title={s('usuarios.title')} color="#597ef7">
         <Collapse ghost>
-          <Panel header={<Text strong>Crear un usuario</Text>} key="usr-crear">
-            <Paso numero={1} texto='Ir al menú → "Usuarios" → "Nuevo Usuario".' />
-            <Paso numero={2} texto='Completar nombre, usuario (para login) y contraseña.' />
-            <Paso numero={3} texto='Asignar el rol: Administrador o Vendedor.' />
-            <Paso numero={4} texto='Guardar.' />
+          <Panel header={<Text strong>{s('usuarios.panelCreate')}</Text>} key="usr-crear">
+            <Paso numero={1} texto={s('usuarios.step1')} />
+            <Paso numero={2} texto={s('usuarios.step2')} />
+            <Paso numero={3} texto={s('usuarios.step3')} />
+            <Paso numero={4} texto={s('usuarios.step4')} />
           </Panel>
-          <Panel header={<Text strong>Roles y permisos</Text>} key="usr-roles">
+          <Panel header={<Text strong>{s('usuarios.panelRoles')}</Text>} key="usr-roles">
             <Table
               size="small"
               pagination={false}
               dataSource={[
-                { key: 1, accion: 'Realizar ventas', admin: '✓', vendedor: '✓' },
-                { key: 2, accion: 'Crear/editar productos', admin: '✓', vendedor: '✓' },
-                { key: 3, accion: 'Ver reportes', admin: '✓', vendedor: '—' },
-                { key: 4, accion: 'Gestionar usuarios', admin: '✓', vendedor: '—' },
-                { key: 5, accion: 'Configuración del sistema', admin: '✓', vendedor: '—' },
-                { key: 6, accion: 'Backup y restauración', admin: '✓', vendedor: '—' },
+                { key: 1, accion: s('usuarios.actionSales'),    admin: '✓', vendedor: '✓' },
+                { key: 2, accion: s('usuarios.actionProducts'), admin: '✓', vendedor: '✓' },
+                { key: 3, accion: s('usuarios.actionReports'),  admin: '✓', vendedor: '—' },
+                { key: 4, accion: s('usuarios.actionUsers'),    admin: '✓', vendedor: '—' },
+                { key: 5, accion: s('usuarios.actionConfig'),   admin: '✓', vendedor: '—' },
+                { key: 6, accion: s('usuarios.actionBackup'),   admin: '✓', vendedor: '—' },
               ]}
               columns={[
-                { title: 'Acción', dataIndex: 'accion' },
-                { title: 'Administrador', dataIndex: 'admin', align: 'center', width: 140 },
-                { title: 'Vendedor', dataIndex: 'vendedor', align: 'center', width: 120 },
+                { title: s('usuarios.colAction'), dataIndex: 'accion' },
+                { title: s('usuarios.colAdmin'),  dataIndex: 'admin',    align: 'center', width: 140 },
+                { title: s('usuarios.colSeller'), dataIndex: 'vendedor', align: 'center', width: 120 },
               ]}
             />
           </Panel>
         </Collapse>
       </Section>
 
-      {/* CONFIGURACION */}
-      <Section icon={<SettingOutlined />} title="Configuración" color="#8c8c8c">
+      <Section icon={<SettingOutlined />} title={s('configuracion.title')} color="#8c8c8c">
         <Collapse ghost>
-          <Panel header={<Text strong>Datos del comercio y ticket</Text>} key="cfg-ticket">
-            <Paso numero={1} texto='Ir al menú → "Configuración".' />
-            <Paso numero={2} texto='Completar: nombre del comercio, dirección, teléfono, CUIT y mensaje de pie de ticket.' />
-            <Paso numero={3} texto='Estos datos aparecen en todos los tickets y comprobantes impresos.' />
-            <Paso numero={4} texto='Guardar los cambios.' />
+          <Panel header={<Text strong>{s('configuracion.panelTicket')}</Text>} key="cfg-ticket">
+            <Paso numero={1} texto={s('configuracion.step1')} />
+            <Paso numero={2} texto={s('configuracion.step2')} />
+            <Paso numero={3} texto={s('configuracion.step3')} />
+            <Paso numero={4} texto={s('configuracion.step4')} />
           </Panel>
-
-          <Panel header={<Text strong><AppstoreOutlined /> Gestión de categorías</Text>} key="cfg-categorias">
-            <Paragraph>
-              Las categorías de productos se administran directamente desde Configuración,
-              en la columna derecha de la pantalla.
-            </Paragraph>
-            <Paso numero={1} texto='Ir al menú → "Configuración".' />
-            <Paso numero={2} texto='En la sección "Categorías de Productos" hacer clic en "Nueva Categoría".' />
-            <Paso numero={3} texto='Ingresar el nombre y una descripción opcional.' />
-            <Paso numero={4} texto='Guardar. La categoría queda disponible inmediatamente en el formulario de productos.' />
-            <Alert type="info" showIcon style={{ marginTop: 12 }}
-              message='Para eliminar una categoría, primero hay que reasignar o eliminar los productos que la usan. El sistema no permite borrar una categoría con productos asociados.'
-            />
+          <Panel header={<Text strong><AppstoreOutlined /> {s('configuracion.panelCategories')}</Text>} key="cfg-categorias">
+            <Paragraph>{s('configuracion.categoriesText')}</Paragraph>
+            <Paso numero={1} texto={s('configuracion.step1Cat')} />
+            <Paso numero={2} texto={s('configuracion.step2Cat')} />
+            <Paso numero={3} texto={s('configuracion.step3Cat')} />
+            <Paso numero={4} texto={s('configuracion.step4Cat')} />
+            <Alert type="info" showIcon style={{ marginTop: 12 }} message={s('configuracion.catAlert')} />
           </Panel>
         </Collapse>
       </Section>
 
-      {/* BACKUP */}
-      <Section icon={<CloudUploadOutlined />} title="Backup y restauración" color="#389e0d">
+      <Section icon={<CloudUploadOutlined />} title={s('backup.title')} color="#389e0d">
         <Collapse ghost>
-          <Panel header={<Text strong>Hacer una copia de seguridad</Text>} key="bkp-hacer">
-            <Paso numero={1} texto='Ir al menú → "Backup".' />
-            <Paso numero={2} texto='Hacer clic en "Crear Backup".' />
-            <Paso numero={3} texto='Seleccionar la carpeta donde guardar el archivo.' />
-            <Paso numero={4} texto='El archivo .db generado contiene toda la información de la base de datos.' />
-            <Alert
-              type="warning"
-              showIcon
-              style={{ marginTop: 12 }}
-              message="Recomendamos hacer un backup diario y guardarlo en un lugar externo (pendrive, Google Drive, etc.)."
-            />
+          <Panel header={<Text strong>{s('backup.panelCreate')}</Text>} key="bkp-hacer">
+            <Paso numero={1} texto={s('backup.step1')} />
+            <Paso numero={2} texto={s('backup.step2')} />
+            <Paso numero={3} texto={s('backup.step3')} />
+            <Paso numero={4} texto={s('backup.step4')} />
+            <Alert type="warning" showIcon style={{ marginTop: 12 }} message={s('backup.backupWarning')} />
           </Panel>
-          <Panel header={<Text strong>Restaurar desde un backup</Text>} key="bkp-restaurar">
-            <Paso numero={1} texto='Ir al menú → "Backup".' />
-            <Paso numero={2} texto='Hacer clic en "Restaurar Backup".' />
-            <Paso numero={3} texto='Seleccionar el archivo .db del backup.' />
-            <Paso numero={4} texto='Confirmar. La aplicación se reinicia con los datos restaurados.' />
-            <Alert
-              type="error"
-              showIcon
-              style={{ marginTop: 12 }}
-              message="Restaurar un backup reemplaza todos los datos actuales. Esta acción no se puede deshacer."
-            />
+          <Panel header={<Text strong>{s('backup.panelRestore')}</Text>} key="bkp-restaurar">
+            <Paso numero={1} texto={s('backup.step1Restore')} />
+            <Paso numero={2} texto={s('backup.step2Restore')} />
+            <Paso numero={3} texto={s('backup.step3Restore')} />
+            <Paso numero={4} texto={s('backup.step4Restore')} />
+            <Alert type="error" showIcon style={{ marginTop: 12 }} message={s('backup.restoreError')} />
           </Panel>
         </Collapse>
       </Section>
@@ -394,9 +299,9 @@ export default function Ayuda() {
         <Space align="start">
           <QuestionCircleOutlined style={{ fontSize: 20, color: '#1677ff', marginTop: 2 }} />
           <Space direction="vertical" size={2}>
-            <Text strong>¿Necesitás más ayuda?</Text>
+            <Text strong>{t('ayuda.supportTitle')}</Text>
             <Text type="secondary">
-              Contactá a soporte técnico:{' '}
+              {t('ayuda.supportText')}{' '}
               <Text copyable style={{ color: '#1677ff' }}>soporteshangotech@gmail.com</Text>
             </Text>
           </Space>
@@ -405,3 +310,5 @@ export default function Ayuda() {
     </div>
   )
 }
+
+export default Ayuda

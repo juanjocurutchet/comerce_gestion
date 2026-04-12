@@ -5,11 +5,12 @@ import {
   WarningOutlined, CalendarOutlined
 } from '@ant-design/icons'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
 
 const { Title, Text } = Typography
 
-export default function Dashboard() {
+const Dashboard = () => {
   const [loading, setLoading] = useState(true)
   const [resumen, setResumen] = useState(null)
   const [ventasHoy, setVentasHoy] = useState(null)
@@ -18,10 +19,9 @@ export default function Dashboard() {
   const [graficaSemana, setGraficaSemana] = useState([])
   const [modalStock, setModalStock] = useState(false)
   const [modalVenc, setModalVenc] = useState(false)
+  const { t } = useTranslation()
 
-  useEffect(() => { loadData() }, [])
-
-  async function loadData() {
+  const loadData = async () => {
     setLoading(true)
     const [r, h, sb, vc, g] = await Promise.all([
       window.api.reportes.resumenGeneral(),
@@ -47,12 +47,14 @@ export default function Dashboard() {
     setLoading(false)
   }
 
+  useEffect(() => { loadData() }, [])
+
   if (loading) return <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>
 
   return (
     <div>
       <div className="page-header">
-        <Title level={4} style={{ margin: 0 }}>Dashboard</Title>
+        <Title level={4} style={{ margin: 0 }}>{t('dashboard.title')}</Title>
         <Text type="secondary">{dayjs().format('dddd, D [de] MMMM [de] YYYY')}</Text>
       </div>
 
@@ -60,9 +62,9 @@ export default function Dashboard() {
         <Col xs={24} sm={12} lg={6}>
           <Card className="stat-card" style={{ background: 'linear-gradient(135deg, #1677ff, #0050b3)', border: 'none' }}>
             <Statistic
-              title={<Text style={{ color: 'rgba(255,255,255,0.85)' }}>Ventas Hoy</Text>}
+              title={<Text style={{ color: 'rgba(255,255,255,0.85)' }}>{t('dashboard.salesToday')}</Text>}
               value={ventasHoy?.cantidad || 0}
-              suffix="ventas"
+              suffix={t('dashboard.salesTodaySuffix')}
               valueStyle={{ color: '#fff', fontSize: 28 }}
               prefix={<ShoppingCartOutlined />}
             />
@@ -71,7 +73,7 @@ export default function Dashboard() {
         <Col xs={24} sm={12} lg={6}>
           <Card className="stat-card" style={{ background: 'linear-gradient(135deg, #52c41a, #237804)', border: 'none' }}>
             <Statistic
-              title={<Text style={{ color: 'rgba(255,255,255,0.85)' }}>Recaudado Hoy</Text>}
+              title={<Text style={{ color: 'rgba(255,255,255,0.85)' }}>{t('dashboard.revenueToday')}</Text>}
               value={ventasHoy?.total || 0}
               prefix={<Text style={{ color: '#fff' }}>$</Text>}
               valueStyle={{ color: '#fff', fontSize: 28 }}
@@ -82,7 +84,7 @@ export default function Dashboard() {
         <Col xs={24} sm={12} lg={6}>
           <Card className="stat-card" style={{ background: 'linear-gradient(135deg, #722ed1, #391085)', border: 'none' }}>
             <Statistic
-              title={<Text style={{ color: 'rgba(255,255,255,0.85)' }}>Productos Activos</Text>}
+              title={<Text style={{ color: 'rgba(255,255,255,0.85)' }}>{t('dashboard.activeProducts')}</Text>}
               value={resumen?.total_productos || 0}
               prefix={<AppstoreOutlined />}
               valueStyle={{ color: '#fff', fontSize: 28 }}
@@ -96,11 +98,11 @@ export default function Dashboard() {
             onClick={() => stockBajo.length > 0 && setModalStock(true)}
           >
             <Statistic
-              title={<Text style={{ color: 'rgba(255,255,255,0.85)' }}>Stock Bajo</Text>}
+              title={<Text style={{ color: 'rgba(255,255,255,0.85)' }}>{t('dashboard.lowStock')}</Text>}
               value={resumen?.stock_bajo || 0}
               prefix={<WarningOutlined />}
               valueStyle={{ color: '#fff', fontSize: 28 }}
-              suffix="productos"
+              suffix={t('dashboard.lowStockSuffix')}
             />
           </Card>
         </Col>
@@ -108,7 +110,7 @@ export default function Dashboard() {
 
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={16}>
-          <Card title="Ventas últimos 7 días" className="stat-card">
+          <Card title={t('dashboard.last7Days')} className="stat-card">
             <ResponsiveContainer width="100%" height={260}>
               <AreaChart data={graficaSemana}>
                 <defs>
@@ -120,7 +122,7 @@ export default function Dashboard() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="dia" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} tickFormatter={v => `$${v.toLocaleString()}`} />
-                <Tooltip formatter={(v) => [`$${v.toLocaleString('es', { minimumFractionDigits: 2 })}`, 'Total']} />
+                <Tooltip formatter={(v) => [`$${v.toLocaleString('es', { minimumFractionDigits: 2 })}`, t('common.total')]} />
                 <Area type="monotone" dataKey="total" stroke="#1677ff" fill="url(#colorVentas)" strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
@@ -129,7 +131,7 @@ export default function Dashboard() {
 
         <Col xs={24} lg={8} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Card
-            title={<span><WarningOutlined style={{ color: '#fa8c16', marginRight: 8 }} />Stock Bajo</span>}
+            title={<span><WarningOutlined style={{ color: '#fa8c16', marginRight: 8 }} />{t('dashboard.lowStockTitle')}</span>}
             className="stat-card"
             styles={{ body: { padding: '0 16px' } }}
             extra={stockBajo.length > 0 && (
@@ -137,22 +139,20 @@ export default function Dashboard() {
                 style={{ fontSize: 12, color: '#1677ff', cursor: 'pointer' }}
                 onClick={() => setModalStock(true)}
               >
-                Ver todos ({stockBajo.length})
+                {t('common.showAll')} ({stockBajo.length})
               </Text>
             )}
           >
             {stockBajo.length === 0 ? (
               <div style={{ padding: '24px 0', textAlign: 'center' }}>
-                <Text type="secondary">Sin alertas de stock</Text>
+                <Text type="secondary">{t('dashboard.noLowStock')}</Text>
               </div>
             ) : (
               <List
                 dataSource={stockBajo.slice(0, 5)}
                 renderItem={(item) => (
                   <List.Item style={{ padding: '8px 0' }}>
-                    <List.Item.Meta
-                      title={<Text style={{ fontSize: 13 }}>{item.nombre}</Text>}
-                    />
+                    <List.Item.Meta title={<Text style={{ fontSize: 13 }}>{item.nombre}</Text>} />
                     <Tag color={item.stock_actual <= 0 ? 'error' : 'warning'}>
                       {item.stock_actual} {item.unidad}
                     </Tag>
@@ -163,7 +163,7 @@ export default function Dashboard() {
           </Card>
 
           <Card
-            title={<span><CalendarOutlined style={{ color: '#ff4d4f', marginRight: 8 }} />Próximos a vencer</span>}
+            title={<span><CalendarOutlined style={{ color: '#ff4d4f', marginRight: 8 }} />{t('dashboard.expiringTitle')}</span>}
             className="stat-card"
             styles={{ body: { padding: '0 16px' } }}
             extra={vencimientos.length > 0 && (
@@ -171,13 +171,13 @@ export default function Dashboard() {
                 style={{ fontSize: 12, color: '#1677ff', cursor: 'pointer' }}
                 onClick={() => setModalVenc(true)}
               >
-                Ver todos ({vencimientos.length})
+                {t('common.showAll')} ({vencimientos.length})
               </Text>
             )}
           >
             {vencimientos.length === 0 ? (
               <div style={{ padding: '24px 0', textAlign: 'center' }}>
-                <Text type="secondary">Sin alertas de vencimiento</Text>
+                <Text type="secondary">{t('dashboard.noExpiring')}</Text>
               </div>
             ) : (
               <List
@@ -186,11 +186,9 @@ export default function Dashboard() {
                   const dias = dayjs(item.fecha_vencimiento).diff(dayjs(), 'day')
                   return (
                     <List.Item style={{ padding: '8px 0' }}>
-                      <List.Item.Meta
-                        title={<Text style={{ fontSize: 13 }}>{item.nombre}</Text>}
-                      />
+                      <List.Item.Meta title={<Text style={{ fontSize: 13 }}>{item.nombre}</Text>} />
                       <Tag color={dias < 0 ? 'error' : dias <= 7 ? 'error' : 'warning'}>
-                        {dias < 0 ? 'Vencido' : `${dias}d`}
+                        {dias < 0 ? t('dashboard.expired') : t('dashboard.expiresIn', { days: dias })}
                       </Tag>
                     </List.Item>
                   )
@@ -206,16 +204,20 @@ export default function Dashboard() {
           <Card className="stat-card">
             <Row gutter={[32, 16]} justify="space-around" style={{ textAlign: 'center' }}>
               <Col>
-                <Statistic title="Total Ventas Históricas" value={resumen?.total_ventas || 0} />
+                <Statistic title={t('dashboard.totalHistoricSales')} value={resumen?.total_ventas || 0} />
               </Col>
               <Col>
-                <Statistic title="Monto Total Histórico" value={resumen?.monto_total || 0} prefix="$" precision={2} />
+                <Statistic title={t('dashboard.totalHistoricAmount')} value={resumen?.monto_total || 0} prefix="$" precision={2} />
               </Col>
               <Col>
-                <Statistic title="Proveedores" value={resumen?.total_proveedores || 0} />
+                <Statistic title={t('dashboard.suppliers')} value={resumen?.total_proveedores || 0} />
               </Col>
               <Col>
-                <Statistic title="Productos con Stock Bajo" value={resumen?.stock_bajo || 0} valueStyle={{ color: resumen?.stock_bajo > 0 ? '#fa8c16' : undefined }} />
+                <Statistic
+                  title={t('dashboard.productsLowStock')}
+                  value={resumen?.stock_bajo || 0}
+                  valueStyle={{ color: resumen?.stock_bajo > 0 ? '#fa8c16' : undefined }}
+                />
               </Col>
             </Row>
           </Card>
@@ -223,7 +225,7 @@ export default function Dashboard() {
       </Row>
 
       <Modal
-        title={<span><WarningOutlined style={{ color: '#fa8c16', marginRight: 8 }} />Productos con Stock Bajo</span>}
+        title={<span><WarningOutlined style={{ color: '#fa8c16', marginRight: 8 }} />{t('dashboard.modalLowStockTitle')}</span>}
         open={modalStock}
         onCancel={() => setModalStock(false)}
         footer={null}
@@ -237,27 +239,27 @@ export default function Dashboard() {
                 title={item.nombre}
                 description={
                   <Text type="secondary" style={{ fontSize: 12 }}>
-                    {item.codigo ? `Cód: ${item.codigo}` : 'Sin código'}
+                    {item.codigo ? `Cód: ${item.codigo}` : t('dashboard.noCode')}
                     {item.categoria_nombre ? ` · ${item.categoria_nombre}` : ''}
                   </Text>
                 }
               />
               <div style={{ textAlign: 'right' }}>
                 <Tag color={item.stock_actual <= 0 ? 'error' : 'warning'}>
-                  Stock: {item.stock_actual} {item.unidad}
+                  {t('dashboard.stockLabel', { stock: item.stock_actual, unit: item.unidad })}
                 </Tag>
                 <div style={{ fontSize: 11, color: '#999', marginTop: 2 }}>
-                  Mínimo: {item.stock_minimo}
+                  {t('dashboard.minimum', { min: item.stock_minimo })}
                 </div>
               </div>
             </List.Item>
           )}
-          locale={{ emptyText: 'Sin productos con stock bajo' }}
+          locale={{ emptyText: t('dashboard.noLowStockEmpty') }}
         />
       </Modal>
 
       <Modal
-        title={<span><CalendarOutlined style={{ color: '#ff4d4f', marginRight: 8 }} />Productos próximos a vencer</span>}
+        title={<span><CalendarOutlined style={{ color: '#ff4d4f', marginRight: 8 }} />{t('dashboard.modalExpiringTitle')}</span>}
         open={modalVenc}
         onCancel={() => setModalVenc(false)}
         footer={null}
@@ -273,14 +275,14 @@ export default function Dashboard() {
                   title={item.nombre}
                   description={
                     <Text type="secondary" style={{ fontSize: 12 }}>
-                      {item.codigo ? `Cód: ${item.codigo}` : 'Sin código'}
+                      {item.codigo ? `Cód: ${item.codigo}` : t('dashboard.noCode')}
                       {item.categoria_nombre ? ` · ${item.categoria_nombre}` : ''}
                     </Text>
                   }
                 />
                 <div style={{ textAlign: 'right' }}>
                   <Tag color={dias < 0 ? 'error' : dias <= 7 ? 'error' : 'warning'}>
-                    {dias < 0 ? 'Vencido' : `Vence en ${dias}d`}
+                    {dias < 0 ? t('dashboard.expired') : t('dashboard.expiresInFull', { days: dias })}
                   </Tag>
                   <div style={{ fontSize: 11, color: '#999', marginTop: 2 }}>
                     {dayjs(item.fecha_vencimiento).format('DD/MM/YYYY')}
@@ -289,9 +291,11 @@ export default function Dashboard() {
               </List.Item>
             )
           }}
-          locale={{ emptyText: 'Sin productos próximos a vencer' }}
+          locale={{ emptyText: t('dashboard.noExpiringEmpty') }}
         />
       </Modal>
     </div>
   )
 }
+
+export default Dashboard
