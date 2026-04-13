@@ -37,6 +37,8 @@ const POS = ({ onVentaCreada, active, priceCheckTrigger }) => {
   const [ticketModal, setTicketModal] = useState({ open: false, venta: null, items: [] })
   const [selectedCartRow, setSelectedCartRow] = useState(null)
   const [priceCheck, setPriceCheck] = useState({ open: false, query: '', results: [], notFound: false })
+  const [clientes, setClientes] = useState([])
+  const [clienteSeleccionado, setClienteSeleccionado] = useState(null)
   const user = useAuthStore(s => s.user)
   const searchRef = useRef()
   const descuentoRef = useRef()
@@ -48,7 +50,12 @@ const POS = ({ onVentaCreada, active, priceCheckTrigger }) => {
     setProductos(res.data || [])
   }
 
-  useEffect(() => { loadProductos() }, [])
+  const loadClientes = async () => {
+    const res = await window.api.clientes.getAll()
+    setClientes(res.data || [])
+  }
+
+  useEffect(() => { loadProductos(); loadClientes() }, [])
 
   useEffect(() => {
     if (active) setTimeout(() => searchRef.current?.focus(), 100)
@@ -164,6 +171,7 @@ const POS = ({ onVentaCreada, active, priceCheckTrigger }) => {
     setMontoRecibido('')
     setLastScanned(null)
     setSelectedCartRow(null)
+    setClienteSeleccionado(null)
     setTimeout(() => searchRef.current?.focus(), 50)
     message.info({ content: t('ventas.cartCleared'), key: 'f2', duration: 1.5 })
   }, [t])
@@ -181,8 +189,11 @@ const POS = ({ onVentaCreada, active, priceCheckTrigger }) => {
   const descuentoMonto = tipoDescuento === '%' ? subtotal * (descuento / 100) : descuento
   const totalFinal = Math.max(0, subtotal - descuentoMonto)
 
-  const confirmarVenta = useCallback(async (carritoActual, subtotalVal, descuentoMontoVal, totalFinalVal, metodoPagoVal) => {
+  const confirmarVenta = useCallback(async (carritoActual, subtotalVal, descuentoMontoVal, totalFinalVal, metodoPagoVal, clienteId) => {
     if (carritoActual.length === 0) return message.warning(t('ventas.emptyCartWarning'))
+    if (metodoPagoVal === 'cuenta_corriente' && !clienteId) {
+      return message.warning(t('ventas.selectClienteWarning'))
+    }
     setLoading(true)
     const venta = { subtotal: subtotalVal, descuento: descuentoMontoVal, total: totalFinalVal, metodo_pago: metodoPagoVal, notas: '' }
     const items = carritoActual.map(i => ({
@@ -191,7 +202,7 @@ const POS = ({ onVentaCreada, active, priceCheckTrigger }) => {
       precio_unitario: i.precio_unitario,
       subtotal: i.subtotal
     }))
-    const res = await window.api.ventas.create(venta, items, user?.id)
+    const res = await window.api.ventas.create(venta, items, user?.id, clienteId || null)
     setLoading(false)
     if (res.ok) {
       const ventaId = res.data
@@ -213,6 +224,7 @@ const POS = ({ onVentaCreada, active, priceCheckTrigger }) => {
       setMontoRecibido('')
       setLastScanned(null)
       setSelectedCartRow(null)
+      setClienteSeleccionado(null)
       onVentaCreada?.()
     } else {
       message.error(res.error || t('ventas.saleError'))
@@ -242,7 +254,7 @@ const POS = ({ onVentaCreada, active, priceCheckTrigger }) => {
       }
       if (e.key === 'F9') {
         e.preventDefault()
-        if (carrito.length > 0 && !loading) confirmarVenta(carrito, subtotal, descuentoMonto, totalFinal, metodoPago)
+        if (carrito.length > 0 && !loading) confirmarVenta(carrito, subtotal, descuentoMonto, totalFinal, metodoPago, clienteSeleccionado?.id)
         return
       }
       if (e.key === 'Escape' && ticketModal.open) {
@@ -446,18 +458,31 @@ const POS = ({ onVentaCreada, active, priceCheckTrigger }) => {
           </Row>
           <Select
             value={metodoPago}
-            onChange={v => { setMetodoPago(v); setMontoRecibido('') }}
+            onChange={v => { setMetodoPago(v); setMontoRecibido(''); if (v !== 'cuenta_corriente') setClienteSeleccionado(null) }}
             style={{ width: '100%', marginBottom: 6 }}
             options={[
-              { value: 'efectivo',        label: t('ventas.methods.efectivo') },
-              { value: 'tarjeta_debito',  label: t('ventas.methods.tarjeta_debito') },
-              { value: 'tarjeta_credito', label: t('ventas.methods.tarjeta_credito') },
-              { value: 'transferencia',   label: t('ventas.methods.transferencia') },
-              { value: 'mercado_pago',    label: t('ventas.methods.mercado_pago') },
-              { value: 'cuenta_dni',      label: t('ventas.methods.cuenta_dni') },
-              { value: 'otro',            label: t('ventas.methods.otro') }
+              { value: 'efectivo',          label: t('ventas.methods.efectivo') },
+              { value: 'tarjeta_debito',    label: t('ventas.methods.tarjeta_debito') },
+              { value: 'tarjeta_credito',   label: t('ventas.methods.tarjeta_credito') },
+              { value: 'transferencia',     label: t('ventas.methods.transferencia') },
+              { value: 'mercado_pago',      label: t('ventas.methods.mercado_pago') },
+              { value: 'cuenta_dni',        label: t('ventas.methods.cuenta_dni') },
+              { value: 'cuenta_corriente',  label: t('ventas.methods.cuenta_corriente') },
+              { value: 'otro',              label: t('ventas.methods.otro') }
             ]}
           />
+          {metodoPago === 'cuenta_corriente' && (
+            <Select
+              showSearch
+              placeholder={t('ventas.selectCliente')}
+              value={clienteSeleccionado?.id}
+              onChange={(_, opt) => setClienteSeleccionado({ id: opt.value, nombre: opt.label })}
+              style={{ width: '100%', marginBottom: 6 }}
+              filterOption={(input, opt) => opt.label.toLowerCase().includes(input.toLowerCase())}
+              options={clientes.map(c => ({ value: c.id, label: c.nombre }))}
+              status={!clienteSeleccionado ? 'warning' : ''}
+            />
+          )}
           {metodoPago === 'efectivo' && (
             <>
               <div style={{ marginBottom: 6 }}>
@@ -508,7 +533,7 @@ const POS = ({ onVentaCreada, active, priceCheckTrigger }) => {
                 size="large"
                 style={{ flex: 1 }}
                 loading={loading}
-                onClick={() => confirmarVenta(carrito, subtotal, descuentoMonto, totalFinal, metodoPago)}
+                onClick={() => confirmarVenta(carrito, subtotal, descuentoMonto, totalFinal, metodoPago, clienteSeleccionado?.id)}
                 disabled={carrito.length === 0}
               >
                 {t('ventas.confirmSale')}

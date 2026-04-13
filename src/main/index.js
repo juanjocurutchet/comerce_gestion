@@ -5,7 +5,8 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 app.setPath('userData', join(app.getPath('appData'), 'GestionComercio'))
 import {
   usuariosDB, categoriasDB, proveedoresDB, productosDB,
-  ventasDB, stockDB, cajaDB, configDB, reportesDB, cotizacionesDB
+  ventasDB, stockDB, cajaDB, configDB, reportesDB, cotizacionesDB,
+  clientesDB, cuentaCorrienteDB, gastosDB
 } from './db/index.js'
 import { setupPrint } from './print.js'
 import { setupBackup } from './backup.js'
@@ -104,7 +105,7 @@ handle('productos:delete', (id) => productosDB.delete(id))
 handle('ventas:getAll', (d, h) => ventasDB.getAll(d, h))
 handle('ventas:getById', (id) => ventasDB.getById(id))
 handle('ventas:getItems', (id) => ventasDB.getItems(id))
-handle('ventas:create', (v, i, u) => ventasDB.create(v, i, u))
+handle('ventas:create', (v, i, u, clienteId) => ventasDB.create(v, i, u, clienteId))
 handle('ventas:anular', (id, usuarioId) => ventasDB.anular(id, usuarioId))
 handle('ventas:resumenHoy', () => ventasDB.resumenHoy())
 handle('ventas:resumenPeriodo', (d, h) => ventasDB.resumenPeriodo(d, h))
@@ -133,3 +134,18 @@ handle('cotizaciones:getItems', (id) => cotizacionesDB.getItems(id))
 handle('cotizaciones:create', (c, items, uid) => cotizacionesDB.create(c, items, uid))
 handle('cotizaciones:updateEstado', (id, estado) => cotizacionesDB.updateEstado(id, estado))
 handle('cotizaciones:delete', (id) => cotizacionesDB.delete(id))
+
+handle('clientes:getAll', () => clientesDB.getAll())
+handle('clientes:create', (d) => clientesDB.create(d))
+handle('clientes:update', (d) => clientesDB.update(d))
+handle('clientes:delete', (id) => clientesDB.delete(id))
+
+handle('cuentaCorriente:getAllSaldos', () => cuentaCorrienteDB.getAllSaldos())
+handle('cuentaCorriente:getMovimientos', (id) => cuentaCorrienteDB.getMovimientos(id))
+handle('cuentaCorriente:getSaldo', (id) => cuentaCorrienteDB.getSaldo(id))
+handle('cuentaCorriente:registrarPago', (clienteId, monto, desc, uid) => cuentaCorrienteDB.registrarPago(clienteId, monto, desc, uid))
+
+handle('gastos:getAll', (d, h) => gastosDB.getAll(d, h))
+handle('gastos:create', (d, uid) => gastosDB.create(d, uid))
+handle('gastos:delete', (id) => gastosDB.delete(id))
+handle('gastos:resumenMes', () => gastosDB.resumenMes())

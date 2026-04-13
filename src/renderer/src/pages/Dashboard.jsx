@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Row, Col, Card, Statistic, Typography, List, Tag, Spin, Modal } from 'antd'
 import {
   ShoppingCartOutlined, AppstoreOutlined,
-  WarningOutlined, CalendarOutlined
+  WarningOutlined, CalendarOutlined, MinusCircleOutlined
 } from '@ant-design/icons'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { useTranslation } from 'react-i18next'
@@ -17,13 +17,14 @@ const Dashboard = () => {
   const [stockBajo, setStockBajo] = useState([])
   const [vencimientos, setVencimientos] = useState([])
   const [graficaSemana, setGraficaSemana] = useState([])
+  const [gastosMes, setGastosMes] = useState(0)
   const [modalStock, setModalStock] = useState(false)
   const [modalVenc, setModalVenc] = useState(false)
   const { t } = useTranslation()
 
   const loadData = async () => {
     setLoading(true)
-    const [r, h, sb, vc, g] = await Promise.all([
+    const [r, h, sb, vc, g, gm] = await Promise.all([
       window.api.reportes.resumenGeneral(),
       window.api.ventas.resumenHoy(),
       window.api.productos.getStockBajo(),
@@ -31,12 +32,14 @@ const Dashboard = () => {
       window.api.ventas.resumenPeriodo(
         dayjs().subtract(6, 'day').format('YYYY-MM-DD'),
         dayjs().format('YYYY-MM-DD')
-      )
+      ),
+      window.api.gastos.resumenMes()
     ])
     setResumen(r.data)
     setVentasHoy(h.data)
     setStockBajo(sb.data || [])
     setVencimientos(vc.data || [])
+    setGastosMes(gm.data?.total || 0)
     const dias = []
     for (let i = 6; i >= 0; i--) {
       const dia = dayjs().subtract(i, 'day')
@@ -103,6 +106,21 @@ const Dashboard = () => {
               prefix={<WarningOutlined />}
               valueStyle={{ color: '#fff', fontSize: 28 }}
               suffix={t('dashboard.lowStockSuffix')}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} sm={12} lg={6}>
+          <Card className="stat-card" style={{ background: 'linear-gradient(135deg, #eb2f96, #9e1068)', border: 'none' }}>
+            <Statistic
+              title={<Text style={{ color: 'rgba(255,255,255,0.85)' }}>{t('dashboard.expensesMonth')}</Text>}
+              value={gastosMes}
+              prefix={<MinusCircleOutlined />}
+              valueStyle={{ color: '#fff', fontSize: 28 }}
+              precision={2}
+              formatter={v => `$${Number(v).toFixed(2)}`}
             />
           </Card>
         </Col>

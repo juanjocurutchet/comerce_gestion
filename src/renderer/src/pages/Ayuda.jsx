@@ -1,6 +1,6 @@
 import React from 'react'
 import {
-  Typography, Collapse, Alert, Table
+  Typography, Collapse, Alert, Table, Card, Space
 } from 'antd'
 import {
   ShoppingCartOutlined, AppstoreOutlined, InboxOutlined,
@@ -9,7 +9,7 @@ import {
   BarcodeOutlined, ScanOutlined, PrinterOutlined,
   DollarOutlined, CalendarOutlined,
   QuestionCircleOutlined, WarningOutlined,
-  KeyboardOutlined, SearchOutlined, FileExcelOutlined
+  ControlOutlined, SearchOutlined, FileExcelOutlined
 } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import { Section, Paso, Tip } from '../components/AyudaHelpers'
@@ -134,7 +134,7 @@ const Ayuda = () => {
             <Tip>{s('ventas.tipTicket')}</Tip>
           </Panel>
 
-          <Panel header={<Text strong><KeyboardOutlined /> {s('ventas.panelShortcuts')}</Text>} key="venta-atajos">
+          <Panel header={<Text strong><ControlOutlined /> {s('ventas.panelShortcuts')}</Text>} key="venta-atajos">
             <Paragraph>{s('ventas.shortcutsIntro')}</Paragraph>
             <Table
               size="small"

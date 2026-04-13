@@ -147,11 +147,11 @@ export const ventasDB = {
     SELECT vi.*, p.nombre as producto_nombre, p.codigo as producto_codigo
     FROM venta_items vi JOIN productos p ON vi.producto_id=p.id WHERE vi.venta_id=?
   `).all(venta_id),
-  create: (venta, items, usuarioId) => {
+  create: (venta, items, usuarioId, clienteId) => {
     const db = getDb()
     const insertVenta    = db.prepare(`
-      INSERT INTO ventas (subtotal, descuento, total, metodo_pago, notas, usuario_id)
-      VALUES (@subtotal, @descuento, @total, @metodo_pago, @notas, @usuario_id)
+      INSERT INTO ventas (subtotal, descuento, total, metodo_pago, notas, usuario_id, cliente_id)
+      VALUES (@subtotal, @descuento, @total, @metodo_pago, @notas, @usuario_id, @cliente_id)
     `)
     const insertItem     = db.prepare(`
       INSERT INTO venta_items (venta_id, producto_id, cantidad, precio_unitario, subtotal)
@@ -169,8 +169,13 @@ export const ventasDB = {
       VALUES (?, 'venta', ?, ?, ?, ?)
     `)
 
+    const insertCC = db.prepare(`
+      INSERT INTO cuenta_corriente (cliente_id, venta_id, tipo, monto, descripcion, usuario_id)
+      VALUES (?, ?, 'cargo', ?, ?, ?)
+    `)
+
     return db.transaction(() => {
-      const result  = insertVenta.run({ ...venta, usuario_id: usuarioId })
+      const result  = insertVenta.run({ ...venta, usuario_id: usuarioId, cliente_id: clienteId || null })
       const ventaId = result.lastInsertRowid
 
       for (const item of items) {
@@ -181,15 +186,13 @@ export const ventasDB = {
         insertMovStock.run(item.producto_id, item.cantidad, prod.stock_actual, stockNuevo, ventaId, usuarioId)
       }
 
-      const caja = getCajaAbierta.get()
-      if (caja) {
-        insertMovCaja.run(
-          caja.id,
-          venta.total,
-          `Venta #${ventaId}`,
-          venta.metodo_pago,
-          ventaId
-        )
+      if (venta.metodo_pago === 'cuenta_corriente' && clienteId) {
+        insertCC.run(clienteId, ventaId, venta.total, `Venta #${ventaId}`, usuarioId || null)
+      } else {
+        const caja = getCajaAbierta.get()
+        if (caja) {
+          insertMovCaja.run(caja.id, venta.total, `Venta #${ventaId}`, venta.metodo_pago, ventaId)
+        }
       }
 
       return ventaId
@@ -401,5 +404,69 @@ export const reportesDB = {
       (SELECT COUNT(*) FROM productos WHERE activo=1) as total_productos,
       (SELECT COUNT(*) FROM productos WHERE stock_actual <= stock_minimo AND activo=1) as stock_bajo,
       (SELECT COUNT(*) FROM proveedores WHERE activo=1) as total_proveedores
+  `).get()
+}
+
+export const clientesDB = {
+  getAll: () => getDb().prepare('SELECT * FROM clientes WHERE activo=1 ORDER BY nombre').all(),
+  getById: (id) => getDb().prepare('SELECT * FROM clientes WHERE id=?').get(id),
+  create: (data) => getDb().prepare(`
+    INSERT INTO clientes (nombre, telefono, dni, email, notas)
+    VALUES (@nombre, @telefono, @dni, @email, @notas)
+  `).run(data),
+  update: (data) => getDb().prepare(`
+    UPDATE clientes SET nombre=@nombre, telefono=@telefono, dni=@dni, email=@email, notas=@notas WHERE id=@id
+  `).run(data),
+  delete: (id) => getDb().prepare('UPDATE clientes SET activo=0 WHERE id=?').run(id)
+}
+
+export const cuentaCorrienteDB = {
+  getAllSaldos: () => getDb().prepare(`
+    SELECT c.*,
+      COALESCE(SUM(CASE WHEN cc.tipo='cargo' THEN cc.monto ELSE -cc.monto END), 0) as saldo
+    FROM clientes c
+    LEFT JOIN cuenta_corriente cc ON cc.cliente_id = c.id
+    WHERE c.activo=1
+    GROUP BY c.id ORDER BY c.nombre
+  `).all(),
+  getMovimientos: (cliente_id) => getDb().prepare(`
+    SELECT cc.*, v.total as venta_total
+    FROM cuenta_corriente cc
+    LEFT JOIN ventas v ON cc.venta_id = v.id
+    WHERE cc.cliente_id = ?
+    ORDER BY cc.fecha DESC
+  `).all(cliente_id),
+  getSaldo: (cliente_id) => {
+    const r = getDb().prepare(`
+      SELECT COALESCE(SUM(CASE WHEN tipo='cargo' THEN monto ELSE -monto END), 0) as saldo
+      FROM cuenta_corriente WHERE cliente_id = ?
+    `).get(cliente_id)
+    return r?.saldo || 0
+  },
+  registrarPago: (cliente_id, monto, descripcion, usuarioId) => getDb().prepare(`
+    INSERT INTO cuenta_corriente (cliente_id, tipo, monto, descripcion, usuario_id)
+    VALUES (?, 'pago', ?, ?, ?)
+  `).run(cliente_id, monto, descripcion || 'Pago', usuarioId || null),
+  registrarCargo: (cliente_id, venta_id, monto, descripcion, usuarioId) => getDb().prepare(`
+    INSERT INTO cuenta_corriente (cliente_id, venta_id, tipo, monto, descripcion, usuario_id)
+    VALUES (?, ?, 'cargo', ?, ?, ?)
+  `).run(cliente_id, venta_id, monto, descripcion, usuarioId || null)
+}
+
+export const gastosDB = {
+  getAll: (desde, hasta) => {
+    const q = desde && hasta
+      ? `SELECT g.*, u.nombre as usuario_nombre FROM gastos g LEFT JOIN usuarios u ON g.usuario_id=u.id WHERE date(g.fecha) BETWEEN ? AND ? ORDER BY g.fecha DESC`
+      : `SELECT g.*, u.nombre as usuario_nombre FROM gastos g LEFT JOIN usuarios u ON g.usuario_id=u.id ORDER BY g.fecha DESC LIMIT 100`
+    return desde && hasta ? getDb().prepare(q).all(desde, hasta) : getDb().prepare(q).all()
+  },
+  create: (data, usuarioId) => getDb().prepare(`
+    INSERT INTO gastos (fecha, monto, descripcion, categoria, usuario_id)
+    VALUES (COALESCE(@fecha, datetime('now','localtime')), @monto, @descripcion, @categoria, @usuario_id)
+  `).run({ ...data, usuario_id: usuarioId || null }),
+  delete: (id) => getDb().prepare('DELETE FROM gastos WHERE id=?').run(id),
+  resumenMes: () => getDb().prepare(`
+    SELECT COALESCE(SUM(monto), 0) as total
+    FROM gastos WHERE strftime('%Y-%m', fecha) = strftime('%Y-%m', 'now', 'localtime')
   `).get()
 }

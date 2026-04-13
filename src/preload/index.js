@@ -44,7 +44,7 @@ contextBridge.exposeInMainWorld('api', {
     getAll: (d, h) => invoke('ventas:getAll', d, h),
     getById: (id) => invoke('ventas:getById', id),
     getItems: (id) => invoke('ventas:getItems', id),
-    create: (v, i, u) => invoke('ventas:create', v, i, u),
+    create: (v, i, u, clienteId) => invoke('ventas:create', v, i, u, clienteId),
     anular: (id, usuarioId) => invoke('ventas:anular', id, usuarioId),
     resumenHoy: () => invoke('ventas:resumenHoy'),
     resumenPeriodo: (d, h) => invoke('ventas:resumenPeriodo', d, h)
@@ -105,6 +105,24 @@ contextBridge.exposeInMainWorld('api', {
     create: (payload) => invoke('license:create', payload),
     update: (id, payload) => invoke('license:update', id, payload),
     delete: (id) => invoke('license:delete', id)
+  },
+  clientes: {
+    getAll: () => invoke('clientes:getAll'),
+    create: (d) => invoke('clientes:create', d),
+    update: (d) => invoke('clientes:update', d),
+    delete: (id) => invoke('clientes:delete', id)
+  },
+  cuentaCorriente: {
+    getAllSaldos: () => invoke('cuentaCorriente:getAllSaldos'),
+    getMovimientos: (id) => invoke('cuentaCorriente:getMovimientos', id),
+    getSaldo: (id) => invoke('cuentaCorriente:getSaldo', id),
+    registrarPago: (clienteId, monto, desc, uid) => invoke('cuentaCorriente:registrarPago', clienteId, monto, desc, uid)
+  },
+  gastos: {
+    getAll: (d, h) => invoke('gastos:getAll', d, h),
+    create: (d, uid) => invoke('gastos:create', d, uid),
+    delete: (id) => invoke('gastos:delete', id),
+    resumenMes: () => invoke('gastos:resumenMes')
   },
   updater: {
     check: () => invoke('updater:check'),

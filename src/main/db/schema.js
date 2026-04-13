@@ -133,6 +133,38 @@ export function initSchema(db, clientName = '') {
       precio_unitario REAL NOT NULL,
       subtotal REAL NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS clientes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nombre TEXT NOT NULL,
+      telefono TEXT,
+      dni TEXT,
+      email TEXT,
+      notas TEXT,
+      activo INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT DEFAULT (datetime('now','localtime'))
+    );
+
+    CREATE TABLE IF NOT EXISTS cuenta_corriente (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      cliente_id INTEGER NOT NULL REFERENCES clientes(id),
+      venta_id INTEGER REFERENCES ventas(id),
+      tipo TEXT NOT NULL,
+      monto REAL NOT NULL,
+      descripcion TEXT,
+      fecha TEXT DEFAULT (datetime('now','localtime')),
+      usuario_id INTEGER REFERENCES usuarios(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS gastos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      fecha TEXT DEFAULT (datetime('now','localtime')),
+      monto REAL NOT NULL,
+      descripcion TEXT NOT NULL,
+      categoria TEXT NOT NULL DEFAULT 'otros',
+      usuario_id INTEGER REFERENCES usuarios(id),
+      created_at TEXT DEFAULT (datetime('now','localtime'))
+    );
   `)
 
   const adminExists = db.prepare("SELECT id FROM usuarios WHERE username = 'admin'").get()
@@ -164,6 +196,7 @@ export function initSchema(db, clientName = '') {
   try { db.exec('ALTER TABLE productos ADD COLUMN fecha_vencimiento TEXT') } catch {}
   try { db.exec('ALTER TABLE productos ADD COLUMN dias_alerta_vencimiento INTEGER DEFAULT 7') } catch {}
   try { db.exec('ALTER TABLE movimientos_stock ADD COLUMN fecha_vencimiento TEXT') } catch {}
+  try { db.exec('ALTER TABLE ventas ADD COLUMN cliente_id INTEGER REFERENCES clientes(id)') } catch {}
 
   for (const nombre of ['General', 'Bebidas', 'Alimentos', 'Limpieza', 'Electrónica', 'Ropa']) {
     try {
