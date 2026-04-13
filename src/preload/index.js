@@ -38,7 +38,8 @@ contextBridge.exposeInMainWorld('api', {
     create: (d, usuarioId) => invoke('productos:create', d, usuarioId),
     sumarStock: (id, cantidad, usuarioId, fechaVencLote) => invoke('productos:sumarStock', id, cantidad, usuarioId, fechaVencLote),
     update: (d) => invoke('productos:update', d),
-    delete: (id) => invoke('productos:delete', id)
+    delete: (id) => invoke('productos:delete', id),
+    updatePreciosMasivo: (pct, catId) => invoke('productos:updatePreciosMasivo', pct, catId)
   },
   ventas: {
     getAll: (d, h) => invoke('ventas:getAll', d, h),
@@ -123,6 +124,16 @@ contextBridge.exposeInMainWorld('api', {
     create: (d, uid) => invoke('gastos:create', d, uid),
     delete: (id) => invoke('gastos:delete', id),
     resumenMes: () => invoke('gastos:resumenMes')
+  },
+  listasPrecio: {
+    getAll: () => invoke('listasPrecio:getAll'),
+    create: (d) => invoke('listasPrecio:create', d),
+    update: (d) => invoke('listasPrecio:update', d),
+    delete: (id) => invoke('listasPrecio:delete', id),
+    getItems: (id) => invoke('listasPrecio:getItems', id),
+    setItem: (listaId, productoId, precio) => invoke('listasPrecio:setItem', listaId, productoId, precio),
+    removeItem: (listaId, productoId) => invoke('listasPrecio:removeItem', listaId, productoId),
+    getAllItems: (listaId) => invoke('listasPrecio:getAllItems', listaId)
   },
   updater: {
     check: () => invoke('updater:check'),

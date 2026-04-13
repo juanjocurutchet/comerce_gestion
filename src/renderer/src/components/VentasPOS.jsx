@@ -5,7 +5,8 @@ import {
 } from 'antd'
 import {
   DeleteOutlined, ShoppingCartOutlined, CheckOutlined,
-  BarcodeOutlined, ScanOutlined, WarningOutlined, SearchOutlined, CalendarOutlined, PlusOutlined
+  BarcodeOutlined, ScanOutlined, WarningOutlined, SearchOutlined, CalendarOutlined, PlusOutlined,
+  TagsOutlined
 } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../store/authStore'
@@ -39,6 +40,9 @@ const POS = ({ onVentaCreada, active, priceCheckTrigger }) => {
   const [priceCheck, setPriceCheck] = useState({ open: false, query: '', results: [], notFound: false })
   const [clientes, setClientes] = useState([])
   const [clienteSeleccionado, setClienteSeleccionado] = useState(null)
+  const [listaPrecios, setListaPrecios] = useState([])
+  const [listaSeleccionada, setListaSeleccionada] = useState(null)
+  const [listaPreciosMap, setListaPreciosMap] = useState({})
   const user = useAuthStore(s => s.user)
   const searchRef = useRef()
   const descuentoRef = useRef()
@@ -55,7 +59,21 @@ const POS = ({ onVentaCreada, active, priceCheckTrigger }) => {
     setClientes(res.data || [])
   }
 
-  useEffect(() => { loadProductos(); loadClientes() }, [])
+  const loadListaPrecios = async () => {
+    const res = await window.api.listasPrecio.getAll()
+    setListaPrecios(res.data || [])
+  }
+
+  useEffect(() => { loadProductos(); loadClientes(); loadListaPrecios() }, [])
+
+  useEffect(() => {
+    if (!listaSeleccionada) { setListaPreciosMap({}); return }
+    window.api.listasPrecio.getAllItems(listaSeleccionada).then(res => {
+      const map = {}
+      for (const item of (res.data || [])) map[item.producto_id] = item.precio
+      setListaPreciosMap(map)
+    })
+  }, [listaSeleccionada])
 
   useEffect(() => {
     if (active) setTimeout(() => searchRef.current?.focus(), 100)
@@ -112,12 +130,13 @@ const POS = ({ onVentaCreada, active, priceCheckTrigger }) => {
           : i
         )
       }
+      const precio = listaPreciosMap[prod.id] ?? prod.precio_venta
       return [...prev, {
         producto_id: prod.id,
         nombre: prod.nombre,
-        precio_unitario: prod.precio_venta,
+        precio_unitario: precio,
         cantidad: 1,
-        subtotal: prod.precio_venta,
+        subtotal: precio,
         stock: prod.stock_actual,
         fecha_vencimiento: prod.fecha_vencimiento || null
       }]
@@ -328,6 +347,20 @@ const POS = ({ onVentaCreada, active, priceCheckTrigger }) => {
         styles={{ body: { flex: 1, minHeight: 0, padding: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' } }}
       >
         <div style={{ padding: '10px 12px 8px', flexShrink: 0 }}>
+          {listaPrecios.length > 0 && (
+            <div style={{ marginBottom: 8 }}>
+              <Select
+                allowClear
+                placeholder={t('ventas.selectPriceList')}
+                value={listaSeleccionada}
+                onChange={v => setListaSeleccionada(v || null)}
+                style={{ width: '100%' }}
+                size="small"
+                options={listaPrecios.map(l => ({ value: l.id, label: l.nombre }))}
+                prefix={<TagsOutlined />}
+              />
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <Input.Search
               ref={searchRef}
@@ -392,7 +425,7 @@ const POS = ({ onVentaCreada, active, priceCheckTrigger }) => {
                   Stock: {p.stock_actual}
                 </Tag>
                 <Text style={{ color: '#1677ff', fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap' }}>
-                  ${Number(p.precio_venta).toFixed(2)}
+                  ${Number(listaPreciosMap[p.id] ?? p.precio_venta).toFixed(2)}
                 </Text>
               </div>
             ))}
@@ -596,7 +629,7 @@ const POS = ({ onVentaCreada, active, priceCheckTrigger }) => {
               </div>
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
                 <div style={{ fontSize: 22, fontWeight: 800, color: '#1677ff', lineHeight: 1 }}>
-                  ${Number(p.precio_venta).toFixed(2)}
+                  ${Number(listaPreciosMap[p.id] ?? p.precio_venta).toFixed(2)}
                 </div>
                 <Tag
                   color={p.stock_actual <= 0 ? 'error' : p.stock_actual <= p.stock_minimo ? 'warning' : 'success'}

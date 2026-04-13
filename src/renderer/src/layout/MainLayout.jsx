@@ -8,7 +8,7 @@ import {
   MenuFoldOutlined, MenuUnfoldOutlined, BellOutlined,
   SettingOutlined, CloudUploadOutlined,
   BulbOutlined, BulbFilled, FileTextOutlined, SafetyCertificateOutlined,
-  QuestionCircleOutlined, UsergroupAddOutlined, MinusCircleOutlined
+  QuestionCircleOutlined, UsergroupAddOutlined, MinusCircleOutlined, TagsOutlined
 } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../store/authStore'
@@ -29,8 +29,9 @@ const MENU_DEFS = [
   { key: '/productos',    icon: <AppstoreOutlined />,            navKey: 'productos',     feature: 'productos' },
   { key: '/stock',        icon: <InboxOutlined />,               navKey: 'stock',         feature: 'stock' },
   { key: '/proveedores',  icon: <TeamOutlined />,                navKey: 'proveedores',   feature: 'proveedores' },
-  { key: '/clientes',    icon: <UsergroupAddOutlined />,         navKey: 'clientes',      feature: null },
-  { key: '/gastos',      icon: <MinusCircleOutlined />,          navKey: 'gastos',        feature: null },
+  { key: '/clientes',      icon: <UsergroupAddOutlined />,       navKey: 'clientes',      feature: null },
+  { key: '/gastos',        icon: <MinusCircleOutlined />,        navKey: 'gastos',        feature: null },
+  { key: '/listas-precio', icon: <TagsOutlined />,               navKey: 'listasPrecio',  feature: null },
   { key: '/caja',         icon: <WalletOutlined />,              navKey: 'caja',          feature: 'caja' },
   { type: 'divider' },
   { key: '/reportes',     icon: <BarChartOutlined />,            navKey: 'reportes',      feature: 'reportes' },

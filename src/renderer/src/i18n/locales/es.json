@@ -42,7 +42,8 @@
     "to": "Hasta",
     "created": "Creado",
     "showAll": "Ver todos",
-    "noAlerts": "Sin alertas"
+    "noAlerts": "Sin alertas",
+    "apply": "Aplicar"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -53,6 +54,7 @@
     "proveedores": "Proveedores",
     "clientes": "Clientes",
     "gastos": "Gastos",
+    "listasPrecio": "Listas de Precio",
     "caja": "Caja",
     "reportes": "Reportes",
     "usuarios": "Usuarios",
@@ -156,6 +158,7 @@
     },
     "selectCliente": "Seleccionar cliente...",
     "selectClienteWarning": "Seleccioná un cliente para cargar a cuenta corriente",
+    "selectPriceList": "Seleccionar lista de precio",
     "historyColId": "#",
     "historyColDate": "Fecha",
     "historyColTotal": "Total",
@@ -305,7 +308,18 @@
       "ok": "OK",
       "low": "Stock bajo",
       "empty": "Sin stock"
-    }
+    },
+    "bulkUpdate": "Actualización masiva",
+    "bulkMode": "Acción",
+    "bulkModeUp": "Subir precios",
+    "bulkModeDown": "Bajar precios",
+    "bulkPercent": "Porcentaje",
+    "bulkCategory": "Categoría (opcional)",
+    "bulkCategoryExtra": "Dejar vacío para aplicar a todos los productos",
+    "bulkAllCategories": "Todas las categorías",
+    "bulkConfirmTitle": "Confirmar actualización",
+    "bulkConfirmContent": "Se actualizarán {{count}} productos con {{pct}}%",
+    "bulkSuccess": "{{count}} precios actualizados"
   },
   "stock": {
     "title": "Control de Stock",
@@ -905,7 +919,10 @@
     "typeCargo": "Cargo",
     "typePago": "Pago",
     "noMovements": "Sin movimientos",
-    "totalDebt": "Total deuda"
+    "totalDebt": "Total deuda",
+    "priceList": "Lista de precios",
+    "priceListExtra": "Precio por defecto para ventas a este cliente",
+    "priceListPlaceholder": "Sin lista asignada"
   },
   "gastos": {
     "title": "Gastos",
@@ -931,5 +948,34 @@
     "cat.sueldos": "Sueldos",
     "cat.impuestos": "Impuestos",
     "cat.otros": "Otros"
+  },
+  "listasPrecio": {
+    "title": "Listas de Precio",
+    "newList": "Nueva Lista",
+    "editList": "Editar Lista",
+    "saveSuccess": "Lista guardada",
+    "deleteSuccess": "Lista eliminada",
+    "deleteConfirm": "¿Eliminar esta lista de precios?",
+    "noLists": "No hay listas de precio creadas",
+    "colName": "Nombre",
+    "fieldName": "Nombre de la lista",
+    "namePlaceholder": "Ej: Mayorista, Lista B, Especial",
+    "fieldDesc": "Descripción",
+    "descPlaceholder": "Descripción opcional",
+    "manageItems": "Gestionar productos",
+    "itemsTitle": "Productos — {{name}}",
+    "addProduct": "Agregar producto",
+    "noItems": "Sin productos en esta lista",
+    "colProduct": "Producto",
+    "colCode": "Código",
+    "colBasePrice": "Precio base",
+    "colListPrice": "Precio lista",
+    "removeItemConfirm": "¿Quitar este producto de la lista?",
+    "itemAdded": "Producto agregado a la lista",
+    "searchProduct": "Buscar producto",
+    "searchProductPlaceholder": "Nombre o código...",
+    "basePrice": "Precio base",
+    "fieldListPrice": "Precio en esta lista",
+    "selectProduct": "Seleccione un producto primero"
   }
 }

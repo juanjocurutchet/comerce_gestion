@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import {
   Card, Table, Button, Space, Typography, Tag, Modal,
-  Form, Input, InputNumber, Popconfirm, message, Tabs, Tooltip
+  Form, Input, InputNumber, Popconfirm, message, Tabs, Tooltip, Select
 } from 'antd'
 import {
   UserAddOutlined, EditOutlined, DeleteOutlined,
-  DollarOutlined, UnorderedListOutlined
+  DollarOutlined, UnorderedListOutlined, TagsOutlined
 } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../store/authStore'
@@ -17,6 +17,7 @@ const Clientes = () => {
   const [clientes, setClientes] = useState([])
   const [saldos, setSaldos] = useState([])
   const [movimientos, setMovimientos] = useState([])
+  const [listaPrecios, setListaPrecios] = useState([])
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('clientes')
   const [modal, setModal] = useState({ open: false, record: null })
@@ -37,7 +38,11 @@ const Clientes = () => {
     setSaldos(res.data || [])
   }
 
-  useEffect(() => { loadClientes(); loadSaldos() }, [])
+  useEffect(() => {
+    loadClientes()
+    loadSaldos()
+    window.api.listasPrecio.getAll().then(r => setListaPrecios(r.data || []))
+  }, [])
 
   const openModal = (record = null) => {
     setModal({ open: true, record })
@@ -234,6 +239,19 @@ const Clientes = () => {
           <Form.Item name="notas" label={t('clientes.notesLabel')}>
             <Input.TextArea rows={2} placeholder={t('clientes.notesPlaceholder')} />
           </Form.Item>
+          {listaPrecios.length > 0 && (
+            <Form.Item
+              name="lista_precio_id"
+              label={<Space size={4}><TagsOutlined />{t('clientes.priceList')}</Space>}
+              extra={t('clientes.priceListExtra')}
+            >
+              <Select
+                allowClear
+                placeholder={t('clientes.priceListPlaceholder')}
+                options={listaPrecios.map(l => ({ value: l.id, label: l.nombre }))}
+              />
+            </Form.Item>
+          )}
         </Form>
       </Modal>
 

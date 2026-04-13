@@ -132,7 +132,20 @@ export const productosDB = {
     fecha_vencimiento=@fecha_vencimiento, dias_alerta_vencimiento=@dias_alerta_vencimiento WHERE id=@id
   `).run(data),
   delete: (id) => getDb().prepare('UPDATE productos SET activo=0 WHERE id=?').run(id),
-  ajustarStock: (id, cantidad) => getDb().prepare('UPDATE productos SET stock_actual = stock_actual + ? WHERE id=?').run(cantidad, id)
+  ajustarStock: (id, cantidad) => getDb().prepare('UPDATE productos SET stock_actual = stock_actual + ? WHERE id=?').run(cantidad, id),
+  updatePreciosMasivo: (porcentaje, categoriaId) => {
+    const db = getDb()
+    if (categoriaId) {
+      return db.prepare(`
+        UPDATE productos SET precio_venta = ROUND(precio_venta * (1 + ? / 100.0), 2)
+        WHERE activo=1 AND categoria_id=?
+      `).run(porcentaje, categoriaId)
+    }
+    return db.prepare(`
+      UPDATE productos SET precio_venta = ROUND(precio_venta * (1 + ? / 100.0), 2)
+      WHERE activo=1
+    `).run(porcentaje)
+  }
 }
 
 export const ventasDB = {
@@ -411,12 +424,13 @@ export const clientesDB = {
   getAll: () => getDb().prepare('SELECT * FROM clientes WHERE activo=1 ORDER BY nombre').all(),
   getById: (id) => getDb().prepare('SELECT * FROM clientes WHERE id=?').get(id),
   create: (data) => getDb().prepare(`
-    INSERT INTO clientes (nombre, telefono, dni, email, notas)
-    VALUES (@nombre, @telefono, @dni, @email, @notas)
-  `).run(data),
+    INSERT INTO clientes (nombre, telefono, dni, email, notas, lista_precio_id)
+    VALUES (@nombre, @telefono, @dni, @email, @notas, @lista_precio_id)
+  `).run({ lista_precio_id: null, ...data }),
   update: (data) => getDb().prepare(`
-    UPDATE clientes SET nombre=@nombre, telefono=@telefono, dni=@dni, email=@email, notas=@notas WHERE id=@id
-  `).run(data),
+    UPDATE clientes SET nombre=@nombre, telefono=@telefono, dni=@dni, email=@email,
+    notas=@notas, lista_precio_id=@lista_precio_id WHERE id=@id
+  `).run({ lista_precio_id: null, ...data }),
   delete: (id) => getDb().prepare('UPDATE clientes SET activo=0 WHERE id=?').run(id)
 }
 
@@ -451,6 +465,34 @@ export const cuentaCorrienteDB = {
     INSERT INTO cuenta_corriente (cliente_id, venta_id, tipo, monto, descripcion, usuario_id)
     VALUES (?, ?, 'cargo', ?, ?, ?)
   `).run(cliente_id, venta_id, monto, descripcion, usuarioId || null)
+}
+
+export const listasPrecioDB = {
+  getAll: () => getDb().prepare('SELECT * FROM listas_precio WHERE activa=1 ORDER BY nombre').all(),
+  create: (data) => getDb().prepare(
+    'INSERT INTO listas_precio (nombre, descripcion) VALUES (@nombre, @descripcion)'
+  ).run(data),
+  update: (data) => getDb().prepare(
+    'UPDATE listas_precio SET nombre=@nombre, descripcion=@descripcion WHERE id=@id'
+  ).run(data),
+  delete: (id) => getDb().prepare('UPDATE listas_precio SET activa=0 WHERE id=?').run(id),
+  getItems: (listaId) => getDb().prepare(`
+    SELECT lpi.*, p.nombre as producto_nombre, p.codigo as producto_codigo, p.precio_venta as precio_base
+    FROM lista_precio_items lpi
+    JOIN productos p ON lpi.producto_id = p.id
+    WHERE lpi.lista_id = ?
+    ORDER BY p.nombre
+  `).all(listaId),
+  setItem: (listaId, productoId, precio) => getDb().prepare(`
+    INSERT INTO lista_precio_items (lista_id, producto_id, precio) VALUES (?, ?, ?)
+    ON CONFLICT(lista_id, producto_id) DO UPDATE SET precio=excluded.precio
+  `).run(listaId, productoId, precio),
+  removeItem: (listaId, productoId) => getDb().prepare(
+    'DELETE FROM lista_precio_items WHERE lista_id=? AND producto_id=?'
+  ).run(listaId, productoId),
+  getAllItems: (listaId) => getDb().prepare(
+    'SELECT producto_id, precio FROM lista_precio_items WHERE lista_id=?'
+  ).all(listaId)
 }
 
 export const gastosDB = {

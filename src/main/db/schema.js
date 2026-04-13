@@ -165,6 +165,22 @@ export function initSchema(db, clientName = '') {
       usuario_id INTEGER REFERENCES usuarios(id),
       created_at TEXT DEFAULT (datetime('now','localtime'))
     );
+
+    CREATE TABLE IF NOT EXISTS listas_precio (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nombre TEXT NOT NULL,
+      descripcion TEXT,
+      activa INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT DEFAULT (datetime('now','localtime'))
+    );
+
+    CREATE TABLE IF NOT EXISTS lista_precio_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      lista_id INTEGER NOT NULL REFERENCES listas_precio(id) ON DELETE CASCADE,
+      producto_id INTEGER NOT NULL REFERENCES productos(id) ON DELETE CASCADE,
+      precio REAL NOT NULL,
+      UNIQUE(lista_id, producto_id)
+    );
   `)
 
   const adminExists = db.prepare("SELECT id FROM usuarios WHERE username = 'admin'").get()
@@ -197,6 +213,7 @@ export function initSchema(db, clientName = '') {
   try { db.exec('ALTER TABLE productos ADD COLUMN dias_alerta_vencimiento INTEGER DEFAULT 7') } catch {}
   try { db.exec('ALTER TABLE movimientos_stock ADD COLUMN fecha_vencimiento TEXT') } catch {}
   try { db.exec('ALTER TABLE ventas ADD COLUMN cliente_id INTEGER REFERENCES clientes(id)') } catch {}
+  try { db.exec('ALTER TABLE clientes ADD COLUMN lista_precio_id INTEGER REFERENCES listas_precio(id)') } catch {}
 
   for (const nombre of ['General', 'Bebidas', 'Alimentos', 'Limpieza', 'Electrónica', 'Ropa']) {
     try {

@@ -6,7 +6,8 @@ import {
 } from 'antd'
 import {
   PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined,
-  BarcodeOutlined, ScanOutlined, ExclamationCircleOutlined, CalendarOutlined, FileExcelOutlined
+  BarcodeOutlined, ScanOutlined, ExclamationCircleOutlined, CalendarOutlined, FileExcelOutlined,
+  RiseOutlined
 } from '@ant-design/icons'
 import { useBarcodeScanner } from '../hooks/useBarcodeScanner'
 import { useAuthStore } from '../store/authStore'
@@ -25,6 +26,9 @@ const Productos = () => {
   const [modal, setModal] = useState({ open: false, record: null })
   const [scanned, setScanned] = useState(false)
   const [nombreSugerencias, setNombreSugerencias] = useState([])
+  const [bulkModal, setBulkModal] = useState(false)
+  const [bulkForm] = Form.useForm()
+  const [bulkLoading, setBulkLoading] = useState(false)
   const [form] = Form.useForm()
   const codigoInputRef = useRef()
   const user = useAuthStore(s => s.user)
@@ -209,6 +213,29 @@ const Productos = () => {
     }
   }
 
+  const handleBulkUpdate = async () => {
+    const values = await bulkForm.validateFields()
+    const { porcentaje, modo, categoria_id } = values
+    const pct = modo === 'bajar' ? -Math.abs(porcentaje) : Math.abs(porcentaje)
+    const affected = data.filter(p => !categoria_id || p.categoria_id === categoria_id).length
+    Modal.confirm({
+      title: t('productos.bulkConfirmTitle'),
+      content: t('productos.bulkConfirmContent', { count: affected, pct: pct > 0 ? `+${pct}` : pct }),
+      okText: t('common.apply'),
+      cancelText: t('common.cancel'),
+      onOk: async () => {
+        setBulkLoading(true)
+        const res = await window.api.productos.updatePreciosMasivo(pct, categoria_id || null)
+        setBulkLoading(false)
+        if (!res.ok) { message.error(res.error); return }
+        message.success(t('productos.bulkSuccess', { count: res.data?.changes || affected }))
+        setBulkModal(false)
+        bulkForm.resetFields()
+        loadAll()
+      }
+    })
+  }
+
   const handleDelete = async (id) => {
     const res = await window.api.productos.delete(id)
     if (res.ok) { message.success(t('productos.deleteSuccess')); loadAll() }
@@ -275,9 +302,14 @@ const Productos = () => {
     <div>
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Title level={4} style={{ margin: 0 }}>{t('productos.title')}</Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()}>
-          {t('productos.newProduct')}
-        </Button>
+        <Space>
+          <Button icon={<RiseOutlined />} onClick={() => { setBulkModal(true); bulkForm.resetFields() }}>
+            {t('productos.bulkUpdate')}
+          </Button>
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()}>
+            {t('productos.newProduct')}
+          </Button>
+        </Space>
       </div>
 
       <Card>
@@ -315,6 +347,44 @@ const Productos = () => {
           pagination={{ pageSize: 15, showSizeChanger: true, showTotal: total => t('productos.pagTotal', { total }) }}
         />
       </Card>
+
+      <Modal
+        title={t('productos.bulkUpdate')}
+        open={bulkModal}
+        onOk={handleBulkUpdate}
+        onCancel={() => setBulkModal(false)}
+        confirmLoading={bulkLoading}
+        okText={t('common.apply')}
+        cancelText={t('common.cancel')}
+        destroyOnClose
+      >
+        <Form form={bulkForm} layout="vertical" style={{ marginTop: 16 }}
+          initialValues={{ modo: 'subir', porcentaje: 10 }}>
+          <Row gutter={12}>
+            <Col span={12}>
+              <Form.Item name="modo" label={t('productos.bulkMode')}>
+                <Select options={[
+                  { value: 'subir', label: t('productos.bulkModeUp') },
+                  { value: 'bajar', label: t('productos.bulkModeDown') }
+                ]} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="porcentaje" label={t('productos.bulkPercent')} rules={[{ required: true }]}>
+                <InputNumber min={0.1} max={999} precision={1} addonAfter="%" style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Form.Item name="categoria_id" label={t('productos.bulkCategory')}
+            extra={t('productos.bulkCategoryExtra')}>
+            <Select
+              placeholder={t('productos.bulkAllCategories')}
+              allowClear
+              options={categorias.map(c => ({ value: c.id, label: c.nombre }))}
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
 
       <Modal
         title={modal.record ? t('productos.editProduct') : t('productos.newProduct')}

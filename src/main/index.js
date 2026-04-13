@@ -6,7 +6,7 @@ app.setPath('userData', join(app.getPath('appData'), 'GestionComercio'))
 import {
   usuariosDB, categoriasDB, proveedoresDB, productosDB,
   ventasDB, stockDB, cajaDB, configDB, reportesDB, cotizacionesDB,
-  clientesDB, cuentaCorrienteDB, gastosDB
+  clientesDB, cuentaCorrienteDB, gastosDB, listasPrecioDB
 } from './db/index.js'
 import { setupPrint } from './print.js'
 import { setupBackup } from './backup.js'
@@ -149,3 +149,14 @@ handle('gastos:getAll', (d, h) => gastosDB.getAll(d, h))
 handle('gastos:create', (d, uid) => gastosDB.create(d, uid))
 handle('gastos:delete', (id) => gastosDB.delete(id))
 handle('gastos:resumenMes', () => gastosDB.resumenMes())
+
+handle('listasPrecio:getAll', () => listasPrecioDB.getAll())
+handle('listasPrecio:create', (d) => listasPrecioDB.create(d))
+handle('listasPrecio:update', (d) => listasPrecioDB.update(d))
+handle('listasPrecio:delete', (id) => listasPrecioDB.delete(id))
+handle('listasPrecio:getItems', (id) => listasPrecioDB.getItems(id))
+handle('listasPrecio:setItem', (listaId, productoId, precio) => listasPrecioDB.setItem(listaId, productoId, precio))
+handle('listasPrecio:removeItem', (listaId, productoId) => listasPrecioDB.removeItem(listaId, productoId))
+handle('listasPrecio:getAllItems', (listaId) => listasPrecioDB.getAllItems(listaId))
+
+handle('productos:updatePreciosMasivo', (pct, catId) => productosDB.updatePreciosMasivo(pct, catId))

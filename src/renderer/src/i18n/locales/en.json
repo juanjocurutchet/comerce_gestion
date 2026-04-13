@@ -42,7 +42,8 @@
     "to": "To",
     "created": "Created",
     "showAll": "View all",
-    "noAlerts": "No alerts"
+    "noAlerts": "No alerts",
+    "apply": "Apply"
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -53,6 +54,7 @@
     "proveedores": "Suppliers",
     "clientes": "Customers",
     "gastos": "Expenses",
+    "listasPrecio": "Price Lists",
     "caja": "Cash Register",
     "reportes": "Reports",
     "usuarios": "Users",
@@ -156,6 +158,7 @@
     },
     "selectCliente": "Select customer...",
     "selectClienteWarning": "Select a customer to charge to account",
+    "selectPriceList": "Select price list",
     "historyColId": "#",
     "historyColDate": "Date",
     "historyColTotal": "Total",
@@ -267,7 +270,18 @@
       "ok": "OK",
       "low": "Low stock",
       "empty": "Out of stock"
-    }
+    },
+    "bulkUpdate": "Bulk price update",
+    "bulkMode": "Action",
+    "bulkModeUp": "Increase prices",
+    "bulkModeDown": "Decrease prices",
+    "bulkPercent": "Percentage",
+    "bulkCategory": "Category (optional)",
+    "bulkCategoryExtra": "Leave empty to apply to all products",
+    "bulkAllCategories": "All categories",
+    "bulkConfirmTitle": "Confirm update",
+    "bulkConfirmContent": "{{count}} products will be updated by {{pct}}%",
+    "bulkSuccess": "{{count}} prices updated"
   },
   "stock": {
     "title": "Stock Control",
@@ -867,7 +881,10 @@
     "typeCargo": "Charge",
     "typePago": "Payment",
     "noMovements": "No movements",
-    "totalDebt": "Total debt"
+    "totalDebt": "Total debt",
+    "priceList": "Price list",
+    "priceListExtra": "Default price for sales to this customer",
+    "priceListPlaceholder": "No list assigned"
   },
   "gastos": {
     "title": "Expenses",
@@ -893,5 +910,34 @@
     "cat.sueldos": "Salaries",
     "cat.impuestos": "Taxes",
     "cat.otros": "Other"
+  },
+  "listasPrecio": {
+    "title": "Price Lists",
+    "newList": "New List",
+    "editList": "Edit List",
+    "saveSuccess": "List saved",
+    "deleteSuccess": "List deleted",
+    "deleteConfirm": "Delete this price list?",
+    "noLists": "No price lists created",
+    "colName": "Name",
+    "fieldName": "List name",
+    "namePlaceholder": "e.g. Wholesale, List B, Special",
+    "fieldDesc": "Description",
+    "descPlaceholder": "Optional description",
+    "manageItems": "Manage products",
+    "itemsTitle": "Products — {{name}}",
+    "addProduct": "Add product",
+    "noItems": "No products in this list",
+    "colProduct": "Product",
+    "colCode": "Code",
+    "colBasePrice": "Base price",
+    "colListPrice": "List price",
+    "removeItemConfirm": "Remove this product from the list?",
+    "itemAdded": "Product added to list",
+    "searchProduct": "Search product",
+    "searchProductPlaceholder": "Name or code...",
+    "basePrice": "Base price",
+    "fieldListPrice": "Price in this list",
+    "selectProduct": "Please select a product first"
   }
 }
