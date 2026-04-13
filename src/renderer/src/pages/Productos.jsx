@@ -6,11 +6,12 @@ import {
 } from 'antd'
 import {
   PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined,
-  BarcodeOutlined, ScanOutlined, ExclamationCircleOutlined, CalendarOutlined
+  BarcodeOutlined, ScanOutlined, ExclamationCircleOutlined, CalendarOutlined, FileExcelOutlined
 } from '@ant-design/icons'
 import { useBarcodeScanner } from '../hooks/useBarcodeScanner'
 import { useAuthStore } from '../store/authStore'
 import { useTranslation } from 'react-i18next'
+import useExport from '../hooks/useExport'
 import dayjs from 'dayjs'
 
 const { Title, Text } = Typography
@@ -28,6 +29,7 @@ const Productos = () => {
   const codigoInputRef = useRef()
   const user = useAuthStore(s => s.user)
   const { t } = useTranslation()
+  const { exportToExcel, exporting } = useExport()
 
   useEffect(() => { loadAll() }, [])
 
@@ -279,14 +281,31 @@ const Productos = () => {
       </div>
 
       <Card>
-        <Input
-          placeholder={t('productos.searchPlaceholder')}
-          prefix={<SearchOutlined />}
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          style={{ maxWidth: 360, marginBottom: 16 }}
-          allowClear
-        />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <Input
+            placeholder={t('productos.searchPlaceholder')}
+            prefix={<SearchOutlined />}
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{ maxWidth: 360 }}
+            allowClear
+          />
+          <Button
+            icon={<FileExcelOutlined />}
+            loading={exporting}
+            onClick={() => exportToExcel([
+              { title: t('productos.colCode'), dataIndex: 'codigo' },
+              { title: t('productos.colName'), dataIndex: 'nombre' },
+              { title: t('productos.colCategory'), dataIndex: 'categoria_nombre' },
+              { title: t('productos.colCost'), dataIndex: 'precio_compra', exportRender: v => Number(v).toFixed(2) },
+              { title: t('productos.colPrice'), dataIndex: 'precio_venta', exportRender: v => Number(v).toFixed(2) },
+              { title: t('productos.colStock'), dataIndex: 'stock_actual' },
+              { title: t('productos.colSupplier'), dataIndex: 'proveedor_nombre' },
+            ], filtered, 'productos')}
+          >
+            {t('common.exportExcel')}
+          </Button>
+        </div>
         <Table
           columns={columns}
           dataSource={filtered}

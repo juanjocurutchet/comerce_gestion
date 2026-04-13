@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react'
 import {
   Row, Col, Table, Button, Typography, Space, Tag, Divider, Modal, message, Popconfirm
 } from 'antd'
-import { EyeOutlined, PrinterOutlined } from '@ant-design/icons'
+import { EyeOutlined, PrinterOutlined, FileExcelOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../store/authStore'
 import TicketPreview from './TicketPreview'
+import useExport from '../hooks/useExport'
 import dayjs from 'dayjs'
 
 const { Text } = Typography
@@ -18,6 +19,7 @@ const HistorialVentas = () => {
   const [ticketModal, setTicketModal] = useState({ open: false, venta: null, items: [] })
   const user = useAuthStore(s => s.user)
   const { t } = useTranslation()
+  const { exportToExcel, exporting } = useExport()
 
   const loadVentas = async () => {
     setLoading(true)
@@ -71,8 +73,26 @@ const HistorialVentas = () => {
     }
   ]
 
+  const exportCols = [
+    { title: 'ID', dataIndex: 'id' },
+    { title: t('ventas.historyColDate'), dataIndex: 'fecha', exportRender: v => dayjs(v).format('DD/MM/YYYY HH:mm') },
+    { title: t('ventas.historyColTotal'), dataIndex: 'total', exportRender: v => Number(v).toFixed(2) },
+    { title: t('ventas.historyColPayment'), dataIndex: 'metodo_pago' },
+    { title: t('ventas.historyColStatus'), dataIndex: 'estado' },
+    { title: t('ventas.historyColSeller'), dataIndex: 'usuario_nombre' },
+  ]
+
   return (
     <>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 16px 0' }}>
+        <Button
+          icon={<FileExcelOutlined />}
+          onClick={() => exportToExcel(exportCols, ventas, 'ventas')}
+          loading={exporting}
+        >
+          {t('common.exportExcel')}
+        </Button>
+      </div>
       <Table
         columns={columns}
         dataSource={ventas}
@@ -80,6 +100,7 @@ const HistorialVentas = () => {
         loading={loading}
         size="small"
         pagination={{ pageSize: 15, showTotal: total => t('ventas.pagTotal', { total }) }}
+        style={{ padding: '0 16px' }}
       />
       <Modal
         title={t('ventas.detailTitle', { id: detalle?.id })}

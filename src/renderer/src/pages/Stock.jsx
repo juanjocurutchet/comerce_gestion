@@ -3,9 +3,10 @@ import {
   Table, Button, Space, Typography, Select, Modal, Form,
   InputNumber, Input, Tag, message, Card, Tabs, Alert, DatePicker
 } from 'antd'
-import { PlusOutlined, MinusOutlined, WarningOutlined, CalendarOutlined } from '@ant-design/icons'
+import { PlusOutlined, MinusOutlined, WarningOutlined, CalendarOutlined, FileExcelOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../store/authStore'
+import useExport from '../hooks/useExport'
 import dayjs from 'dayjs'
 
 const { Title, Text } = Typography
@@ -19,6 +20,7 @@ const Stock = () => {
   const [form] = Form.useForm()
   const user = useAuthStore(s => s.user)
   const { t } = useTranslation()
+  const { exportToExcel, exporting } = useExport()
 
   useEffect(() => { loadAll() }, [])
 
@@ -106,6 +108,24 @@ const Stock = () => {
     }
   ]
 
+  const exportColsInventario = [
+    { title: t('stock.colName'), dataIndex: 'nombre' },
+    { title: t('stock.colCode'), dataIndex: 'codigo' },
+    { title: t('stock.colCategory'), dataIndex: 'categoria_nombre' },
+    { title: t('stock.colCurrentStock'), dataIndex: 'stock_actual' },
+    { title: t('stock.colMinStock'), dataIndex: 'stock_minimo' },
+  ]
+
+  const exportColsMovimientos = [
+    { title: t('stock.colDate'), dataIndex: 'fecha', exportRender: v => dayjs(v).format('DD/MM/YYYY HH:mm') },
+    { title: t('stock.colProduct'), dataIndex: 'producto_nombre' },
+    { title: t('stock.colType'), dataIndex: 'tipo' },
+    { title: t('stock.colQuantity'), dataIndex: 'cantidad' },
+    { title: t('stock.colPrevStock'), dataIndex: 'stock_anterior' },
+    { title: t('stock.colNewStock'), dataIndex: 'stock_nuevo' },
+    { title: t('stock.colReason'), dataIndex: 'motivo' },
+  ]
+
   const tabItems = [
     {
       key: 'inventario',
@@ -121,6 +141,12 @@ const Stock = () => {
               style={{ marginBottom: 16 }}
             />
           )}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+            <Button icon={<FileExcelOutlined />} size="small" loading={exporting}
+              onClick={() => exportToExcel(exportColsInventario, productos, 'inventario')}>
+              {t('common.exportExcel')}
+            </Button>
+          </div>
           <Table columns={colsProductos} dataSource={productos} rowKey="id" loading={loading} size="small"
             pagination={{ pageSize: 15, showTotal: total => t('stock.pagProducts', { total }) }}
             rowClassName={(r) => r.stock_actual <= 0 ? 'ant-table-row-danger' : r.stock_actual <= r.stock_minimo ? 'ant-table-row-warning' : ''}
@@ -132,9 +158,17 @@ const Stock = () => {
       key: 'movimientos',
       label: t('stock.tabMovements'),
       children: (
-        <Table columns={colsMovimientos} dataSource={movimientos} rowKey="id" loading={loading} size="small"
-          pagination={{ pageSize: 15, showTotal: total => t('stock.pagMovements', { total }) }}
-        />
+        <>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+            <Button icon={<FileExcelOutlined />} size="small" loading={exporting}
+              onClick={() => exportToExcel(exportColsMovimientos, movimientos, 'movimientos')}>
+              {t('common.exportExcel')}
+            </Button>
+          </div>
+          <Table columns={colsMovimientos} dataSource={movimientos} rowKey="id" loading={loading} size="small"
+            pagination={{ pageSize: 15, showTotal: total => t('stock.pagMovements', { total }) }}
+          />
+        </>
       )
     }
   ]

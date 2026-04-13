@@ -1,11 +1,11 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, useCallback } from 'react'
 import {
   Row, Card, Table, Button, Input, InputNumber, Select,
-  Typography, Space, Tag, Divider, message, Empty, Badge, Tooltip
+  Typography, Space, Tag, Divider, message, Empty, Badge, Tooltip, Modal
 } from 'antd'
 import {
   DeleteOutlined, ShoppingCartOutlined, CheckOutlined,
-  BarcodeOutlined, ScanOutlined, WarningOutlined
+  BarcodeOutlined, ScanOutlined, WarningOutlined, SearchOutlined, CalendarOutlined, PlusOutlined
 } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../store/authStore'
@@ -24,7 +24,7 @@ const estadoVencimiento = (fecha) => {
   return null
 }
 
-const POS = ({ onVentaCreada, active }) => {
+const POS = ({ onVentaCreada, active, priceCheckTrigger }) => {
   const [productos, setProductos] = useState([])
   const [carrito, setCarrito] = useState([])
   const [busqueda, setBusqueda] = useState('')
@@ -35,8 +35,12 @@ const POS = ({ onVentaCreada, active }) => {
   const [loading, setLoading] = useState(false)
   const [lastScanned, setLastScanned] = useState(null)
   const [ticketModal, setTicketModal] = useState({ open: false, venta: null, items: [] })
+  const [selectedCartRow, setSelectedCartRow] = useState(null)
+  const [priceCheck, setPriceCheck] = useState({ open: false, query: '', results: [], notFound: false })
   const user = useAuthStore(s => s.user)
   const searchRef = useRef()
+  const descuentoRef = useRef()
+  const priceCheckRef = useRef()
   const { t } = useTranslation()
 
   const loadProductos = async () => {
@@ -49,6 +53,10 @@ const POS = ({ onVentaCreada, active }) => {
   useEffect(() => {
     if (active) setTimeout(() => searchRef.current?.focus(), 100)
   }, [active])
+
+  useEffect(() => {
+    if (priceCheckTrigger > 0) abrirPriceCheck()
+  }, [priceCheckTrigger])
 
   const buscarPorCodigo = async (codigo) => {
     const code = codigo?.trim()
@@ -109,13 +117,13 @@ const POS = ({ onVentaCreada, active }) => {
     })
   }
 
-  const actualizarCantidad = (producto_id, cantidad) => {
+  const actualizarCantidad = useCallback((producto_id, cantidad) => {
     setCarrito(prev => prev.map(i =>
       i.producto_id === producto_id
         ? { ...i, cantidad, subtotal: cantidad * i.precio_unitario }
         : i
     ).filter(i => i.cantidad > 0))
-  }
+  }, [])
 
   const actualizarPrecio = (producto_id, precio) => {
     setCarrito(prev => prev.map(i =>
@@ -125,19 +133,59 @@ const POS = ({ onVentaCreada, active }) => {
     ))
   }
 
-  const quitarItem = (producto_id) => {
+  const quitarItem = useCallback((producto_id) => {
     setCarrito(prev => prev.filter(i => i.producto_id !== producto_id))
-  }
+  }, [])
+
+  const buscarPrecio = useCallback((query) => {
+    const q = query?.trim()
+    if (!q) { setPriceCheck(p => ({ ...p, results: [], notFound: false })); return }
+    const lower = q.toLowerCase()
+    const results = productos.filter(p =>
+      p.nombre?.toLowerCase().includes(lower) || p.codigo?.includes(q)
+    ).slice(0, 6)
+    setPriceCheck(p => ({ ...p, query: q, results, notFound: results.length === 0 }))
+  }, [productos])
+
+  const abrirPriceCheck = useCallback(() => {
+    setPriceCheck({ open: true, query: '', results: [], notFound: false })
+    setTimeout(() => priceCheckRef.current?.focus(), 80)
+  }, [])
+
+  const cerrarPriceCheck = useCallback(() => {
+    setPriceCheck({ open: false, query: '', results: [], notFound: false })
+    setTimeout(() => searchRef.current?.focus(), 80)
+  }, [])
+
+  const limpiarCarrito = useCallback(() => {
+    setCarrito([])
+    setDescuento(0)
+    setTipoDescuento('$')
+    setMontoRecibido('')
+    setLastScanned(null)
+    setSelectedCartRow(null)
+    setTimeout(() => searchRef.current?.focus(), 50)
+    message.info({ content: t('ventas.cartCleared'), key: 'f2', duration: 1.5 })
+  }, [t])
+
+  const navigateCart = useCallback((dir, carritoActual, selected) => {
+    if (carritoActual.length === 0) return
+    const idx = carritoActual.findIndex(i => i.producto_id === selected)
+    const next = idx === -1
+      ? (dir > 0 ? 0 : carritoActual.length - 1)
+      : Math.max(0, Math.min(carritoActual.length - 1, idx + dir))
+    setSelectedCartRow(carritoActual[next].producto_id)
+  }, [])
 
   const subtotal = carrito.reduce((a, i) => a + i.subtotal, 0)
   const descuentoMonto = tipoDescuento === '%' ? subtotal * (descuento / 100) : descuento
   const totalFinal = Math.max(0, subtotal - descuentoMonto)
 
-  const confirmarVenta = async () => {
-    if (carrito.length === 0) return message.warning(t('ventas.emptyCartWarning'))
+  const confirmarVenta = useCallback(async (carritoActual, subtotalVal, descuentoMontoVal, totalFinalVal, metodoPagoVal) => {
+    if (carritoActual.length === 0) return message.warning(t('ventas.emptyCartWarning'))
     setLoading(true)
-    const venta = { subtotal, descuento: descuentoMonto, total: totalFinal, metodo_pago: metodoPago, notas: '' }
-    const items = carrito.map(i => ({
+    const venta = { subtotal: subtotalVal, descuento: descuentoMontoVal, total: totalFinalVal, metodo_pago: metodoPagoVal, notas: '' }
+    const items = carritoActual.map(i => ({
       producto_id: i.producto_id,
       cantidad: i.cantidad,
       precio_unitario: i.precio_unitario,
@@ -151,24 +199,82 @@ const POS = ({ onVentaCreada, active }) => {
       const ventaObj = {
         id: ventaId,
         fecha: new Date().toISOString(),
-        subtotal,
-        descuento: descuentoMonto,
-        total: totalFinal,
-        metodo_pago: metodoPago,
+        subtotal: subtotalVal,
+        descuento: descuentoMontoVal,
+        total: totalFinalVal,
+        metodo_pago: metodoPagoVal,
         notas: '',
         usuario_nombre: user?.nombre
       }
-      setTicketModal({ open: true, venta: ventaObj, items: carrito.map(i => ({ ...i, producto_nombre: i.nombre })) })
+      setTicketModal({ open: true, venta: ventaObj, items: carritoActual.map(i => ({ ...i, producto_nombre: i.nombre })) })
       setCarrito([])
       setDescuento(0)
       setTipoDescuento('$')
       setMontoRecibido('')
       setLastScanned(null)
+      setSelectedCartRow(null)
       onVentaCreada?.()
     } else {
       message.error(res.error || t('ventas.saleError'))
     }
-  }
+  }, [user, onVentaCreada, t])
+
+  useEffect(() => {
+    if (!active) return
+    const onKey = (e) => {
+      const inInput = ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)
+
+      if (e.key === 'F2') {
+        e.preventDefault()
+        limpiarCarrito()
+        return
+      }
+      if (e.key === 'F3') {
+        e.preventDefault()
+        if (priceCheck.open) cerrarPriceCheck()
+        else abrirPriceCheck()
+        return
+      }
+      if (e.key === 'F8') {
+        e.preventDefault()
+        descuentoRef.current?.focus()
+        return
+      }
+      if (e.key === 'F9') {
+        e.preventDefault()
+        if (carrito.length > 0 && !loading) confirmarVenta(carrito, subtotal, descuentoMonto, totalFinal, metodoPago)
+        return
+      }
+      if (e.key === 'Escape' && ticketModal.open) {
+        setTicketModal({ open: false, venta: null, items: [] })
+        setTimeout(() => searchRef.current?.focus(), 100)
+        return
+      }
+      if (inInput) return
+      if (e.key === 'ArrowUp') { e.preventDefault(); navigateCart(-1, carrito, selectedCartRow); return }
+      if (e.key === 'ArrowDown') { e.preventDefault(); navigateCart(1, carrito, selectedCartRow); return }
+      if ((e.key === '+' || e.key === 'Add') && selectedCartRow) {
+        e.preventDefault()
+        const item = carrito.find(i => i.producto_id === selectedCartRow)
+        if (item) actualizarCantidad(selectedCartRow, item.cantidad + 1)
+        return
+      }
+      if ((e.key === '-' || e.key === 'Subtract') && selectedCartRow) {
+        e.preventDefault()
+        const item = carrito.find(i => i.producto_id === selectedCartRow)
+        if (item) actualizarCantidad(selectedCartRow, Math.max(0, item.cantidad - 1))
+        return
+      }
+      if (e.key === 'Delete' && selectedCartRow) {
+        e.preventDefault()
+        quitarItem(selectedCartRow)
+        setSelectedCartRow(null)
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [active, carrito, selectedCartRow, loading, ticketModal.open, priceCheck.open, subtotal, descuentoMonto, totalFinal, metodoPago,
+      limpiarCarrito, confirmarVenta, navigateCart, actualizarCantidad, quitarItem, abrirPriceCheck, cerrarPriceCheck])
 
   const prodFiltrados = productos.filter(p =>
     p.nombre?.toLowerCase().includes(busqueda.toLowerCase()) || p.codigo?.includes(busqueda)
@@ -244,6 +350,7 @@ const POS = ({ onVentaCreada, active }) => {
               </Text>
             </div>
           )}
+
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, padding: '0 12px 12px' }}>
@@ -295,6 +402,14 @@ const POS = ({ onVentaCreada, active }) => {
             size="small"
             pagination={false}
             locale={{ emptyText: t('ventas.cartEmpty') }}
+            onRow={(r) => ({
+              onClick: () => setSelectedCartRow(r.producto_id),
+              style: {
+                cursor: 'pointer',
+                background: r.producto_id === selectedCartRow ? 'rgba(22,119,255,0.1)' : undefined,
+                outline: r.producto_id === selectedCartRow ? '1px solid rgba(22,119,255,0.35)' : undefined,
+              }
+            })}
           />
         </div>
 
@@ -314,6 +429,7 @@ const POS = ({ onVentaCreada, active }) => {
                 options={[{ value: '$', label: '$' }, { value: '%', label: '%' }]}
               />
               <InputNumber
+                ref={descuentoRef}
                 value={descuento}
                 min={0}
                 max={tipoDescuento === '%' ? 100 : subtotal}
@@ -375,12 +491,30 @@ const POS = ({ onVentaCreada, active }) => {
               )}
             </>
           )}
-          <Button
-            type="primary" icon={<CheckOutlined />} block size="large"
-            loading={loading} onClick={confirmarVenta} disabled={carrito.length === 0}
-          >
-            {t('ventas.confirmSale')}
-          </Button>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <Tooltip title="F2" placement="top">
+              <Button
+                icon={<PlusOutlined />}
+                size="large"
+                onClick={limpiarCarrito}
+                style={{ flexShrink: 0 }}
+              >
+                {t('ventas.shortcutClear')}
+              </Button>
+            </Tooltip>
+            <Tooltip title="F9" placement="top">
+              <Button
+                type="primary" icon={<CheckOutlined />}
+                size="large"
+                style={{ flex: 1 }}
+                loading={loading}
+                onClick={() => confirmarVenta(carrito, subtotal, descuentoMonto, totalFinal, metodoPago)}
+                disabled={carrito.length === 0}
+              >
+                {t('ventas.confirmSale')}
+              </Button>
+            </Tooltip>
+          </div>
         </div>
       </Card>
 
@@ -393,6 +527,67 @@ const POS = ({ onVentaCreada, active }) => {
           setTimeout(() => searchRef.current?.focus(), 100)
         }}
       />
+
+      <Modal
+        title={<Space><SearchOutlined />{t('ventas.priceCheckTitle')}</Space>}
+        open={priceCheck.open}
+        onCancel={cerrarPriceCheck}
+        footer={null}
+        width={480}
+        destroyOnClose
+      >
+        <Input.Search
+          ref={priceCheckRef}
+          placeholder={t('ventas.priceCheckPlaceholder')}
+          value={priceCheck.query}
+          onChange={e => { setPriceCheck(p => ({ ...p, query: e.target.value })); buscarPrecio(e.target.value) }}
+          onSearch={buscarPrecio}
+          enterButton
+          allowClear
+          size="large"
+          style={{ marginBottom: 12 }}
+        />
+
+        {priceCheck.notFound && (
+          <Empty description={t('ventas.priceCheckNotFound')} style={{ padding: '16px 0' }} />
+        )}
+
+        {priceCheck.results.map(p => {
+          const ev = estadoVencimiento(p.fecha_vencimiento)
+          return (
+            <div key={p.id} style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '10px 14px', borderRadius: 8, marginBottom: 8,
+              border: '1px solid var(--ant-color-border, #d9d9d9)',
+              background: 'var(--ant-color-bg-container, #fff)'
+            }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 700, fontSize: 14 }}>{p.nombre}</div>
+                <Space size={6} style={{ marginTop: 3 }}>
+                  {p.codigo && <Tag style={{ fontSize: 11, margin: 0 }}>{p.codigo}</Tag>}
+                  {p.categoria_nombre && <Tag color="blue" style={{ fontSize: 11, margin: 0 }}>{p.categoria_nombre}</Tag>}
+                  {ev && <Tag color={ev.color} icon={<CalendarOutlined />} style={{ fontSize: 11, margin: 0 }}>{ev.label}</Tag>}
+                </Space>
+              </div>
+              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#1677ff', lineHeight: 1 }}>
+                  ${Number(p.precio_venta).toFixed(2)}
+                </div>
+                <Tag
+                  color={p.stock_actual <= 0 ? 'error' : p.stock_actual <= p.stock_minimo ? 'warning' : 'success'}
+                  style={{ fontSize: 11, marginTop: 4 }}
+                >
+                  Stock: {p.stock_actual} {p.unidad}
+                </Tag>
+              </div>
+            </div>
+          )
+        })}
+
+        <div style={{ marginTop: 8, textAlign: 'center', color: '#aaa', fontSize: 12 }}>
+          {t('ventas.priceCheckHint')}
+        </div>
+      </Modal>
     </div>
   )
 }

@@ -8,7 +8,8 @@ import {
   SettingOutlined, CloudUploadOutlined, FileTextOutlined,
   BarcodeOutlined, ScanOutlined, PrinterOutlined,
   DollarOutlined, CalendarOutlined,
-  QuestionCircleOutlined, WarningOutlined
+  QuestionCircleOutlined, WarningOutlined,
+  KeyboardOutlined, SearchOutlined, FileExcelOutlined
 } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import { Section, Paso, Tip } from '../components/AyudaHelpers'
@@ -131,6 +132,44 @@ const Ayuda = () => {
             <Paso numero={1} texto={s('ventas.step1Ticket')} />
             <Paso numero={2} texto={s('ventas.step2Ticket')} />
             <Tip>{s('ventas.tipTicket')}</Tip>
+          </Panel>
+
+          <Panel header={<Text strong><KeyboardOutlined /> {s('ventas.panelShortcuts')}</Text>} key="venta-atajos">
+            <Paragraph>{s('ventas.shortcutsIntro')}</Paragraph>
+            <Table
+              size="small"
+              pagination={false}
+              dataSource={[
+                { key: 'F2',  accion: 'Nueva venta',         detalle: 'Limpia el carrito, descuento y monto recibido.' },
+                { key: 'F3',  accion: 'Consultar precio',    detalle: 'Abre el panel de consulta de precio sin agregar al carrito.' },
+                { key: 'F8',  accion: 'Ir a Descuento',      detalle: 'Mueve el foco al campo de descuento.' },
+                { key: 'F9',  accion: 'Confirmar venta',     detalle: 'Procesa la venta si el carrito tiene productos.' },
+                { key: '↑ ↓', accion: 'Navegar carrito',     detalle: 'Selecciona la fila anterior o siguiente en el carrito.' },
+                { key: '+ / −', accion: 'Cambiar cantidad',  detalle: 'Suma o resta 1 unidad en la fila seleccionada del carrito.' },
+                { key: 'Del', accion: 'Eliminar fila',        detalle: 'Quita el producto seleccionado del carrito.' },
+                { key: 'Esc', accion: 'Cerrar modal',         detalle: 'Cierra el ticket impreso o el panel de consulta de precio.' },
+              ]}
+              columns={[
+                { title: s('ventas.shortcutColKey'),    dataIndex: 'key',    width: 80, render: v => <kbd style={{ background: 'rgba(0,0,0,0.06)', border: '1px solid #d9d9d9', borderRadius: 4, padding: '1px 6px', fontFamily: 'monospace', fontWeight: 700 }}>{v}</kbd> },
+                { title: s('ventas.shortcutColAction'), dataIndex: 'accion', width: 160 },
+                { title: s('ventas.shortcutColDetail'), dataIndex: 'detalle' },
+              ]}
+            />
+          </Panel>
+
+          <Panel header={<Text strong><SearchOutlined /> {s('ventas.panelPriceCheck')}</Text>} key="venta-precio">
+            <Paso numero={1} texto={s('ventas.step1PriceCheck')} />
+            <Paso numero={2} texto={s('ventas.step2PriceCheck')} />
+            <Paso numero={3} texto={s('ventas.step3PriceCheck')} />
+            <Paso numero={4} texto={s('ventas.step4PriceCheck')} />
+            <Tip>{s('ventas.tipPriceCheck')}</Tip>
+          </Panel>
+
+          <Panel header={<Text strong><FileExcelOutlined /> {s('ventas.panelExportHistory')}</Text>} key="venta-export">
+            <Paso numero={1} texto={s('ventas.step1ExportHistory')} />
+            <Paso numero={2} texto={s('ventas.step2ExportHistory')} />
+            <Paso numero={3} texto={s('ventas.step3ExportHistory')} />
+            <Tip>{s('ventas.tipExportHistory')}</Tip>
           </Panel>
         </Collapse>
       </Section>
