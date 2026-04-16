@@ -1,13 +1,14 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import {
   Card, Button, Typography, Table, Space, Tag, Popconfirm,
   message, Alert, Row, Col, Statistic, Switch, InputNumber,
-  Tooltip, Modal, Divider
+  Tooltip, Modal, Divider, Form, Input
 } from 'antd'
 import {
   CloudUploadOutlined, ReloadOutlined, DeleteOutlined,
   RollbackOutlined, FolderOpenOutlined, CheckCircleOutlined,
-  ClockCircleOutlined, WarningOutlined
+  ClockCircleOutlined, WarningOutlined, DownloadOutlined, UploadOutlined,
+  LoginOutlined, LogoutOutlined, CloudSyncOutlined
 } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
@@ -21,21 +22,68 @@ const Backup = () => {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [runningBackup, setRunningBackup] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [syncStatus, setSyncStatus] = useState(null)
+  const [cloudLoading, setCloudLoading] = useState(false)
   const [autoBackup, setAutoBackup] = useState(true)
   const [keepLast, setKeepLast] = useState(10)
+  const [cloudForm] = Form.useForm()
+  const fileImportRef = useRef(null)
   const { t } = useTranslation()
+  const isPwa = typeof window !== 'undefined' && window.__IS_PWA__
+  const hasJsonSnapshot =
+    typeof window !== 'undefined' && typeof window.api?.backup?.exportWeb === 'function'
+  const hasProductsSync =
+    typeof window !== 'undefined' && typeof window.api?.sync?.getStatus === 'function'
+  const hasCloudAuth =
+    typeof window !== 'undefined' && typeof window.api?.cloudAuth?.getSession === 'function'
 
   useEffect(() => { loadData() }, [])
 
   const loadData = async () => {
     setLoading(true)
-    const res = await window.api.backup.getList()
-    if (res.ok) {
-      setData(res.data)
-      setAutoBackup(res.data.autoBackup)
-      setKeepLast(res.data.keepLast)
+    const [backupRes, syncRes] = await Promise.all([
+      window.api.backup.getList(),
+      hasProductsSync ? window.api.sync.getStatus() : Promise.resolve(null)
+    ])
+    if (backupRes.ok) {
+      setData(backupRes.data)
+      setAutoBackup(backupRes.data.autoBackup)
+      setKeepLast(backupRes.data.keepLast)
+    }
+    if (syncRes?.ok) {
+      setSyncStatus(syncRes.data)
     }
     setLoading(false)
+  }
+
+  const handleCloudLogin = async (values) => {
+    if (!window.api?.cloudAuth?.signIn) return
+    setCloudLoading(true)
+    const res = await window.api.cloudAuth.signIn(values.email, values.password)
+    setCloudLoading(false)
+    if (!res.ok) {
+      message.error(res.error || t('common.error'))
+      return
+    }
+    cloudForm.resetFields(['password'])
+    message.success(t('backup.cloudLoginSuccess'))
+    loadData()
+  }
+
+  const handleCloudLogout = async () => {
+    if (!window.api?.cloudAuth?.signOut) return
+    setCloudLoading(true)
+    const res = await window.api.cloudAuth.signOut()
+    setCloudLoading(false)
+    if (!res.ok) {
+      message.error(res.error || t('common.error'))
+      return
+    }
+    message.success(t('backup.cloudLogoutSuccess'))
+    loadData()
   }
 
   const handleBackupNow = async () => {
@@ -103,6 +151,76 @@ const Backup = () => {
     const res = await window.api.backup.delete(backup.path)
     if (res.ok) { message.success(t('backup.deleteSuccess')); loadData() }
     else message.error(res.error)
+  }
+
+  const handleExportWeb = async () => {
+    if (!window.api?.backup?.exportWeb) {
+      message.error(t('backup.pwaExportUnavailable'))
+      return
+    }
+    setExporting(true)
+    const res = await window.api.backup.exportWeb()
+    setExporting(false)
+    if (!res.ok) {
+      message.error(res.error || t('backup.pwaExportError'))
+      return
+    }
+    const blob = new Blob([res.data.json], { type: 'application/json;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `nexo-commerce-backup-${dayjs().format('YYYY-MM-DD_HHmm')}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    message.success(t('backup.pwaExportSuccess'))
+    loadData()
+  }
+
+  const handleImportFile = (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      const text = String(reader.result || '')
+      Modal.confirm({
+        title: t('backup.pwaImportConfirmTitle'),
+        content: t('backup.pwaImportConfirmBody'),
+        okText: t('backup.pwaImportOk'),
+        cancelText: t('common.cancel'),
+        okButtonProps: { danger: true },
+        onOk: async () => {
+          if (!window.api?.backup?.importWeb) {
+            message.error(t('backup.pwaExportUnavailable'))
+            return
+          }
+          setImporting(true)
+          const res = await window.api.backup.importWeb(text)
+          setImporting(false)
+          if (!res.ok) {
+            message.error(res.error || t('common.error'))
+            return
+          }
+          message.success(t('backup.pwaImportSuccess'))
+          window.location.reload()
+        }
+      })
+    }
+    reader.onerror = () => message.error(t('backup.pwaImportReadError'))
+    reader.readAsText(file, 'UTF-8')
+  }
+
+  const runSyncAction = async (action, successKey, options = {}) => {
+    if (!window.api?.sync?.[action]) return
+    setSyncing(true)
+    const res = await window.api.sync[action](options)
+    setSyncing(false)
+    if (!res.ok) {
+      message.error(res.error || t('common.error'))
+      return
+    }
+    message.success(t(successKey, res.data || {}))
+    loadData()
   }
 
   const formatSize = (bytes) => {
@@ -181,18 +299,166 @@ const Backup = () => {
     <div>
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Title level={4} style={{ margin: 0 }}>{t('backup.title')}</Title>
-        <Space>
+        <Space wrap>
           <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>{t('common.refresh')}</Button>
-          <Button
-            type="primary"
-            icon={<CloudUploadOutlined />}
-            loading={runningBackup}
-            onClick={handleBackupNow}
-          >
-            {t('backup.backupNow')}
-          </Button>
+          {!isPwa && (
+            <Button
+              type="primary"
+              icon={<CloudUploadOutlined />}
+              loading={runningBackup}
+              onClick={handleBackupNow}
+            >
+              {t('backup.backupNow')}
+            </Button>
+          )}
+          {hasJsonSnapshot && (
+            <>
+              <Button
+                type={isPwa ? 'primary' : 'default'}
+                icon={<DownloadOutlined />}
+                loading={exporting}
+                onClick={handleExportWeb}
+              >
+                {t('backup.pwaExportBtn')}
+              </Button>
+              <Button icon={<UploadOutlined />} loading={importing} onClick={() => fileImportRef.current?.click()}>
+                {t('backup.pwaImportBtn')}
+              </Button>
+              <input
+                ref={fileImportRef}
+                type="file"
+                accept=".json,application/json"
+                style={{ display: 'none' }}
+                onChange={handleImportFile}
+              />
+            </>
+          )}
         </Space>
       </div>
+
+      {hasJsonSnapshot && (
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message={isPwa ? t('backup.pwaInfoTitle') : t('backup.jsonSnapshotTitle')}
+          description={isPwa ? t('backup.pwaInfoDesc') : t('backup.jsonSnapshotDesc')}
+        />
+      )}
+
+      {isPwa && hasProductsSync && (
+        <Card title={t('backup.syncTitle')} style={{ marginBottom: 16 }}>
+          {!syncStatus?.configured ? (
+            <Alert
+              type="warning"
+              showIcon
+              message={t('backup.syncNotConfiguredTitle')}
+              description={t('backup.syncNotConfiguredDesc')}
+            />
+          ) : (
+            <Space direction="vertical" size={12} style={{ width: '100%' }}>
+              <Alert
+                type="info"
+                showIcon
+                message={t('backup.syncInfoTitle')}
+                description={t('backup.syncInfoDesc')}
+              />
+              {hasCloudAuth && !syncStatus?.cloudSession && (
+                <Card size="small" title={t('backup.cloudLoginTitle')}>
+                  <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+                    {t('backup.cloudLoginDesc')}
+                  </Text>
+                  <Form form={cloudForm} layout="vertical" onFinish={handleCloudLogin}>
+                    <Form.Item
+                      name="email"
+                      label={t('backup.cloudEmail')}
+                      rules={[{ required: true, message: t('backup.cloudEmailRequired') }]}
+                    >
+                      <Input placeholder="admin@tucomercio.com" />
+                    </Form.Item>
+                    <Form.Item
+                      name="password"
+                      label={t('backup.cloudPassword')}
+                      rules={[{ required: true, message: t('backup.cloudPasswordRequired') }]}
+                    >
+                      <Input.Password />
+                    </Form.Item>
+                    <Button type="primary" htmlType="submit" icon={<LoginOutlined />} loading={cloudLoading}>
+                      {t('backup.cloudLoginBtn')}
+                    </Button>
+                  </Form>
+                </Card>
+              )}
+              {hasCloudAuth && syncStatus?.cloudSession && (
+                <Alert
+                  type="success"
+                  showIcon
+                  action={
+                    <Button size="small" icon={<LogoutOutlined />} loading={cloudLoading} onClick={handleCloudLogout}>
+                      {t('backup.cloudLogoutBtn')}
+                    </Button>
+                  }
+                  message={t('backup.cloudConnectedTitle')}
+                  description={t('backup.cloudConnectedDesc', {
+                    email: syncStatus.cloudSession.email || '-',
+                    expires: syncStatus.cloudSession.expires_at
+                      ? dayjs.unix(syncStatus.cloudSession.expires_at).format('DD/MM/YYYY HH:mm')
+                      : '-'
+                  })}
+                />
+              )}
+              {hasCloudAuth && syncStatus?.cloudSession && syncStatus?.cloudMembershipMatch === false && (
+                <Alert
+                  type="error"
+                  showIcon
+                  message={t('backup.cloudCommerceMismatchTitle')}
+                  description={t('backup.cloudCommerceMismatchDesc', {
+                    local: syncStatus?.commerceId || '-',
+                    list: (syncStatus?.cloudMemberships || []).join(', ') || '-'
+                  })}
+                />
+              )}
+              <Row gutter={[16, 16]}>
+                <Col xs={24} md={8}>
+                  <Statistic
+                    title={t('backup.syncCommerceId')}
+                    value={syncStatus?.commerceId || '-'}
+                    valueStyle={{ fontSize: 14 }}
+                  />
+                </Col>
+                <Col xs={24} md={8}>
+                  <Statistic
+                    title={t('backup.syncLastPush')}
+                    value={syncStatus?.lastPushAt ? dayjs(syncStatus.lastPushAt).format('DD/MM/YYYY HH:mm') : t('common.never')}
+                    valueStyle={{ fontSize: 14 }}
+                  />
+                </Col>
+                <Col xs={24} md={8}>
+                  <Statistic
+                    title={t('backup.syncLastPull')}
+                    value={syncStatus?.lastPullAt ? dayjs(syncStatus.lastPullAt).format('DD/MM/YYYY HH:mm') : t('common.never')}
+                    valueStyle={{ fontSize: 14 }}
+                  />
+                </Col>
+              </Row>
+              <Space wrap>
+                <Button icon={<DownloadOutlined />} loading={syncing || cloudLoading} disabled={!syncStatus?.cloudSession || syncStatus?.cloudMembershipMatch === false} onClick={() => runSyncAction('pullProducts', 'backup.syncPullSuccess')}>
+                  {t('backup.syncPullBtn')}
+                </Button>
+                <Button icon={<UploadOutlined />} loading={syncing || cloudLoading} disabled={!syncStatus?.cloudSession || syncStatus?.cloudMembershipMatch === false} onClick={() => runSyncAction('pushProducts', 'backup.syncPushSuccess')}>
+                  {t('backup.syncPushBtn')}
+                </Button>
+                <Button type="primary" icon={<CloudSyncOutlined />} loading={syncing || cloudLoading} disabled={!syncStatus?.cloudSession || syncStatus?.cloudMembershipMatch === false} onClick={() => runSyncAction('syncProducts', 'backup.syncRunSuccess')}>
+                  {t('backup.syncRunBtn')}
+                </Button>
+                <Button loading={syncing || cloudLoading} disabled={!syncStatus?.cloudSession || syncStatus?.cloudMembershipMatch === false} onClick={() => runSyncAction('syncProducts', 'backup.syncRunSuccess', { full: true })}>
+                  {t('backup.syncFullBtn')}
+                </Button>
+              </Space>
+            </Space>
+          )}
+        </Card>
+      )}
 
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={24} sm={8}>
@@ -243,6 +509,7 @@ const Backup = () => {
         </Col>
       </Row>
 
+      {!isPwa && (
       <Card title={t('backup.configTitle')} style={{ marginBottom: 16 }}>
         <Row gutter={[24, 16]} align="middle">
           <Col xs={24} sm={12}>
@@ -278,6 +545,7 @@ const Backup = () => {
           </Col>
         </Row>
       </Card>
+      )}
 
       <Card title={t('backup.availableTitle')}>
         {backupStatus === 'danger' && (
@@ -299,7 +567,7 @@ const Backup = () => {
           loading={loading}
           size="small"
           pagination={{ pageSize: 10, showTotal: total => t('backup.pagTotal', { total }) }}
-          locale={{ emptyText: t('backup.noBackups') }}
+          locale={{ emptyText: isPwa ? t('backup.pwaNoFileList') : t('backup.noBackups') }}
         />
       </Card>
     </div>

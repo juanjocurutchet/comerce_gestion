@@ -1,12 +1,13 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import {
   Table, Button, Space, Typography, Tag, Card, Modal, Form,
   Input, DatePicker, Switch, InputNumber, Popconfirm, message,
-  Row, Col, Statistic, Alert, Checkbox, Divider
+  Row, Col, Statistic, Alert, Checkbox, Divider, Tabs, AutoComplete
 } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, CopyOutlined, PlusCircleOutlined } from '@ant-design/icons'
+import { PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, CopyOutlined, PlusCircleOutlined, LinkOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
+import { useClientStore } from '../store/clientStore'
 
 const { Title, Text } = Typography
 
@@ -32,8 +33,11 @@ const Licencias = () => {
   const [newKey, setNewKey] = useState(null)
   const [form] = Form.useForm()
   const { t } = useTranslation()
-
-  useEffect(() => { load() }, [])
+  const publicDemoUrl = useClientStore((s) => s.publicDemoUrl)
+  const [activeTab, setActiveTab] = useState('licenses')
+  const [leads, setLeads] = useState([])
+  const [leadsLoading, setLeadsLoading] = useState(false)
+  const [commerces, setCommerces] = useState([])
 
   const load = async () => {
     setLoading(true)
@@ -43,23 +47,65 @@ const Licencias = () => {
     setLoading(false)
   }
 
+  const loadLeads = useCallback(async () => {
+    setLeadsLoading(true)
+    const res = await window.api.license.listUpgradeRequests()
+    if (res.ok) setLeads(res.data || [])
+    else message.error(res.error)
+    setLeadsLoading(false)
+  }, [])
+
+  const loadCommerces = useCallback(async () => {
+    const res = await window.api.license.listCommerces()
+    if (res.ok) setCommerces(res.data || [])
+  }, [])
+
+  useEffect(() => { load() }, [])
+
+  useEffect(() => {
+    if (activeTab === 'leads') loadLeads()
+  }, [activeTab, loadLeads])
+
+  useEffect(() => {
+    if (modal.open && !newKey) loadCommerces()
+  }, [modal.open, newKey, loadCommerces])
+
   const openModal = (record = null) => {
     setNewKey(null)
     setModal({ open: true, record })
     if (record) {
       const features = record.features ? Object.keys(record.features).filter(k => record.features[k]) : Object.keys(DEFAULT_FEATURES)
-      form.setFieldsValue({ ...record, vence_en: dayjs(record.vence_en), features })
+      form.setFieldsValue({
+        ...record,
+        vence_en: dayjs(record.vence_en),
+        features,
+        es_demo: !!record.es_demo,
+        commerce_id: record.commerce_id || undefined
+      })
     } else {
       form.resetFields()
-      form.setFieldsValue({ activo: true, grace_days: 15, features: Object.keys(DEFAULT_FEATURES) })
+      form.setFieldsValue({
+        activo: true,
+        grace_days: 15,
+        features: Object.keys(DEFAULT_FEATURES),
+        es_demo: true
+      })
     }
   }
 
   const handleSave = async () => {
     const values = await form.validateFields()
     const featuresObj = Object.fromEntries(ALL_FEATURES.map(f => [f.key, (values.features || []).includes(f.key)]))
-    const payload = { ...values, vence_en: values.vence_en.format('YYYY-MM-DD'), features: featuresObj }
-    delete payload.features_checkboxes
+    const payload = {
+      cliente_nombre: values.cliente_nombre,
+      vence_en: values.vence_en.format('YYYY-MM-DD'),
+      grace_days: values.grace_days,
+      notas: values.notas ?? '',
+      activo: values.activo,
+      features: featuresObj,
+      es_demo: !!values.es_demo,
+      commerce_id: values.commerce_id?.trim() ? values.commerce_id.trim() : null
+    }
     const res = modal.record
       ? await window.api.license.update(modal.record.id, payload)
       : await window.api.license.create(payload)
@@ -103,6 +149,12 @@ const Licencias = () => {
     message.success(t('licencias.keyCopied'))
   }
 
+  const copyDemoUrl = () => {
+    if (!publicDemoUrl?.trim()) return
+    navigator.clipboard.writeText(publicDemoUrl.trim())
+    message.success(t('licencias.demoUrlCopied'))
+  }
+
   const statusTag = (row) => {
     if (!row.activo) return <Tag color="red">{t('licencias.statusDisabled')}</Tag>
     const days = Math.ceil((new Date(row.vence_en) - Date.now()) / 86400000)
@@ -124,8 +176,21 @@ const Licencias = () => {
   const vencidas   = data.filter(r => new Date(r.vence_en) < new Date()).length
   const desactivas = data.filter(r => !r.activo).length
 
+  const commerceOptions = useMemo(() => (commerces || []).map((c) => ({
+    value: c.id,
+    label: `${c.id} — ${c.nombre}`
+  })), [commerces])
+
+
   const columns = [
     { title: t('licencias.colClient'), dataIndex: 'cliente_nombre', sorter: (a, b) => a.cliente_nombre.localeCompare(b.cliente_nombre) },
+    {
+      title: t('licencias.colDemo'),
+      dataIndex: 'es_demo',
+      align: 'center',
+      width: 90,
+      render: (v) => (v ? <Tag color="purple">{t('licencias.demoTag')}</Tag> : <Tag>{t('licencias.paidTag')}</Tag>)
+    },
     {
       title: t('licencias.colKey'), dataIndex: 'clave',
       render: v => (
@@ -137,6 +202,12 @@ const Licencias = () => {
     },
     { title: t('licencias.colStatus'), render: (_, r) => statusTag(r) },
     { title: t('licencias.colExpiry'), dataIndex: 'vence_en', render: v => dayjs(v).format('DD/MM/YYYY'), sorter: (a, b) => new Date(a.vence_en) - new Date(b.vence_en) },
+    {
+      title: t('licencias.colCommerceId'),
+      dataIndex: 'commerce_id',
+      ellipsis: true,
+      render: (v) => (v ? <Text code>{v}</Text> : <Text type="secondary">—</Text>)
+    },
     { title: t('licencias.colLastCheck'), render: (_, r) => lastCheckTag(r) },
     { title: t('licencias.colGraceDays'), dataIndex: 'grace_days', align: 'center' },
     { title: t('licencias.colActive'), dataIndex: 'activo', align: 'center', render: (v, r) => <Switch checked={v} size="small" onChange={() => toggleActivo(r)} /> },
@@ -161,8 +232,37 @@ const Licencias = () => {
     }
   ]
 
-  return (
+  const leadColumns = [
+    { title: t('licencias.colLeadRequestedAt'), dataIndex: 'requested_at', width: 170, render: (v) => (v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '—') },
+    { title: t('licencias.colLeadClientName'), dataIndex: 'client_name', ellipsis: true },
+    { title: t('licencias.colLeadContactName'), dataIndex: 'contact_name', ellipsis: true },
+    { title: t('licencias.colLeadEmail'), dataIndex: 'contact_email', ellipsis: true },
+    { title: t('licencias.colLeadPhone'), dataIndex: 'contact_phone', width: 120, ellipsis: true },
+    { title: t('licencias.colLeadSize'), dataIndex: 'commerce_size', ellipsis: true },
+    { title: t('licencias.colLeadDaysLeft'), dataIndex: 'current_days_left', width: 90, align: 'center' },
+    { title: t('licencias.colLeadSource'), dataIndex: 'source', width: 90 }
+  ]
+
+  const licensePanel = (
     <div>
+      {publicDemoUrl?.trim() ? (
+        <Alert
+          type="info"
+          showIcon
+          icon={<LinkOutlined />}
+          style={{ marginBottom: 16 }}
+          message={t('licencias.demoUrlAlertTitle')}
+          description={
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Text copyable>{publicDemoUrl.trim()}</Text>
+              <Button size="small" icon={<CopyOutlined />} onClick={copyDemoUrl}>{t('licencias.demoUrlCopy')}</Button>
+            </Space>
+          }
+        />
+      ) : (
+        <Alert type="warning" showIcon style={{ marginBottom: 16 }} message={t('licencias.demoUrlMissingTitle')} description={t('licencias.demoUrlMissingDesc')} />
+      )}
+
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Title level={4} style={{ margin: 0 }}>{t('licencias.title')}</Title>
         <Space>
@@ -178,7 +278,7 @@ const Licencias = () => {
           { titleKey: 'licencias.statExpired', value: vencidas, color: '#faad14' },
           { titleKey: 'licencias.statDisabled', value: desactivas, color: '#ff4d4f' }
         ].map(s => (
-          <Col span={6} key={s.titleKey}>
+          <Col xs={24} sm={12} md={6} key={s.titleKey}>
             <Card size="small">
               <Statistic title={t(s.titleKey)} value={s.value} valueStyle={s.color ? { color: s.color } : undefined} />
             </Card>
@@ -187,8 +287,42 @@ const Licencias = () => {
       </Row>
 
       <Card>
-        <Table columns={columns} dataSource={data} rowKey="id" loading={loading} size="small" pagination={{ pageSize: 20 }} />
+        <Table columns={columns} dataSource={data} rowKey="id" loading={loading} size="small" pagination={{ pageSize: 20 }} scroll={{ x: 1100 }} />
       </Card>
+    </div>
+  )
+
+  const leadsPanel = (
+    <div>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Title level={4} style={{ margin: 0 }}>{t('licencias.leadsTitle')}</Title>
+        <Button icon={<ReloadOutlined />} onClick={loadLeads}>{t('common.refresh')}</Button>
+      </div>
+      <Alert type="info" showIcon style={{ margin: '12px 0 16px' }} message={t('licencias.leadsHint')} />
+      <Card>
+        <Table
+          columns={leadColumns}
+          dataSource={leads}
+          rowKey="id"
+          loading={leadsLoading}
+          size="small"
+          pagination={{ pageSize: 15 }}
+          locale={{ emptyText: t('licencias.leadsEmpty') }}
+        />
+      </Card>
+    </div>
+  )
+
+  return (
+    <div>
+      <Tabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        items={[
+          { key: 'licenses', label: t('licencias.tabLicenses'), children: licensePanel },
+          { key: 'leads', label: t('licencias.tabLeads'), children: leadsPanel }
+        ]}
+      />
 
       <Modal
         open={modal.open}
@@ -198,6 +332,7 @@ const Licencias = () => {
         okText={newKey ? t('common.close') : t('common.save')}
         cancelButtonProps={newKey ? { style: { display: 'none' } } : undefined}
         destroyOnHidden
+        width={560}
       >
         {newKey ? (
           <Space direction="vertical" style={{ width: '100%', marginTop: 16 }}>
@@ -219,23 +354,51 @@ const Licencias = () => {
             <Form.Item name="cliente_nombre" label={t('licencias.fieldClient')} rules={[{ required: true }]}>
               <Input placeholder={t('licencias.clientPlaceholder')} />
             </Form.Item>
+            <Form.Item name="es_demo" label={t('licencias.fieldEsDemo')} valuePropName="checked">
+              <Switch />
+            </Form.Item>
+            <Text type="secondary" style={{ display: 'block', marginTop: -12, marginBottom: 12, fontSize: 12 }}>
+              {t('licencias.fieldEsDemoHint')}
+            </Text>
+            <Form.Item name="commerce_id" label={t('licencias.fieldCommerceId')}>
+              <AutoComplete
+                allowClear
+                options={commerceOptions}
+                placeholder={t('licencias.fieldCommercePlaceholder')}
+                filterOption={(input, option) =>
+                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                }
+              />
+            </Form.Item>
+            <Text type="secondary" style={{ display: 'block', marginTop: -12, marginBottom: 12, fontSize: 12 }}>
+              {t('licencias.fieldCommerceIdHint')}
+            </Text>
             <Form.Item name="vence_en" label={t('licencias.fieldExpiry')} rules={[{ required: true }]}>
               <DatePicker
                 style={{ width: '100%' }}
                 format="DD/MM/YYYY"
                 renderExtraFooter={() => (
-                  <Button
-                    type="link"
-                    size="small"
-                    icon={<PlusCircleOutlined />}
-                    onClick={() => {
-                      const current = form.getFieldValue('vence_en')
-                      const base = current && current.isAfter(dayjs()) ? current : dayjs()
-                      form.setFieldValue('vence_en', base.add(1, 'month'))
-                    }}
-                  >
-                    {t('licencias.addOneMonth')}
-                  </Button>
+                  <Space wrap>
+                    <Button
+                      type="link"
+                      size="small"
+                      icon={<PlusCircleOutlined />}
+                      onClick={() => {
+                        const current = form.getFieldValue('vence_en')
+                        const base = current && current.isAfter(dayjs()) ? current : dayjs()
+                        form.setFieldValue('vence_en', base.add(1, 'month'))
+                      }}
+                    >
+                      {t('licencias.addOneMonth')}
+                    </Button>
+                    <Button
+                      type="link"
+                      size="small"
+                      onClick={() => form.setFieldValue('vence_en', dayjs().add(10, 'day'))}
+                    >
+                      {t('licencias.addTenDaysDemo')}
+                    </Button>
+                  </Space>
                 )}
               />
             </Form.Item>

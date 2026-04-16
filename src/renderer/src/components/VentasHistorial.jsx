@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import {
-  Row, Col, Table, Button, Typography, Space, Tag, Divider, Modal, message, Popconfirm
+  Row, Col, Table, Button, Typography, Space, Tag, Divider, Modal, message, Popconfirm, DatePicker
 } from 'antd'
 import { EyeOutlined, PrinterOutlined, FileExcelOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
@@ -10,25 +10,39 @@ import useExport from '../hooks/useExport'
 import dayjs from 'dayjs'
 
 const { Text } = Typography
+const { RangePicker } = DatePicker
 
 const HistorialVentas = () => {
   const [ventas, setVentas] = useState([])
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 15, total: 0 })
   const [loading, setLoading] = useState(false)
   const [detalle, setDetalle] = useState(null)
   const [items, setItems] = useState([])
   const [ticketModal, setTicketModal] = useState({ open: false, venta: null, items: [] })
+  const [rango, setRango] = useState(null)
   const user = useAuthStore(s => s.user)
   const { t } = useTranslation()
   const { exportToExcel, exporting } = useExport()
 
-  const loadVentas = async () => {
+  const loadVentas = async (page = pagination.current, pageSize = pagination.pageSize) => {
     setLoading(true)
-    const res = await window.api.ventas.getAll()
-    setVentas(res.data || [])
+    const desde = rango?.[0]?.format('YYYY-MM-DD')
+    const hasta = rango?.[1]?.format('YYYY-MM-DD')
+    const res = await window.api.ventas.getAll(desde, hasta, {
+      paginate: true,
+      page,
+      pageSize
+    })
+    const data = res.data || {}
+    setVentas(data.items || [])
+    setPagination((prev) => ({
+      ...prev,
+      current: data.page || page,
+      pageSize: data.pageSize || pageSize,
+      total: data.total || 0
+    }))
     setLoading(false)
   }
-
-  useEffect(() => { loadVentas() }, [])
 
   const verDetalle = async (venta) => {
     const res = await window.api.ventas.getItems(venta.id)
@@ -46,6 +60,31 @@ const HistorialVentas = () => {
     if (res.ok) { message.success(t('ventas.voidSuccess')); loadVentas() }
     else message.error(res.error)
   }
+
+  const handleTableChange = (nextPagination) => {
+    loadVentas(nextPagination.current, nextPagination.pageSize)
+  }
+
+  const exportAll = async () => {
+    const desde = rango?.[0]?.format('YYYY-MM-DD')
+    const hasta = rango?.[1]?.format('YYYY-MM-DD')
+    const res = await window.api.ventas.getAll(desde, hasta)
+    exportToExcel(exportCols, res.data || [], 'ventas')
+  }
+
+  const handleRangeChange = (values) => {
+    setRango(values)
+    setPagination((prev) => ({ ...prev, current: 1 }))
+  }
+
+  const clearRange = () => {
+    setRango(null)
+    setPagination((prev) => ({ ...prev, current: 1 }))
+  }
+
+  useEffect(() => {
+    loadVentas(1, pagination.pageSize)
+  }, [rango])
 
   const columns = [
     { title: t('ventas.historyColId'), dataIndex: 'id', width: 60 },
@@ -84,12 +123,17 @@ const HistorialVentas = () => {
 
   return (
     <>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 16px 0' }}>
-        <Button
-          icon={<FileExcelOutlined />}
-          onClick={() => exportToExcel(exportCols, ventas, 'ventas')}
-          loading={exporting}
-        >
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '8px 16px 0', flexWrap: 'wrap' }}>
+        <Space wrap>
+          <RangePicker
+            value={rango}
+            format="DD/MM/YYYY"
+            onChange={handleRangeChange}
+            allowEmpty={[true, true]}
+          />
+          <Button onClick={clearRange}>{t('common.showAll')}</Button>
+        </Space>
+        <Button icon={<FileExcelOutlined />} onClick={exportAll} loading={exporting}>
           {t('common.exportExcel')}
         </Button>
       </div>
@@ -99,7 +143,14 @@ const HistorialVentas = () => {
         rowKey="id"
         loading={loading}
         size="small"
-        pagination={{ pageSize: 15, showTotal: total => t('ventas.pagTotal', { total }) }}
+        onChange={handleTableChange}
+        pagination={{
+          current: pagination.current,
+          pageSize: pagination.pageSize,
+          total: pagination.total,
+          showSizeChanger: true,
+          showTotal: total => t('ventas.pagTotal', { total })
+        }}
         style={{ padding: '0 16px' }}
       />
       <Modal

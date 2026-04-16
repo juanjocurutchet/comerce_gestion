@@ -8,7 +8,8 @@ import {
   MenuFoldOutlined, MenuUnfoldOutlined, BellOutlined,
   SettingOutlined, CloudUploadOutlined,
   BulbOutlined, BulbFilled, FileTextOutlined, SafetyCertificateOutlined,
-  QuestionCircleOutlined, UsergroupAddOutlined, MinusCircleOutlined, TagsOutlined
+  QuestionCircleOutlined, UsergroupAddOutlined, MinusCircleOutlined, TagsOutlined,
+  ShopOutlined
 } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../store/authStore'
@@ -39,6 +40,7 @@ const MENU_DEFS = [
   { type: 'divider' },
   { key: '/backup',       icon: <CloudUploadOutlined />,         navKey: 'backup',        feature: 'backup' },
   { key: '/configuracion',icon: <SettingOutlined />,             navKey: 'configuracion', feature: 'configuracion' },
+  { key: '/comercios',    icon: <ShopOutlined />,                navKey: 'comercios',     feature: '__admin__' },
   { key: '/licencias',    icon: <SafetyCertificateOutlined />,   navKey: 'licencias',     feature: '__admin__' },
   { type: 'divider' },
   { key: '/ayuda',        icon: <QuestionCircleOutlined />,      navKey: 'ayuda',         feature: null }

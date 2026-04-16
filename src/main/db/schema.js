@@ -214,6 +214,79 @@ export function initSchema(db, clientName = '') {
   try { db.exec('ALTER TABLE movimientos_stock ADD COLUMN fecha_vencimiento TEXT') } catch {}
   try { db.exec('ALTER TABLE ventas ADD COLUMN cliente_id INTEGER REFERENCES clientes(id)') } catch {}
   try { db.exec('ALTER TABLE clientes ADD COLUMN lista_precio_id INTEGER REFERENCES listas_precio(id)') } catch {}
+  for (const table of [
+    'usuarios',
+    'categorias',
+    'proveedores',
+    'productos',
+    'ventas',
+    'venta_items',
+    'movimientos_stock',
+    'cajas',
+    'movimientos_caja',
+    'configuracion',
+    'cotizaciones',
+    'cotizacion_items',
+    'clientes',
+    'cuenta_corriente',
+    'gastos',
+    'listas_precio',
+    'lista_precio_items'
+  ]) {
+    try { db.exec(`ALTER TABLE ${table} ADD COLUMN commerce_id TEXT`) } catch {}
+    try { db.exec(`ALTER TABLE ${table} ADD COLUMN sync_id TEXT`) } catch {}
+    try { db.exec(`ALTER TABLE ${table} ADD COLUMN updated_at TEXT`) } catch {}
+    try { db.exec(`ALTER TABLE ${table} ADD COLUMN deleted_at TEXT`) } catch {}
+  }
+
+  try {
+    const cfgCommerce = db.prepare("SELECT valor FROM configuracion WHERE clave='commerceId'").get()
+    if (!cfgCommerce?.valor) {
+      db.prepare(`
+        INSERT INTO configuracion (clave, valor)
+        VALUES ('commerceId', lower(hex(randomblob(16))))
+        ON CONFLICT(clave) DO NOTHING
+      `).run()
+    }
+  } catch {}
+
+  for (const table of [
+    'usuarios',
+    'categorias',
+    'proveedores',
+    'productos',
+    'ventas',
+    'venta_items',
+    'movimientos_stock',
+    'cajas',
+    'movimientos_caja',
+    'configuracion',
+    'cotizaciones',
+    'cotizacion_items',
+    'clientes',
+    'cuenta_corriente',
+    'gastos',
+    'listas_precio',
+    'lista_precio_items'
+  ]) {
+    try {
+      db.prepare(`
+        UPDATE ${table}
+        SET commerce_id = COALESCE(commerce_id, (SELECT valor FROM configuracion WHERE clave='commerceId' LIMIT 1)),
+            sync_id = COALESCE(sync_id, lower(hex(randomblob(16)))),
+            updated_at = COALESCE(updated_at, created_at, fecha, datetime('now','localtime'))
+      `).run()
+    } catch {
+      try {
+        db.prepare(`
+          UPDATE ${table}
+          SET commerce_id = COALESCE(commerce_id, (SELECT valor FROM configuracion WHERE clave='commerceId' LIMIT 1)),
+              sync_id = COALESCE(sync_id, lower(hex(randomblob(16)))),
+              updated_at = COALESCE(updated_at, datetime('now','localtime'))
+        `).run()
+      } catch {}
+    }
+  }
 
   for (const nombre of ['General', 'Bebidas', 'Alimentos', 'Limpieza', 'Electrónica', 'Ropa']) {
     try {

@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { Result, Button, Typography, Space, Alert, Input, Form, Card } from 'antd'
+import React, { useMemo, useState } from 'react'
+import { Result, Button, Typography, Space, Alert, Input, Form, Card, Modal, message } from 'antd'
 import { LockOutlined, WifiOutlined, CalendarOutlined, StopOutlined, KeyOutlined } from '@ant-design/icons'
 import nexoLogo from '../assets/nexo-commerce-logo.png'
 
@@ -111,5 +111,76 @@ export const LicenseWarning = ({ status }) => {
         </span>
       }
     />
+  )
+}
+
+export const TrialUpgradeModal = ({ status, visible, onClose }) => {
+  const [form] = Form.useForm()
+  const [sending, setSending] = useState(false)
+
+  const isExpired = status?.daysLeft < 0
+  const daysLeft = Number(status?.daysLeft ?? 0)
+  const title = useMemo(() => {
+    if (isExpired) return 'Tu demo finalizó'
+    return `Tu demo vence en ${daysLeft} día${daysLeft === 1 ? '' : 's'}`
+  }, [isExpired, daysLeft])
+
+  const submit = async () => {
+    const values = await form.validateFields()
+    setSending(true)
+    const res = await window.api.license.requestUpgrade({
+      client_name: values.client_name,
+      contact_name: values.contact_name,
+      contact_email: values.contact_email,
+      contact_phone: values.contact_phone || '',
+      commerce_size: values.commerce_size || '',
+      current_days_left: daysLeft,
+      source: typeof window !== 'undefined' && window.__IS_PWA__ ? 'pwa' : 'desktop'
+    })
+    setSending(false)
+    if (res?.ok) {
+      message.success('Solicitud enviada. Te contactamos para activar el plan pago.')
+      onClose?.()
+      return
+    }
+    message.error(res?.error || 'No se pudo enviar la solicitud.')
+  }
+
+  return (
+    <Modal
+      open={visible}
+      title={title}
+      onCancel={onClose}
+      onOk={submit}
+      okText="Quiero pasar a plan pago"
+      confirmLoading={sending}
+      cancelText="Más tarde"
+      destroyOnHidden
+    >
+      <Alert
+        type={isExpired ? 'error' : 'warning'}
+        showIcon
+        style={{ marginBottom: 12 }}
+        message={isExpired ? 'La demo está vencida' : 'Demo por vencer'}
+        description="Completá estos datos para que podamos darte el alta del plan pago sin perder información."
+      />
+      <Form form={form} layout="vertical">
+        <Form.Item name="client_name" label="Nombre del comercio" rules={[{ required: true }]}>
+          <Input />
+        </Form.Item>
+        <Form.Item name="contact_name" label="Nombre del responsable" rules={[{ required: true }]}>
+          <Input />
+        </Form.Item>
+        <Form.Item name="contact_email" label="Email" rules={[{ required: true, type: 'email' }]}>
+          <Input />
+        </Form.Item>
+        <Form.Item name="contact_phone" label="Teléfono / WhatsApp">
+          <Input />
+        </Form.Item>
+        <Form.Item name="commerce_size" label="Tamaño estimado (usuarios, sucursales)">
+          <Input />
+        </Form.Item>
+      </Form>
+    </Modal>
   )
 }

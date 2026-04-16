@@ -2,6 +2,7 @@
   "clientId": "default",
   "clientName": "Shango Tech",
   "isAdmin": true,
+  "publicDemoUrl": "",
   "features": {
     "ventas": true,
     "cotizaciones": true,

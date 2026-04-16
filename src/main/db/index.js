@@ -149,7 +149,35 @@ export const productosDB = {
 }
 
 export const ventasDB = {
-  getAll: (desde, hasta) => {
+  getAll: (desde, hasta, options = {}) => {
+    const paginate = options?.paginate === true
+    const page = Math.max(1, Number(options?.page) || 1)
+    const pageSize = Math.max(1, Number(options?.pageSize) || 15)
+    if (paginate) {
+      const offset = (page - 1) * pageSize
+      if (desde && hasta) {
+        const items = getDb().prepare(`
+          SELECT v.*, u.nombre as usuario_nombre
+          FROM ventas v LEFT JOIN usuarios u ON v.usuario_id=u.id
+          WHERE date(v.fecha) BETWEEN ? AND ?
+          ORDER BY v.fecha DESC
+          LIMIT ? OFFSET ?
+        `).all(desde, hasta, pageSize, offset)
+        const total = getDb().prepare(`
+          SELECT COUNT(*) as total FROM ventas
+          WHERE date(fecha) BETWEEN ? AND ?
+        `).get(desde, hasta)?.total || 0
+        return { items, total, page, pageSize }
+      }
+      const items = getDb().prepare(`
+        SELECT v.*, u.nombre as usuario_nombre
+        FROM ventas v LEFT JOIN usuarios u ON v.usuario_id=u.id
+        ORDER BY v.fecha DESC
+        LIMIT ? OFFSET ?
+      `).all(pageSize, offset)
+      const total = getDb().prepare('SELECT COUNT(*) as total FROM ventas').get()?.total || 0
+      return { items, total, page, pageSize }
+    }
     const q = desde && hasta
       ? "SELECT v.*, u.nombre as usuario_nombre FROM ventas v LEFT JOIN usuarios u ON v.usuario_id=u.id WHERE date(v.fecha) BETWEEN ? AND ? ORDER BY v.fecha DESC"
       : "SELECT v.*, u.nombre as usuario_nombre FROM ventas v LEFT JOIN usuarios u ON v.usuario_id=u.id ORDER BY v.fecha DESC LIMIT 100"
@@ -324,12 +352,29 @@ export const cajaDB = {
 }
 
 export const cotizacionesDB = {
-  getAll: () => getDb().prepare(`
-    SELECT c.*, u.nombre as usuario_nombre
-    FROM cotizaciones c
-    LEFT JOIN usuarios u ON c.usuario_id = u.id
-    ORDER BY c.id DESC LIMIT 100
-  `).all(),
+  getAll: (options = {}) => {
+    const paginate = options?.paginate === true
+    const page = Math.max(1, Number(options?.page) || 1)
+    const pageSize = Math.max(1, Number(options?.pageSize) || 15)
+    if (paginate) {
+      const offset = (page - 1) * pageSize
+      const items = getDb().prepare(`
+        SELECT c.*, u.nombre as usuario_nombre
+        FROM cotizaciones c
+        LEFT JOIN usuarios u ON c.usuario_id = u.id
+        ORDER BY c.id DESC
+        LIMIT ? OFFSET ?
+      `).all(pageSize, offset)
+      const total = getDb().prepare('SELECT COUNT(*) as total FROM cotizaciones').get()?.total || 0
+      return { items, total, page, pageSize }
+    }
+    return getDb().prepare(`
+      SELECT c.*, u.nombre as usuario_nombre
+      FROM cotizaciones c
+      LEFT JOIN usuarios u ON c.usuario_id = u.id
+      ORDER BY c.id DESC LIMIT 100
+    `).all()
+  },
 
   getById: (id) => getDb().prepare(`
     SELECT c.*, u.nombre as usuario_nombre
@@ -496,7 +541,35 @@ export const listasPrecioDB = {
 }
 
 export const gastosDB = {
-  getAll: (desde, hasta) => {
+  getAll: (desde, hasta, options = {}) => {
+    const paginate = options?.paginate === true
+    const page = Math.max(1, Number(options?.page) || 1)
+    const pageSize = Math.max(1, Number(options?.pageSize) || 20)
+    if (paginate) {
+      const offset = (page - 1) * pageSize
+      if (desde && hasta) {
+        const items = getDb().prepare(`
+          SELECT g.*, u.nombre as usuario_nombre
+          FROM gastos g LEFT JOIN usuarios u ON g.usuario_id=u.id
+          WHERE date(g.fecha) BETWEEN ? AND ?
+          ORDER BY g.fecha DESC
+          LIMIT ? OFFSET ?
+        `).all(desde, hasta, pageSize, offset)
+        const total = getDb().prepare(`
+          SELECT COUNT(*) as total FROM gastos
+          WHERE date(fecha) BETWEEN ? AND ?
+        `).get(desde, hasta)?.total || 0
+        return { items, total, page, pageSize }
+      }
+      const items = getDb().prepare(`
+        SELECT g.*, u.nombre as usuario_nombre
+        FROM gastos g LEFT JOIN usuarios u ON g.usuario_id=u.id
+        ORDER BY g.fecha DESC
+        LIMIT ? OFFSET ?
+      `).all(pageSize, offset)
+      const total = getDb().prepare('SELECT COUNT(*) as total FROM gastos').get()?.total || 0
+      return { items, total, page, pageSize }
+    }
     const q = desde && hasta
       ? `SELECT g.*, u.nombre as usuario_nombre FROM gastos g LEFT JOIN usuarios u ON g.usuario_id=u.id WHERE date(g.fecha) BETWEEN ? AND ? ORDER BY g.fecha DESC`
       : `SELECT g.*, u.nombre as usuario_nombre FROM gastos g LEFT JOIN usuarios u ON g.usuario_id=u.id ORDER BY g.fecha DESC LIMIT 100`

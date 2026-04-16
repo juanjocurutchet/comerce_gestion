@@ -1,0 +1,29 @@
+---
+description: Contexto PWA Nexo Commerce — arquitectura offline, backup JSON y roadmap
+alwaysApply: true
+---
+
+# PWA y datos locales (Nexo Commerce)
+
+## Objetivo
+Migrar de Electron a **PWA web** (menos bloqueos de antivirus), mismo diseño, **offline** con IndexedDB, **sync** futuro con Supabase, **licencia/demo** (Supabase opcional vía `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`).
+
+## Archivos clave
+- **Build PWA:** `vite.pwa.config.js` — entrada `index-pwa.html`, Workbox.
+- **Entrada:** `src/renderer/index-pwa.html`, `src/renderer/main-pwa.jsx` — `await bootPwaApi()` antes de montar React.
+- **API web:** `src/renderer/src/pwa/bootPwaApi.js`, `pwaMockApi.js`, `ipcShape.js` (`ipcOk` / `ipcErr`).
+- **DB:** `src/shared/db-init.js` (`window.__IS_PWA__` → adaptador IndexedDB), `src/adapters/indexeddb/`, `src/renderer/src/pwa/pwaDbBridge.js`, `@shared/db/interface.js`.
+- **Backup JSON:** formato compartido `src/shared/webSnapshotFormat.js`; PWA: `src/renderer/src/pwa/pwaSnapshot.js` + `resetIndexedDbCache()`; Electron: `src/main/backup.js` (`backup:exportWeb` / `backup:importWeb` sobre SQLite).
+- **UI respaldo:** `src/renderer/src/pages/Backup.jsx` — en PWA exportar/importar JSON; nuevas cadenas en **`src/renderer/src/i18n/locales/es.json`** y **`en.json`** bajo `backup.*`.
+
+## Convenciones
+- No usar `require` en el bundle PWA; solo ESM.
+- Respuestas mock/bridge: forma `{ ok, data?, error? }` coherente con Electron IPC donde aplique.
+- Cualquier texto nuevo en UI PWA: añadir claves en **es** y **en**.
+
+## Roadmap (prioridad sugerida)
+1. Probar flujo exportar JSON → perfil limpio / otra pestaña → importar → verificar datos tras reload.
+2. Snapshot: validación de versión/tamaño/JSON; migraciones cuando suba `SNAPSHOT_VERSION`.
+3. Adaptador IndexedDB: seguir alineando con SQLite (gastos con filtros, **Ventas** con rango de fechas desde UI si hace falta, etc.).
+4. **Sync** Supabase cuando exista esquema, auth y RLS.
+5. Opcional: seed de datos demo solo en PWA.

@@ -3,11 +3,15 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 
 app.setPath('userData', join(app.getPath('appData'), 'GestionComercio'))
+
+// Importar abstracción de DB y adaptador SQLite
+import { sqliteAdapter } from '../adapters/sqlite/index.js'
+import { setDbAdapter } from '../shared/db/interface.js'
 import {
   usuariosDB, categoriasDB, proveedoresDB, productosDB,
   ventasDB, stockDB, cajaDB, configDB, reportesDB, cotizacionesDB,
   clientesDB, cuentaCorrienteDB, gastosDB, listasPrecioDB
-} from './db/index.js'
+} from '../shared/db/interface.js'
 import { setupPrint } from './print.js'
 import { setupBackup } from './backup.js'
 import { setupSeed } from './seed.js'
@@ -49,9 +53,13 @@ function createWindow() {
   return win
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   electronApp.setAppUserModelId('com.comercio.gestion')
   app.on('browser-window-created', (_, window) => optimizer.watchWindowShortcuts(window))
+  
+  // Configurar adaptador de base de datos SQLite
+  setDbAdapter(sqliteAdapter)
+  
   setupClient()
   setupLicense()
   setupPrint()
@@ -68,7 +76,8 @@ app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(
 function handle(channel, fn) {
   ipcMain.handle(channel, async (_event, ...args) => {
     try {
-      return { ok: true, data: fn(...args) }
+      const result = await fn(...args)
+      return { ok: true, data: result }
     } catch (e) {
       return { ok: false, error: e.message }
     }
@@ -102,7 +111,7 @@ handle('productos:sumarStock', (id, cantidad, usuarioId, fechaVencLote) => produ
 handle('productos:update', (d) => productosDB.update(d))
 handle('productos:delete', (id) => productosDB.delete(id))
 
-handle('ventas:getAll', (d, h) => ventasDB.getAll(d, h))
+handle('ventas:getAll', (d, h, options) => ventasDB.getAll(d, h, options))
 handle('ventas:getById', (id) => ventasDB.getById(id))
 handle('ventas:getItems', (id) => ventasDB.getItems(id))
 handle('ventas:create', (v, i, u, clienteId) => ventasDB.create(v, i, u, clienteId))
@@ -122,13 +131,20 @@ handle('caja:addMovimiento', (d) => cajaDB.addMovimiento(d))
 
 handle('config:getAll', () => configDB.getAll())
 handle('config:setMany', (obj) => configDB.setMany(obj))
+handle('cloudAuth:getSession', () => ({ configured: false, session: null, reason: 'desktop_not_supported_yet' }))
+handle('cloudAuth:signIn', () => { throw new Error('La autenticación cloud PWA todavía no está disponible en escritorio.') })
+handle('cloudAuth:signOut', () => true)
+handle('sync:getStatus', () => ({ configured: false, reason: 'desktop_not_supported_yet' }))
+handle('sync:pullProducts', () => { throw new Error('La sincronización PWA con Supabase todavía no está disponible en escritorio.') })
+handle('sync:pushProducts', () => { throw new Error('La sincronización PWA con Supabase todavía no está disponible en escritorio.') })
+handle('sync:syncProducts', () => { throw new Error('La sincronización PWA con Supabase todavía no está disponible en escritorio.') })
 
 handle('reportes:ventasPorDia', (d, h) => reportesDB.ventasPorDia(d, h))
 handle('reportes:ventasPorProducto', (d, h) => reportesDB.ventasPorProducto(d, h))
 handle('reportes:ventasPorCategoria', (d, h) => reportesDB.ventasPorCategoria(d, h))
 handle('reportes:resumenGeneral', () => reportesDB.resumenGeneral())
 
-handle('cotizaciones:getAll', () => cotizacionesDB.getAll())
+handle('cotizaciones:getAll', (options) => cotizacionesDB.getAll(options))
 handle('cotizaciones:getById', (id) => cotizacionesDB.getById(id))
 handle('cotizaciones:getItems', (id) => cotizacionesDB.getItems(id))
 handle('cotizaciones:create', (c, items, uid) => cotizacionesDB.create(c, items, uid))
@@ -144,8 +160,10 @@ handle('cuentaCorriente:getAllSaldos', () => cuentaCorrienteDB.getAllSaldos())
 handle('cuentaCorriente:getMovimientos', (id) => cuentaCorrienteDB.getMovimientos(id))
 handle('cuentaCorriente:getSaldo', (id) => cuentaCorrienteDB.getSaldo(id))
 handle('cuentaCorriente:registrarPago', (clienteId, monto, desc, uid) => cuentaCorrienteDB.registrarPago(clienteId, monto, desc, uid))
+handle('cuentaCorriente:registrarCargo', (clienteId, ventaId, monto, desc, uid) =>
+  cuentaCorrienteDB.registrarCargo(clienteId, ventaId, monto, desc, uid))
 
-handle('gastos:getAll', (d, h) => gastosDB.getAll(d, h))
+handle('gastos:getAll', (d, h, options) => gastosDB.getAll(d, h, options))
 handle('gastos:create', (d, uid) => gastosDB.create(d, uid))
 handle('gastos:delete', (id) => gastosDB.delete(id))
 handle('gastos:resumenMes', () => gastosDB.resumenMes())

@@ -13,16 +13,28 @@ const ESTADO_COLOR = { pendiente: 'gold', aceptada: 'green', rechazada: 'red', v
 
 const HistorialCotizaciones = () => {
   const [cotizaciones, setCotizaciones] = useState([])
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 15, total: 0 })
   const [loading, setLoading] = useState(false)
   const [detalle, setDetalle] = useState(null)
   const [items, setItems] = useState([])
   const [loadingPdf, setLoadingPdf] = useState(false)
   const { t } = useTranslation()
 
-  const loadCotizaciones = async () => {
+  const loadCotizaciones = async (page = pagination.current, pageSize = pagination.pageSize) => {
     setLoading(true)
-    const res = await window.api.cotizaciones.getAll()
-    setCotizaciones(res.data || [])
+    const res = await window.api.cotizaciones.getAll({
+      paginate: true,
+      page,
+      pageSize
+    })
+    const data = res.data || {}
+    setCotizaciones(data.items || [])
+    setPagination((prev) => ({
+      ...prev,
+      current: data.page || page,
+      pageSize: data.pageSize || pageSize,
+      total: data.total || 0
+    }))
     setLoading(false)
   }
 
@@ -55,6 +67,10 @@ const HistorialCotizaciones = () => {
     const res = await window.api.cotizaciones.delete(id)
     if (res.ok) { message.success(t('cotizaciones.deleteSuccess')); loadCotizaciones() }
     else message.error(res.error)
+  }
+
+  const handleTableChange = (nextPagination) => {
+    loadCotizaciones(nextPagination.current, nextPagination.pageSize)
   }
 
   const columns = [
@@ -99,7 +115,14 @@ const HistorialCotizaciones = () => {
         rowKey="id"
         loading={loading}
         size="small"
-        pagination={{ pageSize: 15, showTotal: total => t('cotizaciones.pagTotal', { total }) }}
+        onChange={handleTableChange}
+        pagination={{
+          current: pagination.current,
+          pageSize: pagination.pageSize,
+          total: pagination.total,
+          showSizeChanger: true,
+          showTotal: total => t('cotizaciones.pagTotal', { total })
+        }}
         style={{ padding: '8px 16px' }}
       />
 

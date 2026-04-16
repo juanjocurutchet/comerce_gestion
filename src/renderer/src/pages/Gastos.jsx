@@ -10,24 +10,42 @@ import useExport from '../hooks/useExport'
 import dayjs from 'dayjs'
 
 const { Title, Text } = Typography
+const { RangePicker } = DatePicker
 
 const CATEGORIAS = ['alquiler', 'servicios', 'mercaderia', 'sueldos', 'impuestos', 'otros']
 
 const Gastos = () => {
   const [gastos, setGastos] = useState([])
+  const [pagination, setPagination] = useState({ current: 1, pageSize: 20, total: 0 })
   const [loading, setLoading] = useState(false)
   const [modal, setModal] = useState(false)
+  const [rango, setRango] = useState(null)
   const [form] = Form.useForm()
   const user = useAuthStore(s => s.user)
   const { t } = useTranslation()
   const { exportToExcel, exporting } = useExport()
 
-  const loadGastos = async () => {
-    const res = await window.api.gastos.getAll()
-    setGastos(res.data || [])
+  const loadGastos = async (page = pagination.current, pageSize = pagination.pageSize) => {
+    setLoading(true)
+    const desde = rango?.[0]?.format('YYYY-MM-DD')
+    const hasta = rango?.[1]?.format('YYYY-MM-DD')
+    const res = await window.api.gastos.getAll(desde, hasta, {
+      paginate: true,
+      page,
+      pageSize
+    })
+    const data = res.data || {}
+    setGastos(data.items || [])
+    setPagination((prev) => ({
+      ...prev,
+      current: data.page || page,
+      pageSize: data.pageSize || pageSize,
+      total: data.total || 0
+    }))
+    setLoading(false)
   }
 
-  useEffect(() => { loadGastos() }, [])
+  useEffect(() => { loadGastos(1, pagination.pageSize) }, [rango])
 
   const handleSave = async () => {
     const values = await form.validateFields()
@@ -49,7 +67,11 @@ const Gastos = () => {
     else message.error(res.error)
   }
 
-  const handleExport = () => {
+  const handleExport = async () => {
+    const desde = rango?.[0]?.format('YYYY-MM-DD')
+    const hasta = rango?.[1]?.format('YYYY-MM-DD')
+    const res = await window.api.gastos.getAll(desde, hasta)
+    const allGastos = res.data || []
     const cols = [
       { header: t('gastos.colDate'), key: 'fecha' },
       { header: t('gastos.colCategory'), key: 'categoria' },
@@ -57,10 +79,24 @@ const Gastos = () => {
       { header: t('gastos.colAmount'), key: 'monto' },
       { header: t('gastos.colUser'), key: 'usuario_nombre' }
     ]
-    exportToExcel(cols, gastos, 'gastos')
+    exportToExcel(cols, allGastos, 'gastos')
   }
 
   const total = gastos.reduce((a, g) => a + g.monto, 0)
+
+  const handleTableChange = (nextPagination) => {
+    loadGastos(nextPagination.current, nextPagination.pageSize)
+  }
+
+  const handleRangeChange = (values) => {
+    setRango(values)
+    setPagination((prev) => ({ ...prev, current: 1 }))
+  }
+
+  const clearRange = () => {
+    setRango(null)
+    setPagination((prev) => ({ ...prev, current: 1 }))
+  }
 
   const columns = [
     {
@@ -92,11 +128,20 @@ const Gastos = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 112px)', overflow: 'hidden' }}>
-      <div className="page-header" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+      <div className="page-header" style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
         <Title level={4} style={{ margin: 0 }}>{t('gastos.title')}</Title>
         <Button type="primary" icon={<PlusOutlined />} onClick={() => { setModal(true); form.resetFields() }}>
           {t('gastos.newExpense')}
         </Button>
+        <Space wrap>
+          <RangePicker
+            value={rango}
+            format="DD/MM/YYYY"
+            onChange={handleRangeChange}
+            allowEmpty={[true, true]}
+          />
+          <Button onClick={clearRange}>{t('common.showAll')}</Button>
+        </Space>
         <Button icon={<FileExcelOutlined />} onClick={handleExport} loading={exporting}>
           {t('common.exportExcel')}
         </Button>
@@ -115,9 +160,16 @@ const Gastos = () => {
           columns={columns}
           dataSource={gastos}
           rowKey="id"
+          loading={loading}
+          onChange={handleTableChange}
           size="small"
           locale={{ emptyText: t('gastos.noExpenses') }}
-          pagination={{ pageSize: 20, showSizeChanger: false }}
+          pagination={{
+            current: pagination.current,
+            pageSize: pagination.pageSize,
+            total: pagination.total,
+            showSizeChanger: true
+          }}
         />
       </Card>
 

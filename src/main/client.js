@@ -31,7 +31,7 @@ function loadClientConfig() {
       return JSON.parse(readFileSync(jsonPath, 'utf-8'))
     } catch {}
   }
-  return { clientId: 'default', clientName: '', features: DEFAULT_FEATURES }
+  return { clientId: 'default', clientName: '', features: DEFAULT_FEATURES, publicDemoUrl: '' }
 }
 
 function loadLogo() {
@@ -52,6 +52,7 @@ export function getClientConfig() {
   if (!_clientConfig) {
     _clientConfig = loadClientConfig()
     _clientConfig.features = { ...DEFAULT_FEATURES, ..._clientConfig.features }
+    if (_clientConfig.publicDemoUrl == null) _clientConfig.publicDemoUrl = ''
   }
   return _clientConfig
 }

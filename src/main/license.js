@@ -181,4 +181,50 @@ export function setupLicense() {
       return { ok: true }
     } catch (e) { return { ok: false, error: e.message } }
   })
+
+  ipcMain.handle('license:listUpgradeRequests', async () => {
+    const cfg = loadSupabaseConfig()
+    if (!cfg?.serviceKey) return { ok: false, error: 'Sin acceso admin' }
+    try {
+      const rows = await adminFetch('GET', 'upgrade_requests?select=*&order=requested_at.desc', null, cfg.serviceKey, cfg.url)
+      return { ok: true, data: rows }
+    } catch (e) {
+      return { ok: false, error: e.message }
+    }
+  })
+
+  ipcMain.handle('license:listCommerces', async () => {
+    const cfg = loadSupabaseConfig()
+    if (!cfg?.serviceKey) return { ok: false, error: 'Sin acceso admin' }
+    try {
+      const rows = await adminFetch('GET', 'commerces?select=id,nombre,activo&order=nombre.asc', null, cfg.serviceKey, cfg.url)
+      return { ok: true, data: rows }
+    } catch (e) {
+      return { ok: false, error: e.message }
+    }
+  })
+
+  ipcMain.handle('license:requestUpgrade', async (_e, payload) => {
+    const cfg = loadSupabaseConfig()
+    if (!cfg?.url || !cfg?.anonKey) return { ok: false, error: 'Sin configuración de servidor' }
+    try {
+      const res = await fetch(`${cfg.url}/rest/v1/upgrade_requests`, {
+        method: 'POST',
+        headers: {
+          apikey: cfg.anonKey,
+          Authorization: `Bearer ${cfg.anonKey}`,
+          'Content-Type': 'application/json',
+          Prefer: 'return=minimal'
+        },
+        body: JSON.stringify({
+          ...payload,
+          requested_at: new Date().toISOString()
+        })
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: e.message || 'No se pudo enviar la solicitud.' }
+    }
+  })
 }

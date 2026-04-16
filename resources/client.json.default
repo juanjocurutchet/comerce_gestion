@@ -2,5 +2,6 @@
   "clientId": "default",
   "clientName": "",
   "isAdmin": false,
+  "publicDemoUrl": "",
   "features": {}
 }

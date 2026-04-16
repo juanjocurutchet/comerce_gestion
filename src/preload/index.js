@@ -42,7 +42,7 @@ contextBridge.exposeInMainWorld('api', {
     updatePreciosMasivo: (pct, catId) => invoke('productos:updatePreciosMasivo', pct, catId)
   },
   ventas: {
-    getAll: (d, h) => invoke('ventas:getAll', d, h),
+    getAll: (d, h, options) => invoke('ventas:getAll', d, h, options),
     getById: (id) => invoke('ventas:getById', id),
     getItems: (id) => invoke('ventas:getItems', id),
     create: (v, i, u, clienteId) => invoke('ventas:create', v, i, u, clienteId),
@@ -71,7 +71,20 @@ contextBridge.exposeInMainWorld('api', {
     getList: () => invoke('backup:getList'),
     chooseDir: () => invoke('backup:chooseDir'),
     restore: (path) => invoke('backup:restore', path),
-    delete: (path) => invoke('backup:delete', path)
+    delete: (path) => invoke('backup:delete', path),
+    exportWeb: () => invoke('backup:exportWeb'),
+    importWeb: (jsonText) => invoke('backup:importWeb', jsonText)
+  },
+  sync: {
+    getStatus: () => invoke('sync:getStatus'),
+    pullProducts: (options) => invoke('sync:pullProducts', options),
+    pushProducts: (options) => invoke('sync:pushProducts', options),
+    syncProducts: (options) => invoke('sync:syncProducts', options)
+  },
+  cloudAuth: {
+    getSession: () => invoke('cloudAuth:getSession'),
+    signIn: (email, password) => invoke('cloudAuth:signIn', email, password),
+    signOut: () => invoke('cloudAuth:signOut')
   },
   config: {
     getAll: () => invoke('config:getAll'),
@@ -87,7 +100,7 @@ contextBridge.exposeInMainWorld('api', {
     resumenGeneral: () => invoke('reportes:resumenGeneral')
   },
   cotizaciones: {
-    getAll: () => invoke('cotizaciones:getAll'),
+    getAll: (options) => invoke('cotizaciones:getAll', options),
     getById: (id) => invoke('cotizaciones:getById', id),
     getItems: (id) => invoke('cotizaciones:getItems', id),
     create: (c, items, uid) => invoke('cotizaciones:create', c, items, uid),
@@ -105,7 +118,10 @@ contextBridge.exposeInMainWorld('api', {
     getAll: () => invoke('license:getAll'),
     create: (payload) => invoke('license:create', payload),
     update: (id, payload) => invoke('license:update', id, payload),
-    delete: (id) => invoke('license:delete', id)
+    delete: (id) => invoke('license:delete', id),
+    requestUpgrade: (payload) => invoke('license:requestUpgrade', payload),
+    listUpgradeRequests: () => invoke('license:listUpgradeRequests'),
+    listCommerces: () => invoke('license:listCommerces')
   },
   clientes: {
     getAll: () => invoke('clientes:getAll'),
@@ -117,10 +133,12 @@ contextBridge.exposeInMainWorld('api', {
     getAllSaldos: () => invoke('cuentaCorriente:getAllSaldos'),
     getMovimientos: (id) => invoke('cuentaCorriente:getMovimientos', id),
     getSaldo: (id) => invoke('cuentaCorriente:getSaldo', id),
-    registrarPago: (clienteId, monto, desc, uid) => invoke('cuentaCorriente:registrarPago', clienteId, monto, desc, uid)
+    registrarPago: (clienteId, monto, desc, uid) => invoke('cuentaCorriente:registrarPago', clienteId, monto, desc, uid),
+    registrarCargo: (clienteId, ventaId, monto, desc, uid) =>
+      invoke('cuentaCorriente:registrarCargo', clienteId, ventaId, monto, desc, uid)
   },
   gastos: {
-    getAll: (d, h) => invoke('gastos:getAll', d, h),
+    getAll: (d, h, options) => invoke('gastos:getAll', d, h, options),
     create: (d, uid) => invoke('gastos:create', d, uid),
     delete: (id) => invoke('gastos:delete', id),
     resumenMes: () => invoke('gastos:resumenMes')
