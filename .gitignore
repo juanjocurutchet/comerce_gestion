@@ -1,6 +1,8 @@
 node_modules/
 out/
 dist/
+# Service worker y Workbox generados por vite-plugin-pwa en dev (hashes cambian; no versionar).
+src/renderer/dev-dist/
 *.db
 *.db-shm
 *.db-wal

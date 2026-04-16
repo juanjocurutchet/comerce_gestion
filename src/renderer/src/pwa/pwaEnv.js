@@ -1,7 +1,9 @@
 /** Configuración pública Supabase para el build PWA (Vite). */
 export function getPublicSupabaseConfig() {
-  const url = (import.meta.env?.VITE_SUPABASE_URL || '').replace(/\/$/, '')
-  const anonKey = import.meta.env?.VITE_SUPABASE_ANON_KEY || ''
+  const url = String(import.meta.env?.VITE_SUPABASE_URL || '')
+    .trim()
+    .replace(/\/$/, '')
+  const anonKey = String(import.meta.env?.VITE_SUPABASE_ANON_KEY || '').trim()
   return { url, anonKey }
 }
 

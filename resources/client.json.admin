@@ -2,7 +2,7 @@
   "clientId": "default",
   "clientName": "Shango Tech",
   "isAdmin": true,
-  "publicDemoUrl": "",
+  "publicDemoUrl": "https://shangocommerce.shango-tech.net.ar/",
   "features": {
     "ventas": true,
     "cotizaciones": true,

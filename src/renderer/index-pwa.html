@@ -72,21 +72,6 @@
     
     <!-- React App Root -->
     <div id="root"></div>
-    
-    <script type="module">
-      // PWA Environment Variables
-      window.__IS_PWA__ = true;
-      window.__IS_ELECTRON__ = false;
-      
-      
-      // Hide loading when DOM is ready
-      document.addEventListener('DOMContentLoaded', () => {
-        setTimeout(() => {
-          document.body.classList.add('app-loaded');
-        }, 1000);
-      });
-    </script>
-    
     <script type="module" src="./main-pwa.jsx"></script>
   </body>
 </html>

@@ -14,6 +14,11 @@ import i18n from './src/i18n/index.js'
 import { useThemeStore } from './src/store/themeStore'
 import { useLanguageStore } from './src/store/languageStore'
 
+if (typeof window !== 'undefined') {
+  window.__IS_PWA__ = true
+  window.__IS_ELECTRON__ = false
+}
+
 async function initPWA() {
   const originalSetLanguage = useLanguageStore.getState().setLanguage
   useLanguageStore.setState({

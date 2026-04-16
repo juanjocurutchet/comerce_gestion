@@ -40,7 +40,11 @@ export async function fetchLicenseRow(url, anonKey, licenseKey) {
 
 /** Valida licencia contra Supabase; `storage` persiste clave y caché. */
 export async function checkLicenseWeb(cfg, storage) {
-  if (!cfg?.url || !cfg?.anonKey) {
+  let url
+  let anonKey
+  try {
+    ;({ url, anonKey } = assertSupabasePublicCfg(cfg))
+  } catch {
     return { valid: false, reason: 'no_config' }
   }
 
@@ -48,7 +52,7 @@ export async function checkLicenseWeb(cfg, storage) {
   if (!licenseKey) return { valid: false, reason: 'no_key' }
 
   try {
-    const row = await fetchLicenseRow(cfg.url, cfg.anonKey, licenseKey)
+    const row = await fetchLicenseRow(url, anonKey, licenseKey)
 
     if (!row) {
       storage.writeCache(null)
@@ -134,7 +138,7 @@ export async function activateLicenseWeb(cfg, rawKey, storage) {
   }
   const key = rawKey.trim().toUpperCase()
   try {
-    const row = await fetchLicenseRow(cfg.url, cfg.anonKey, key)
+    const row = await fetchLicenseRow(safeCfg.url, safeCfg.anonKey, key)
     if (!row) return { ok: false, error: 'Clave no encontrada. Verificá que sea correcta.' }
     if (!row.activo) return { ok: false, error: 'Esta clave fue desactivada. Contactá al soporte.' }
     if (daysUntil(row.vence_en) < 0) {
