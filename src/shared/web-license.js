@@ -2,6 +2,26 @@
 
 export const LICENSE_GRACE_DAYS_DEFAULT = 15
 
+/** Evita comillas literales pegadas al copiar desde Vercel / .env (`"https://…"`). */
+function unwrapQuotedEnv(value) {
+  let s = String(value ?? '').trim()
+  while (s.length >= 2) {
+    const a = s[0]
+    const b = s[s.length - 1]
+    if ((a === '"' && b === '"') || (a === "'" && b === "'")) s = s.slice(1, -1).trim()
+    else break
+  }
+  return s
+}
+
+function isLikelyNetworkFailure(err, msg) {
+  const m = String(msg || '')
+  if (/failed to fetch|networkerror|load failed|network request failed|fetch failed|not reachable|connection refused|timed out|aborted|err_name_not_resolved|internet disconnected/i.test(m))
+    return true
+  if (err?.name === 'TypeError' && /fetch|network|load/i.test(m)) return true
+  return false
+}
+
 export function daysSince(isoDate) {
   return Math.floor((Date.now() - new Date(isoDate).getTime()) / 86400000)
 }
@@ -11,10 +31,13 @@ export function daysUntil(isoDate) {
 }
 
 export async function fetchLicenseRow(url, anonKey, licenseKey) {
-  const base = String(url || '').replace(/\/$/, '')
+  const base = String(url || '').trim().replace(/\/$/, '')
   const res = await fetch(
     `${base}/rest/v1/licencias?clave=eq.${encodeURIComponent(licenseKey)}&select=*`,
     {
+      method: 'GET',
+      mode: 'cors',
+      cache: 'no-store',
       headers: {
         apikey: anonKey,
         Authorization: `Bearer ${anonKey}`,
@@ -112,8 +135,8 @@ export async function checkLicenseWeb(cfg, storage) {
 }
 
 function assertSupabasePublicCfg(cfg) {
-  const url = String(cfg?.url || '').trim().replace(/\/$/, '')
-  const anonKey = String(cfg?.anonKey || '').trim()
+  const url = unwrapQuotedEnv(cfg?.url).replace(/\/$/, '')
+  const anonKey = unwrapQuotedEnv(cfg?.anonKey)
   if (!url || !anonKey) {
     throw new Error(
       'Falta VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY en el build de la PWA. En Vercel: Project → Settings → Environment Variables, guardá y hacé Redeploy.'
@@ -149,11 +172,13 @@ export async function activateLicenseWeb(cfg, rawKey, storage) {
     return { ok: true, clientName: row.cliente_nombre }
   } catch (e) {
     const msg = e?.message || String(e)
-    if (/failed to fetch|networkerror|load failed|network request failed/i.test(msg)) {
+    const hint =
+      'Revisá: internet, URL exacta del proyecto en Supabase (Settings → API → Project URL, sin /rest), anon key “anon public” del mismo panel, y que en Vercel las variables estén sin comillas extra. Si la PWA ya estaba instalada, en el navegador: Application → Service Workers → Unregister y recargá.'
+    if (isLikelyNetworkFailure(e, msg)) {
+      const detail = msg && msg.length > 3 ? ` Detalle: ${msg.slice(0, 200)}` : ''
       return {
         ok: false,
-        error:
-          'Sin conexión o el navegador bloqueó la petición a Supabase. Revisá internet, bloqueadores y que VITE_SUPABASE_URL sea https://TU-PROYECTO.supabase.co (sin /rest al final).'
+        error: `No se pudo conectar con Supabase (suele ser red, CORS, URL mal copiada o service worker viejo).${detail} ${hint}`
       }
     }
     return {

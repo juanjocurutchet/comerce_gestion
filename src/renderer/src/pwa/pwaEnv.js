@@ -1,9 +1,20 @@
+/** Quita comillas si alguien pegó el valor como `"https://..."` en Vercel o en .env. */
+function unwrapQuotedEnv(value) {
+  let s = String(value ?? '').trim()
+  while (s.length >= 2) {
+    const a = s[0]
+    const b = s[s.length - 1]
+    if ((a === '"' && b === '"') || (a === "'" && b === "'")) s = s.slice(1, -1).trim()
+    else break
+  }
+  return s
+}
+
 /** Configuración pública Supabase para el build PWA (Vite). */
 export function getPublicSupabaseConfig() {
-  const url = String(import.meta.env?.VITE_SUPABASE_URL || '')
-    .trim()
+  const url = unwrapQuotedEnv(import.meta.env?.VITE_SUPABASE_URL)
     .replace(/\/$/, '')
-  const anonKey = String(import.meta.env?.VITE_SUPABASE_ANON_KEY || '').trim()
+  const anonKey = unwrapQuotedEnv(import.meta.env?.VITE_SUPABASE_ANON_KEY)
   return { url, anonKey }
 }
 
@@ -19,5 +30,5 @@ export function isPwaAdminBuild() {
 export function getPwaLicenseServiceRole() {
   if (!isPwaAdminBuild()) return ''
   const k = import.meta.env?.VITE_SUPABASE_LICENSE_SERVICE_ROLE
-  return typeof k === 'string' ? k.trim() : ''
+  return typeof k === 'string' ? unwrapQuotedEnv(k) : ''
 }

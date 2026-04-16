@@ -70,7 +70,7 @@ const BLOCK_CONFIG = {
   expired:       { icon: <CalendarOutlined style={{ color: '#ff4d4f' }} />, title: 'Suscripción vencida',       subTitle: 'Tu período de suscripción ha finalizado. Renovála para continuar.' },
   not_found:     { icon: <LockOutlined style={{ color: '#ff4d4f' }} />,     title: 'Clave no válida',           subTitle: 'La clave de activación no fue reconocida. Contactá al soporte.' },
   grace_exceeded:{ icon: <WifiOutlined style={{ color: '#ff4d4f' }} />,     title: 'Sin conexión prolongada',   subTitle: null },
-  no_config:     { icon: <LockOutlined style={{ color: '#faad14' }} />,     title: 'Configuración incompleta',  subTitle: 'No se encontró la configuración del servidor. Contactá al soporte.' }
+  no_config:     { icon: <LockOutlined style={{ color: '#faad14' }} />,     title: 'Configuración incompleta',  subTitle: 'Faltan variables de entorno en el despliegue (VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY). En Vercel: Project → Settings → Environment Variables, agregalas para Production y volvé a desplegar. El .env local no viaja al build.' }
 }
 
 export const LicenseBlock = ({ status, onRetry }) => {
