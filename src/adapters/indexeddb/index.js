@@ -417,6 +417,7 @@ const ventasAdapter = {
       estado: 'completada',
       commerce_id: venta.commerce_id || commerceId
     }
+    delete ventaData.id
 
     const ventaStore = objectStore(tx, 'ventas')
     const ventaResult = await promisifyRequest(ventaStore.add(ventaData))
@@ -428,12 +429,12 @@ const ventasAdapter = {
     const fecha = new Date().toISOString()
 
     for (const item of items) {
+      const { id: _omitId, ...itemSinId } = item
       await promisifyRequest(
         itemStore.add({
-          ...item,
+          ...itemSinId,
           venta_id: ventaId,
-          commerce_id: commerceId,
-          id: undefined
+          commerce_id: commerceId
         })
       )
 

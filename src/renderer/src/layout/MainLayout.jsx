@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Layout, Menu, Avatar, Dropdown, Typography, Badge, Space, Button, Tooltip, theme as antTheme } from 'antd'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
@@ -13,6 +13,8 @@ import {
 } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../store/authStore'
+import { useLicenseStore } from '../store/licenseStore'
+import { TrialUpgradeModal } from '../components/LicenseGuard'
 import nexoLogo from '../assets/nexo-commerce-logo.png'
 import nexoIcon from '../assets/nexo-commerce-icon.png'
 import { useThemeStore } from '../store/themeStore'
@@ -48,14 +50,34 @@ const MENU_DEFS = [
 
 const MainLayout = ({ children }) => {
   const [collapsed, setCollapsed] = useState(false)
+  const [showUpgrade, setShowUpgrade] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
   const { user, logout } = useAuthStore()
+  const { status } = useLicenseStore()
   const { dark, toggle } = useThemeStore()
   const { features, isAdmin, logo, logoIcon } = useClientStore()
   const { language, setLanguage } = useLanguageStore()
   const { token } = antTheme.useToken()
   const { t } = useTranslation()
+
+  useEffect(() => {
+    if (!user) {
+      setShowUpgrade(false)
+      return
+    }
+    if (isAdmin || !status?.valid) return
+    const daysLeft = Number(status?.daysLeft ?? 999)
+    if (daysLeft > 3) return
+    const cacheKey = `gcom_upgrade_modal_${status?.vence_en || 'unknown'}`
+    try {
+      if (sessionStorage.getItem(cacheKey) === '1') return
+      sessionStorage.setItem(cacheKey, '1')
+    } catch {
+      void 0
+    }
+    setShowUpgrade(true)
+  }, [status, isAdmin, user])
 
   const menuItems = MENU_DEFS
     .filter(item => {
@@ -193,6 +215,12 @@ const MainLayout = ({ children }) => {
           {children}
         </Content>
       </Layout>
+
+      <TrialUpgradeModal
+        status={status}
+        visible={showUpgrade}
+        onClose={() => setShowUpgrade(false)}
+      />
     </Layout>
   )
 }

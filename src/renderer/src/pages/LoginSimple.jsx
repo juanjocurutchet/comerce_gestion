@@ -54,7 +54,7 @@ const LoginSimple = () => {
         <Form
           onFinish={handleSubmit}
           layout="vertical"
-          initialValues={{ username: 'admin', password: 'admin' }}
+          initialValues={{ username: 'admin', password: 'admin123' }}
         >
           <Form.Item
             name="username"
@@ -84,7 +84,7 @@ const LoginSimple = () => {
         </Form>
 
         <p style={{ textAlign: 'center', fontSize: 12, color: '#999' }}>
-          Usuario por defecto: admin / admin
+          Usuario por defecto: admin / admin123
         </p>
       </Card>
     </div>

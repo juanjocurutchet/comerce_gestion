@@ -9,9 +9,9 @@
   "main": "out/main/index.js",
   "scripts": {
     "postinstall": "electron-rebuild -f -w better-sqlite3",
-    "dev": "electron-vite dev",
+    "dev": "ELECTRON_DISABLE_SANDBOX=1 electron-vite dev",
     "build": "electron-vite build",
-    "preview": "electron-vite preview",
+    "preview": "ELECTRON_DISABLE_SANDBOX=1 electron-vite preview",
     "dist": "electron-vite build && electron-builder",
     "dist:win": "electron-vite build && electron-builder --win",
     "dist:store": "electron-vite build && electron-builder --win --config.win.target=appx",

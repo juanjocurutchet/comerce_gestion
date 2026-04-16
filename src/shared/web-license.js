@@ -11,8 +11,9 @@ export function daysUntil(isoDate) {
 }
 
 export async function fetchLicenseRow(url, anonKey, licenseKey) {
+  const base = String(url || '').replace(/\/$/, '')
   const res = await fetch(
-    `${url}/rest/v1/licencias?clave=eq.${encodeURIComponent(licenseKey)}&select=*`,
+    `${base}/rest/v1/licencias?clave=eq.${encodeURIComponent(licenseKey)}&select=*`,
     {
       headers: {
         apikey: anonKey,
@@ -21,9 +22,20 @@ export async function fetchLicenseRow(url, anonKey, licenseKey) {
       }
     }
   )
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  const rows = await res.json()
-  return rows[0] || null
+  const text = await res.text()
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`
+    try {
+      const j = JSON.parse(text)
+      detail = j.message || j.hint || j.details || j.code || detail
+    } catch {
+      if (text) detail = `${detail}: ${text.slice(0, 200)}`
+    }
+    throw new Error(detail)
+  }
+  if (!text) return null
+  const rows = JSON.parse(text)
+  return Array.isArray(rows) ? rows[0] || null : null
 }
 
 /** Valida licencia contra Supabase; `storage` persiste clave y caché. */
@@ -95,10 +107,30 @@ export async function checkLicenseWeb(cfg, storage) {
   }
 }
 
+function assertSupabasePublicCfg(cfg) {
+  const url = String(cfg?.url || '').trim().replace(/\/$/, '')
+  const anonKey = String(cfg?.anonKey || '').trim()
+  if (!url || !anonKey) {
+    throw new Error(
+      'Falta VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY en el build de la PWA. En Vercel: Project → Settings → Environment Variables, guardá y hacé Redeploy.'
+    )
+  }
+  if (!/^https:\/\//i.test(url)) {
+    throw new Error('VITE_SUPABASE_URL debe ser https://… (ej. https://TU-PROYECTO.supabase.co sin /rest al final).')
+  }
+  if (anonKey.length < 20) {
+    throw new Error('VITE_SUPABASE_ANON_KEY no parece válida (demasiado corta). Copiala de Supabase → Project Settings → API.')
+  }
+  return { url, anonKey }
+}
+
 /** Activa y persiste `rawKey` si existe y está vigente en Supabase. */
 export async function activateLicenseWeb(cfg, rawKey, storage) {
-  if (!cfg?.url || !cfg?.anonKey) {
-    return { ok: false, error: 'Sin configuración de servidor' }
+  let safeCfg
+  try {
+    safeCfg = assertSupabasePublicCfg(cfg)
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) }
   }
   const key = rawKey.trim().toUpperCase()
   try {
@@ -111,8 +143,19 @@ export async function activateLicenseWeb(cfg, rawKey, storage) {
     storage.writeKey(key)
     storage.writeCache({ ...row, last_check: new Date().toISOString() })
     return { ok: true, clientName: row.cliente_nombre }
-  } catch {
-    return { ok: false, error: 'Sin conexión a internet. Necesitás conexión para activar la app por primera vez.' }
+  } catch (e) {
+    const msg = e?.message || String(e)
+    if (/failed to fetch|networkerror|load failed|network request failed/i.test(msg)) {
+      return {
+        ok: false,
+        error:
+          'Sin conexión o el navegador bloqueó la petición a Supabase. Revisá internet, bloqueadores y que VITE_SUPABASE_URL sea https://TU-PROYECTO.supabase.co (sin /rest al final).'
+      }
+    }
+    return {
+      ok: false,
+      error: `${msg}. En Vercel verificá VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY; en Supabase que anon pueda SELECT en public.licencias (si hay RLS, ejecutá supabase/licencias-rls-anon-select.sql).`
+    }
   }
 }
 

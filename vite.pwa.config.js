@@ -49,6 +49,12 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/@/, /^\/__/, /^\/src\//, /^\/node_modules\//],
         runtimeCaching: [
           {
+            // Licencia / sync: siempre red (evita que un SW antiguo o reglas raras devuelvan HTML/cache y falle el JSON).
+            urlPattern: /^https:\/\/[a-z0-9-]+\.supabase\.co\/rest\/v1\//i,
+            handler: 'NetworkOnly',
+            options: { cacheName: 'supabase-rest-bypass' }
+          },
+          {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: 'CacheFirst',
             options: {

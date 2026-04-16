@@ -6,7 +6,7 @@ alwaysApply: true
 # PWA y datos locales (Nexo Commerce)
 
 ## Objetivo
-Migrar de Electron a **PWA web** (menos bloqueos de antivirus), mismo diseño, **offline** con IndexedDB, **sync** futuro con Supabase, **licencia/demo** (Supabase opcional vía `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`).
+Migrar de Electron a **PWA web** (menos bloqueos de antivirus), mismo diseño, **offline** con IndexedDB, **sync** futuro con Supabase, **licencia/demo** (Supabase opcional vía `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`). Panel **Licencias** en PWA admin: además `VITE_PWA_ADMIN=true` y `VITE_SUPABASE_LICENSE_SERVICE_ROLE` (service role; queda en el bundle — solo despliegues privados).
 
 ## Archivos clave
 - **Build PWA:** `vite.pwa.config.js` — entrada `index-pwa.html`, Workbox.

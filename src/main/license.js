@@ -67,7 +67,8 @@ async function fetchByKey(url, anonKey, licenseKey) {
 }
 
 async function adminFetch(method, path, body, serviceKey, url) {
-  const res = await fetch(`${url}/rest/v1/${path}`, {
+  const base = String(url || '').replace(/\/$/, '')
+  const res = await fetch(`${base}/rest/v1/${path}`, {
     method,
     headers: {
       apikey: serviceKey,
@@ -77,8 +78,22 @@ async function adminFetch(method, path, body, serviceKey, url) {
     },
     body: body ? JSON.stringify(body) : undefined
   })
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return res.json()
+  const text = await res.text()
+  if (!res.ok) {
+    let detail = `HTTP ${res.status}`
+    try {
+      const j = JSON.parse(text)
+      detail = j.message || j.error_description || j.hint || j.details || j.code || detail
+      if (typeof j === 'object' && j !== null && !j.message && text.length < 400) {
+        detail = `${detail}: ${text}`
+      }
+    } catch {
+      if (text) detail = `${detail} — ${text.slice(0, 240)}`
+    }
+    throw new Error(detail)
+  }
+  if (!text) return null
+  return JSON.parse(text)
 }
 
 async function checkLicense() {
@@ -159,8 +174,9 @@ export function setupLicense() {
     const cfg = loadSupabaseConfig()
     if (!cfg?.serviceKey) return { ok: false, error: 'Sin acceso admin' }
     try {
-      const rows = await adminFetch('POST', 'licencias', { ...payload, clave: generateKey() }, cfg.serviceKey, cfg.url)
-      return { ok: true, data: rows[0] }
+      const data = await adminFetch('POST', 'licencias', { ...payload, clave: generateKey() }, cfg.serviceKey, cfg.url)
+      const row = Array.isArray(data) ? data[0] : data
+      return { ok: true, data: row }
     } catch (e) { return { ok: false, error: e.message } }
   })
 
@@ -168,8 +184,9 @@ export function setupLicense() {
     const cfg = loadSupabaseConfig()
     if (!cfg?.serviceKey) return { ok: false, error: 'Sin acceso admin' }
     try {
-      const rows = await adminFetch('PATCH', `licencias?id=eq.${id}`, payload, cfg.serviceKey, cfg.url)
-      return { ok: true, data: rows[0] }
+      const data = await adminFetch('PATCH', `licencias?id=eq.${encodeURIComponent(id)}`, payload, cfg.serviceKey, cfg.url)
+      const row = Array.isArray(data) ? data[0] : data
+      return { ok: true, data: row }
     } catch (e) { return { ok: false, error: e.message } }
   })
 
