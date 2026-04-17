@@ -130,7 +130,6 @@ export default defineConfig({
     }
   },
   
-  // Server config to use PWA HTML file
   server: {
     port: 3000,
     open: '/index-pwa.html'

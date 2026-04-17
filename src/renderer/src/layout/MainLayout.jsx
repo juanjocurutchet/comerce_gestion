@@ -96,8 +96,17 @@ const MainLayout = ({ children }) => {
       { type: 'divider' },
       { key: 'logout', icon: <LogoutOutlined />, label: t('nav.logout'), danger: true }
     ],
-    onClick: ({ key }) => {
-      if (key === 'logout') logout()
+    onClick: async ({ key }) => {
+      if (key === 'logout') {
+        try {
+          await window.api?.cloudAuth?.signOut?.()
+        } catch {
+          void 0
+        }
+        await useClientStore.getState().load()
+        logout()
+        navigate('/login')
+      }
     }
   }
 

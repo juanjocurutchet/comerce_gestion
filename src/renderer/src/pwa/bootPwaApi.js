@@ -1,7 +1,13 @@
 import { initDatabase, ensurePwaMinimalData } from '@shared/db-init.js'
 import { createPwaMockApi } from './pwaMockApi.js'
 import { buildDbBackedWindowApi } from './pwaDbBridge.js'
-import { getPublicSupabaseConfig, isPwaAdminBuild } from './pwaEnv.js'
+import {
+  getPublicSupabaseConfig,
+  isPwaAdminBuild,
+  hasPwaAdminEmailAllowlist,
+  isEmailInPwaAdminAllowlist,
+  usesJwtLicenseAdmin
+} from './pwaEnv.js'
 import { patchApiWithSupabaseLicense } from './supabaseLicenseBridge.js'
 import { createPwaProductsSyncApi } from './pwaProductsSync.js'
 import { createPwaSupabaseAuthApi } from './pwaSupabaseAuth.js'
@@ -32,7 +38,45 @@ export async function bootPwaApi() {
     window.api.cloudAuth = {
       getSession: wrapIpc(() => cloudAuthApi.getSession()),
       signIn: wrapIpc((email, password) => cloudAuthApi.signIn(email, password)),
-      signOut: wrapIpc(() => cloudAuthApi.signOut())
+      signOut: wrapIpc(() => cloudAuthApi.signOut()),
+      getAccessToken: wrapIpc(() => cloudAuthApi.getAccessToken())
+    }
+
+    window.api.client.getConfig = async () => {
+      let isAdmin = isPwaAdminBuild()
+      if (!isAdmin && usesJwtLicenseAdmin()) {
+        try {
+          const r = await cloudAuthApi.getSession()
+          const email = r?.session?.user?.email
+          if (!email) {
+            void 0
+          } else if (hasPwaAdminEmailAllowlist()) {
+            if (isEmailInPwaAdminAllowlist(email)) isAdmin = true
+          } else {
+            isAdmin = true
+          }
+        } catch {
+          void 0
+        }
+      }
+      return {
+        clientName: '',
+        publicDemoUrl: '',
+        features: {
+          ventas: true,
+          cotizaciones: true,
+          productos: true,
+          stock: true,
+          proveedores: true,
+          caja: true,
+          reportes: true,
+          usuarios: true,
+          backup: true,
+          configuracion: true
+        },
+        isAdmin,
+        logo: { full: null, icon: null }
+      }
     }
     window.api.sync = {
       getStatus: wrapIpc((options) => syncApi.getStatus(options)),
@@ -40,23 +84,5 @@ export async function bootPwaApi() {
       pushProducts: wrapIpc((options) => syncApi.pushProducts(options)),
       syncProducts: wrapIpc((options) => syncApi.syncProducts(options))
     }
-    window.api.client.getConfig = async () => ({
-      clientName: '',
-      publicDemoUrl: '',
-      features: {
-        ventas: true,
-        cotizaciones: true,
-        productos: true,
-        stock: true,
-        proveedores: true,
-        caja: true,
-        reportes: true,
-        usuarios: true,
-        backup: true,
-        configuracion: true
-      },
-      isAdmin: isPwaAdminBuild(),
-      logo: { full: null, icon: null }
-    })
   }
 }

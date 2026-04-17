@@ -18,17 +18,55 @@ export function getPublicSupabaseConfig() {
   return { url, anonKey }
 }
 
-/** Si es true, la PWA se comporta como build interno (menú Licencias, sin gate de licencia). */
+/** Si es true, la PWA se comporta como build interno (sin gate de licencia comercial; solo entornos cerrados). */
 export function isPwaAdminBuild() {
   return import.meta.env?.VITE_PWA_ADMIN === 'true'
 }
 
 /**
- * Service role de Supabase solo para panel Licencias en PWA admin.
- * Queda embebida en el JS del cliente: usar solo en despliegues privados, nunca en web pública.
+ * Emails (Supabase Auth) autorizados para menú admin y panel de licencias en PWA.
+ * Separados por coma; comparación sin mayúsculas. Sin tabla en BD por ahora.
+ */
+export function getPwaAdminEmailAllowlist() {
+  const raw = import.meta.env?.VITE_PWA_ADMIN_EMAILS
+  if (raw == null || String(raw).trim() === '') return []
+  return String(raw)
+    .split(/[,;\n]+/)
+    .map((e) => unwrapQuotedEnv(e).toLowerCase().trim())
+    .filter(Boolean)
+}
+
+export function hasPwaAdminEmailAllowlist() {
+  return getPwaAdminEmailAllowlist().length > 0
+}
+
+export function isEmailInPwaAdminAllowlist(email) {
+  const e = String(email || '').toLowerCase().trim()
+  if (!e) return false
+  return getPwaAdminEmailAllowlist().includes(e)
+}
+
+/**
+ * Panel de licencias PWA con PostgREST + JWT de usuario y RLS en Postgres
+ * (tabla public.license_admin_allowlist). Sin service role ni API serverless.
+ *
+ * Se activa con VITE_PWA_LICENSE_CLOUD_ADMIN=true o con VITE_PWA_ADMIN_EMAILS
+ * (la lista en cliente solo acota la UI; la autorización real está en RLS).
+ */
+export function usesJwtLicenseAdmin() {
+  const raw = import.meta.env?.VITE_PWA_LICENSE_CLOUD_ADMIN
+  const v = String(raw ?? '')
+    .trim()
+    .toLowerCase()
+  if (v === 'true' || v === '1' || v === 'yes') return true
+  return hasPwaAdminEmailAllowlist()
+}
+
+/**
+ * Service role en el cliente: solo modo legacy (sin JWT admin en RLS).
  */
 export function getPwaLicenseServiceRole() {
-  if (!isPwaAdminBuild()) return ''
+  if (usesJwtLicenseAdmin()) return ''
   const k = import.meta.env?.VITE_SUPABASE_LICENSE_SERVICE_ROLE
   return typeof k === 'string' ? unwrapQuotedEnv(k) : ''
 }

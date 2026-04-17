@@ -9,9 +9,21 @@ import {
   licenseAdminUpdate,
   licenseAdminDelete,
   licenseAdminListUpgradeRequests,
-  licenseAdminListCommerces
+  licenseAdminListCommerces,
+  licenseAdminGetAllAsUser,
+  licenseAdminCreateAsUser,
+  licenseAdminUpdateAsUser,
+  licenseAdminDeleteAsUser,
+  licenseAdminListUpgradeRequestsAsUser,
+  licenseAdminListCommercesAsUser
 } from '@shared/web-license-admin.js'
-import { isPwaAdminBuild, getPwaLicenseServiceRole } from './pwaEnv.js'
+import {
+  isPwaAdminBuild,
+  getPwaLicenseServiceRole,
+  usesJwtLicenseAdmin,
+  hasPwaAdminEmailAllowlist,
+  isEmailInPwaAdminAllowlist
+} from './pwaEnv.js'
 
 const LS_KEY = 'gcom_stored_license_key'
 const LS_CACHE = 'gcom_license_cache'
@@ -55,19 +67,84 @@ function createLocalStorageBackend() {
 const ERR_LICENSE_DESKTOP =
   'El panel de licencias solo está disponible en la aplicación de escritorio (con service key en resources/supabase.json).'
 
-const ERR_LICENSE_PWA_NEED_SERVICE_ROLE =
-  'PWA admin: definí VITE_SUPABASE_LICENSE_SERVICE_ROLE en el build (service role de Supabase) para crear/editar licencias. Cualquier visitante podría extraerla del bundle: usalo solo en despliegues privados, o gestioná licencias desde escritorio / SQL Editor de Supabase.'
+const ERR_LICENSE_PWA_LEGACY_KEY =
+  'PWA (legacy): definí VITE_SUPABASE_LICENSE_SERVICE_ROLE en el build. La clave queda en el JS del cliente: no uses esto en sitios públicos.'
 
-/** Parchea `window.api.license` (check/activate/getStoredKey); CRUD admin en PWA solo con service role + build admin. */
+const ERR_LICENSE_JWT_RLS =
+  'Licencias (RLS): en Supabase ejecutá supabase/licencias-license-admin-rls.sql, insertá tu email en public.license_admin_allowlist, y en el build usá VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY. Iniciá sesión admin (cloud) en el login. Opcional: VITE_PWA_ADMIN_EMAILS o VITE_PWA_LICENSE_CLOUD_ADMIN=true para mostrar el panel.'
+
+async function assertPwaLicenseAdminCaller() {
+  if (usesJwtLicenseAdmin()) {
+    if (!window.api?.cloudAuth?.getSession) {
+      throw new Error('Autenticación cloud no disponible (revisá VITE_SUPABASE_URL y anon key en el build).')
+    }
+    const wrapped = await window.api.cloudAuth.getSession()
+    if (!wrapped?.ok) throw new Error(wrapped?.error || 'Iniciá sesión con Supabase Auth (sección admin en el login).')
+    const session = wrapped.data?.session
+    const email = session?.user?.email
+    if (!email) throw new Error('La sesión cloud no tiene email.')
+    if (hasPwaAdminEmailAllowlist() && !isEmailInPwaAdminAllowlist(email)) {
+      throw new Error('Tu email no está en VITE_PWA_ADMIN_EMAILS (solo UI) o la sesión cloud venció.')
+    }
+    return
+  }
+  if (isPwaAdminBuild()) return
+  throw new Error(
+    'Para el panel de licencias en PWA: RLS (VITE_PWA_LICENSE_CLOUD_ADMIN o VITE_PWA_ADMIN_EMAILS + SQL en Supabase), o solo en entornos cerrados VITE_PWA_ADMIN=true con service role en el cliente.'
+  )
+}
+
+async function getAccessTokenOrThrow() {
+  const tr = await window.api.cloudAuth.getAccessToken()
+  if (!tr?.ok || !tr.data) {
+    throw new Error('Sin sesión Supabase. Iniciá sesión admin (cloud) en el login.')
+  }
+  return tr.data
+}
+
+/** Parchea `window.api.license`. Modo JWT: CRUD directo a PostgREST con RLS (sin service role en Vercel). */
 export function patchApiWithSupabaseLicense(api, cfg) {
   const storage = createLocalStorageBackend()
+  const useJwt = usesJwtLicenseAdmin()
   const serviceKey = getPwaLicenseServiceRole()
-  const adminCfg = serviceKey && cfg?.url ? { url: cfg.url, serviceKey } : null
+  const legacyAdminCfg = !useJwt && serviceKey && cfg?.url ? { url: cfg.url, serviceKey } : null
 
   const stubDesktop = async () => ({ ok: false, error: ERR_LICENSE_DESKTOP })
-  const stubPwaAdminNeedKey = async () => ({ ok: false, error: ERR_LICENSE_PWA_NEED_SERVICE_ROLE })
+  const stubPwaAdminNeedKey = async () => ({
+    ok: false,
+    error: useJwt ? ERR_LICENSE_JWT_RLS : ERR_LICENSE_PWA_LEGACY_KEY
+  })
 
-  const stubAdmin = adminCfg ? null : isPwaAdminBuild() ? stubPwaAdminNeedKey : stubDesktop
+  const stubNoAdmin = useJwt
+    ? null
+    : !legacyAdminCfg
+      ? isPwaAdminBuild()
+        ? stubPwaAdminNeedKey
+        : stubDesktop
+      : null
+
+  const userCfg = useJwt && cfg?.url && cfg?.anonKey ? { url: cfg.url, anonKey: cfg.anonKey } : null
+
+  async function runJwt(run) {
+    try {
+      await assertPwaLicenseAdminCaller()
+      if (!userCfg) throw new Error('Falta configuración Supabase pública (url / anon key).')
+      const token = await getAccessTokenOrThrow()
+      return await run(userCfg, token)
+    } catch (e) {
+      return { ok: false, error: e?.message || String(e) }
+    }
+  }
+
+  async function runLegacy(run) {
+    if (!legacyAdminCfg) return stubPwaAdminNeedKey()
+    try {
+      await assertPwaLicenseAdminCaller()
+    } catch (e) {
+      return { ok: false, error: e?.message || String(e) }
+    }
+    return await run()
+  }
 
   api.license = {
     check: () => checkLicenseWeb(cfg, storage),
@@ -76,18 +153,43 @@ export function patchApiWithSupabaseLicense(api, cfg) {
 
     getStoredKey: () => storage.readKey(),
 
-    getAll: stubAdmin ? stubAdmin : () => licenseAdminGetAll(adminCfg),
+    getAll:
+      stubNoAdmin ||
+      (useJwt
+        ? async () => runJwt((uc, t) => licenseAdminGetAllAsUser({ ...uc, accessToken: t }))
+        : async () => runLegacy(() => licenseAdminGetAll(legacyAdminCfg))),
 
-    create: stubAdmin ? stubAdmin : (payload) => licenseAdminCreate(adminCfg, payload),
+    create:
+      stubNoAdmin ||
+      (useJwt
+        ? async (payload) => runJwt((uc, t) => licenseAdminCreateAsUser({ ...uc, accessToken: t }, payload))
+        : async (payload) => runLegacy(() => licenseAdminCreate(legacyAdminCfg, payload))),
 
-    update: stubAdmin ? stubAdmin : (id, payload) => licenseAdminUpdate(adminCfg, id, payload),
+    update:
+      stubNoAdmin ||
+      (useJwt
+        ? async (id, payload) =>
+            runJwt((uc, t) => licenseAdminUpdateAsUser({ ...uc, accessToken: t }, id, payload))
+        : async (id, payload) => runLegacy(() => licenseAdminUpdate(legacyAdminCfg, id, payload))),
 
-    delete: stubAdmin ? stubAdmin : (id) => licenseAdminDelete(adminCfg, id),
+    delete:
+      stubNoAdmin ||
+      (useJwt
+        ? async (id) => runJwt((uc, t) => licenseAdminDeleteAsUser({ ...uc, accessToken: t }, id))
+        : async (id) => runLegacy(() => licenseAdminDelete(legacyAdminCfg, id))),
 
     requestUpgrade: (payload) => requestUpgradeWeb(cfg, payload),
 
-    listUpgradeRequests: stubAdmin ? stubAdmin : () => licenseAdminListUpgradeRequests(adminCfg),
+    listUpgradeRequests:
+      stubNoAdmin ||
+      (useJwt
+        ? async () => runJwt((uc, t) => licenseAdminListUpgradeRequestsAsUser({ ...uc, accessToken: t }))
+        : async () => runLegacy(() => licenseAdminListUpgradeRequests(legacyAdminCfg))),
 
-    listCommerces: stubAdmin ? stubAdmin : () => licenseAdminListCommerces(adminCfg)
+    listCommerces:
+      stubNoAdmin ||
+      (useJwt
+        ? async () => runJwt((uc, t) => licenseAdminListCommercesAsUser({ ...uc, accessToken: t }))
+        : async () => runLegacy(() => licenseAdminListCommerces(legacyAdminCfg)))
   }
 }

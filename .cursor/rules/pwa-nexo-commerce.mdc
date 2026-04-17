@@ -6,9 +6,10 @@ alwaysApply: true
 # PWA y datos locales (Nexo Commerce)
 
 ## Objetivo
-Migrar de Electron a **PWA web** (menos bloqueos de antivirus), mismo diseño, **offline** con IndexedDB, **sync** futuro con Supabase, **licencia/demo** (Supabase opcional vía `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`). Panel **Licencias** en PWA admin: además `VITE_PWA_ADMIN=true` y `VITE_SUPABASE_LICENSE_SERVICE_ROLE` (service role; queda en el bundle — solo despliegues privados).
+Migrar de Electron a **PWA web** (menos bloqueos de antivirus), mismo diseño, **offline** con IndexedDB, **sync** futuro con Supabase, **licencia/demo** (`VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`). Panel **Licencias** recomendado: SQL `supabase/licencias-license-admin-rls.sql` (tabla `license_admin_allowlist` + RLS), sesión Supabase Auth y CRUD PostgREST con **JWT de usuario** + anon key (sin service role en el cliente ni API serverless). Opcional en build: `VITE_PWA_LICENSE_CLOUD_ADMIN=true` o `VITE_PWA_ADMIN_EMAILS` (solo acotar UI). Legacy: `VITE_PWA_ADMIN=true` + `VITE_SUPABASE_LICENSE_SERVICE_ROLE` en el bundle (solo entornos cerrados).
 
 ## Archivos clave
+- **RLS admin licencias:** `supabase/licencias-license-admin-rls.sql` — allowlist por email en JWT; `src/shared/web-license-admin.js` (`*AsUser`).
 - **Build PWA:** `vite.pwa.config.js` — entrada `index-pwa.html`, Workbox.
 - **Entrada:** `src/renderer/index-pwa.html`, `src/renderer/main-pwa.jsx` — `await bootPwaApi()` antes de montar React.
 - **API web:** `src/renderer/src/pwa/bootPwaApi.js`, `pwaMockApi.js`, `ipcShape.js` (`ipcOk` / `ipcErr`).

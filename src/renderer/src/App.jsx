@@ -25,6 +25,7 @@ import { useAuthStore } from './store/authStore'
 import { useThemeStore } from './store/themeStore'
 import { useClientStore } from './store/clientStore'
 import { useLicenseStore } from './store/licenseStore'
+import { isPwaAdminBuild } from './pwa/pwaEnv.js'
 
 function PrivateRoute({ children }) {
   const user = useAuthStore((s) => s.user)
@@ -47,7 +48,11 @@ export default function App() {
 
   if (!checked || !clientLoaded) return null
 
-  if (!isAdmin) {
+  const isPwa = typeof window !== 'undefined' && window.__IS_PWA__
+  const needsCommercialLicense =
+    (isPwa && !isPwaAdminBuild()) || (!isPwa && !isAdmin)
+
+  if (needsCommercialLicense) {
     if (status?.reason === 'no_key' || status?.reason === 'not_found') {
       return <ActivationScreen onActivated={() => check()} />
     }
