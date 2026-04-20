@@ -750,6 +750,8 @@
     "demoRoleOwner": "Propietario (owner)",
     "demoRoleAdmin": "Gestor (admin)",
     "demoProvisionOk": "Provisionado: {{commerceId}}",
+    "mailSkippedResend": "El alta se completó pero no se envió correo automático: en el servidor de despliegue configurá RESEND_API_KEY (y remitente verificado en Resend). Los datos podés copiarlos desde el panel.",
+    "mailSendError": "El alta se completó pero el correo falló: {{error}}",
     "demoProvisionCredentialsTitle": "Acceso generado",
     "demoPasswordLabel": "Contraseña temporal (opcional)",
     "demoPasswordPlaceholder": "Vacío = generar automática",

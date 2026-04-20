@@ -148,20 +148,6 @@ export default defineConfig({
             type: 'image/svg+xml',
             purpose: 'any maskable'
           }
-        ],
-        screenshots: [
-          {
-            src: 'screenshots/desktop-1.png',
-            sizes: '1920x1080',
-            type: 'image/png',
-            form_factor: 'wide'
-          },
-          {
-            src: 'screenshots/mobile-1.png',
-            sizes: '390x844',
-            type: 'image/png',
-            form_factor: 'narrow'
-          }
         ]
       },
       devOptions: {

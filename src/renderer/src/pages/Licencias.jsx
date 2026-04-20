@@ -380,6 +380,14 @@ const Licencias = () => {
       if (res?.ok) {
         const cid = res.data?.commerce_id
         message.success(t('licencias.demoProvisionOk', { commerceId: cid || '—' }))
+        const mail = res.data?.mail
+        if (mail && mail.sent !== true) {
+          message.warning(
+            mail.skipped
+              ? t('licencias.mailSkippedResend')
+              : t('licencias.mailSendError', { error: mail.error || t('common.error') })
+          )
+        }
         const passToShow = res.data?.passwordForClient || res.data?.generatedPassword
         if (passToShow || res.data?.licenseKey) {
           const pass = passToShow ? `\nPassword temporal: ${passToShow}` : ''
@@ -416,6 +424,14 @@ const Licencias = () => {
       if (res?.ok) {
         const cid = res.data?.commerce_id
         message.success(t('licencias.demoProvisionOk', { commerceId: cid || '—' }))
+        const mail = res.data?.mail
+        if (mail && mail.sent !== true) {
+          message.warning(
+            mail.skipped
+              ? t('licencias.mailSkippedResend')
+              : t('licencias.mailSendError', { error: mail.error || t('common.error') })
+          )
+        }
         const passToShowReq = res.data?.passwordForClient || res.data?.generatedPassword
         if (passToShowReq || res.data?.licenseKey) {
           const pass = passToShowReq ? `\nPassword temporal: ${passToShowReq}` : ''

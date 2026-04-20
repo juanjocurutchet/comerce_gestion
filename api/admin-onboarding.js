@@ -14,6 +14,10 @@ function getOptionalEnv(name) {
   return String(process.env[name] || '').trim()
 }
 
+function getResendApiKey() {
+  return getOptionalEnv('RESEND_API_KEY') || getOptionalEnv('VITE_RESEND_API_KEY')
+}
+
 function randomPassword(length = 14) {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%*'
   let out = ''
@@ -369,8 +373,14 @@ function escapeHtml(value) {
 }
 
 async function sendProvisioningEmail(payload) {
-  const apiKey = getOptionalEnv('RESEND_API_KEY')
-  if (!apiKey) return { sent: false, skipped: true, reason: 'RESEND_API_KEY no configurado' }
+  const apiKey = getResendApiKey()
+  if (!apiKey) {
+    return {
+      sent: false,
+      skipped: true,
+      reason: 'RESEND_API_KEY no configurado en el servidor (Vercel/Node). No uses VITE_ solo en el cliente.'
+    }
+  }
 
   const toEmail = String(payload?.toEmail || '').trim().toLowerCase()
   if (!toEmail) return { sent: false, skipped: true, reason: 'sin email destino' }

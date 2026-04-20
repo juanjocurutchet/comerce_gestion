@@ -712,6 +712,8 @@
     "demoRoleOwner": "Owner",
     "demoRoleAdmin": "Manager (admin)",
     "demoProvisionOk": "Provisioned: {{commerceId}}",
+    "mailSkippedResend": "Provisioning succeeded but no email was sent: set RESEND_API_KEY on your deployment server (and a verified sender in Resend). You can still copy credentials from the panel.",
+    "mailSendError": "Provisioning succeeded but email failed: {{error}}",
     "demoProvisionCredentialsTitle": "Credentials generated",
     "demoPasswordLabel": "Temporary password (optional)",
     "demoPasswordPlaceholder": "Empty = auto-generate",
