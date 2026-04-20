@@ -1,37 +1,31 @@
-import React, { useState, useEffect } from 'react'
-import { Form, Input, Button, Card, Typography, Divider, Alert } from 'antd'
-import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons'
+import React, { useState } from 'react'
+import { Form, Input, Button, Card, Typography } from 'antd'
+import { useTranslation } from 'react-i18next'
+import { UserOutlined, LockOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { useClientStore } from '../store/clientStore'
-import { usesJwtLicenseAdmin } from '../pwa/pwaEnv.js'
+import { useLicenseStore } from '../store/licenseStore'
+import { looksLikeEmail } from '../pwa/pwaEnv.js'
+
+const COMMERCE_ID_STORAGE_KEY = 'gcom_commerce_id'
 
 const { Title, Text } = Typography
 
+function mapMembershipToCommerceRole(memberships) {
+  const roles = (memberships || []).map((m) => String(m?.role || '').toLowerCase()).filter(Boolean)
+  if (roles.some((r) => r === 'owner')) return 'propietario'
+  if (roles.some((r) => r === 'admin')) return 'gestor'
+  return 'cliente'
+}
+
 const LoginSimple = () => {
-  const showAdminCloud =
-    typeof window !== 'undefined' && window.__IS_PWA__ && usesJwtLicenseAdmin()
+  const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
-  const [cloudLoading, setCloudLoading] = useState(false)
-  const [cloudErr, setCloudErr] = useState('')
-  const [cloudEmail, setCloudEmail] = useState(null)
   const setUser = useAuthStore((s) => s.setUser)
   const loadClient = useClientStore((s) => s.load)
+  const checkLicense = useLicenseStore((s) => s.check)
   const navigate = useNavigate()
-
-  useEffect(() => {
-    if (!showAdminCloud || !window.api?.cloudAuth?.getSession) return
-    let cancel = false
-    ;(async () => {
-      const r = await window.api.cloudAuth.getSession()
-      if (cancel || !r?.ok) return
-      const email = r.data?.session?.user?.email
-      if (email) setCloudEmail(email)
-    })()
-    return () => {
-      cancel = true
-    }
-  }, [])
 
   const handleSubmit = async (values) => {
     setLoading(true)
@@ -44,10 +38,70 @@ const LoginSimple = () => {
       }
       const u = String(values.username ?? '').trim()
       const p = String(values.password ?? '')
-      const res = await window.api.usuarios.login(u, p)
+      const pwa = typeof window !== 'undefined' && window.__IS_PWA__
+      const cloudEnabled = pwa && window.api?.cloudAuth?.signIn
+      let res = null
+
+      if (cloudEnabled) {
+        if (!looksLikeEmail(u)) {
+          alert('Ingresá un email válido.')
+          return
+        }
+        const cloud = await window.api.cloudAuth.signIn(u, p)
+        if (!cloud?.ok) {
+          alert(cloud?.error || 'Credenciales inválidas')
+          return
+        }
+        const session = await window.api.cloudAuth.getSession()
+        const sessUser = session?.ok ? session.data?.session?.user : null
+        const email = sessUser?.email || u
+        const userId = sessUser?.id || email
+        const mustChangePassword =
+          sessUser?.user_metadata?.gcom_must_change_password === true
+        const membershipsResp = await window.api.cloudAuth.getMemberships()
+        const memberships = membershipsResp?.ok && Array.isArray(membershipsResp.data) ? membershipsResp.data : []
+        const licenseAdminRpc = await window.api.cloudAuth.isLicenseAdminFromJwt?.()
+        const isLicenseAdminOnly =
+          !memberships.length && licenseAdminRpc?.ok === true && licenseAdminRpc.data === true
+        if (!memberships.length && !isLicenseAdminOnly) {
+          try {
+            await window.api.cloudAuth.signOut()
+          } catch {
+            void 0
+          }
+          alert(t('login.noCommerceAssigned'))
+          return
+        }
+        const commerceRole = memberships.length ? mapMembershipToCommerceRole(memberships) : 'propietario'
+        const primaryCommerceId = memberships.map((m) => m.commerce_id).find(Boolean)
+        if (primaryCommerceId) {
+          try {
+            await window.api?.config?.setMany?.({ commerceId: primaryCommerceId })
+            localStorage.setItem(COMMERCE_ID_STORAGE_KEY, primaryCommerceId)
+          } catch {
+            void 0
+          }
+        }
+        const cloudUser = {
+          id: `cloud:${userId}`,
+          nombre: email,
+          username: email,
+          rol: commerceRole,
+          memberships,
+          authSource: 'cloud',
+          mustChangePassword
+        }
+        res = { ok: true, data: cloudUser }
+      } else {
+        // Escritorio / modo sin cloud auth: mantiene login local legado.
+        res = await window.api.usuarios.login(u, p)
+      }
 
       if (res?.ok && res.data) {
-        setUser(res.data)
+        const source = res.data?.authSource || 'local'
+        setUser({ ...res.data, authSource: source })
+        await loadClient()
+        await checkLicense()
         navigate('/dashboard')
       } else {
         alert(res?.error || 'Credenciales inválidas')
@@ -59,47 +113,16 @@ const LoginSimple = () => {
     }
   }
 
-  const onCloudAdmin = async ({ adminEmail, adminPassword }) => {
-    setCloudLoading(true)
-    setCloudErr('')
-    try {
-      const r = await window.api.cloudAuth.signIn(adminEmail, adminPassword)
-      if (!r?.ok) {
-        setCloudErr(r?.error || 'No se pudo iniciar sesión')
-        return
-      }
-      await loadClient()
-      const s = await window.api.cloudAuth.getSession()
-      if (s?.ok && s.data?.session?.user?.email) setCloudEmail(s.data.session.user.email)
-    } catch (e) {
-      setCloudErr(e?.message || String(e))
-    } finally {
-      setCloudLoading(false)
-    }
-  }
-
-  const onCloudSignOut = async () => {
-    setCloudLoading(true)
-    setCloudErr('')
-    try {
-      await window.api.cloudAuth.signOut()
-      setCloudEmail(null)
-      await loadClient()
-    } catch (e) {
-      setCloudErr(e?.message || String(e))
-    } finally {
-      setCloudLoading(false)
-    }
-  }
-
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #001529 0%, #003a8c 100%)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center'
-    }}>
+    <div
+      style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #001529 0%, #003a8c 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}
+    >
       <Card style={{ width: 380, borderRadius: 16 }}>
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <Title level={2}>Nexo Commerce</Title>
@@ -109,82 +132,38 @@ const LoginSimple = () => {
         <Form
           onFinish={handleSubmit}
           layout="vertical"
-          initialValues={{ username: 'admin', password: 'admin123' }}
+          initialValues={{ username: '', password: '' }}
         >
           <Form.Item
             name="username"
-            rules={[{ required: true, message: 'Ingrese usuario' }]}
+            rules={[{ required: true, message: 'Ingrese usuario o email' }]}
           >
-            <Input prefix={<UserOutlined />} placeholder="Usuario" />
+            <Input prefix={<UserOutlined />} placeholder="Email" autoComplete="username" />
           </Form.Item>
 
           <Form.Item
             name="password"
             rules={[{ required: true, message: 'Ingrese contraseña' }]}
           >
-            <Input.Password prefix={<LockOutlined />} placeholder="Contraseña" />
+            <Input.Password prefix={<LockOutlined />} placeholder="Contraseña" autoComplete="current-password" />
           </Form.Item>
-          
+
           <Form.Item>
-            <Button 
-              type="primary" 
-              htmlType="submit" 
-              loading={loading} 
-              block
-              size="large"
-            >
+            <Button type="primary" htmlType="submit" loading={loading} block size="large">
               Ingresar
             </Button>
           </Form.Item>
         </Form>
 
-        {showAdminCloud && (
-          <>
-            <Divider plain style={{ margin: '20px 0' }}>
-              Administración (Supabase)
-            </Divider>
-            <Text type="secondary" style={{ display: 'block', marginBottom: 12, fontSize: 12 }}>
-              Usá el mismo email que en Supabase Auth. El CRUD de licencias va directo a PostgREST con tu sesión (JWT) y
-              RLS: ejecutá <code>supabase/licencias-license-admin-rls.sql</code> y agregá tu correo en la tabla{' '}
-              <code>license_admin_allowlist</code>. En el build: <code>VITE_SUPABASE_URL</code> y{' '}
-              <code>VITE_SUPABASE_ANON_KEY</code>. Opcional: <code>VITE_PWA_ADMIN_EMAILS</code> para mostrar el menú
-              solo a ciertos emails, o <code>VITE_PWA_LICENSE_CLOUD_ADMIN=true</code> sin lista en el cliente.
-            </Text>
-            {cloudErr ? <Alert type="error" message={cloudErr} showIcon style={{ marginBottom: 12 }} /> : null}
-            {cloudEmail ? (
-              <div style={{ textAlign: 'center' }}>
-                <Text type="success">Sesión admin: {cloudEmail}</Text>
-                <Button block style={{ marginTop: 12 }} onClick={onCloudSignOut} loading={cloudLoading}>
-                  Cerrar sesión admin (cloud)
-                </Button>
-              </div>
-            ) : (
-              <Form layout="vertical" onFinish={onCloudAdmin}>
-                <Form.Item
-                  name="adminEmail"
-                  label="Email"
-                  rules={[{ required: true, type: 'email', message: 'Email válido' }]}
-                >
-                  <Input prefix={<MailOutlined />} placeholder="admin@tuempresa.com" autoComplete="username" />
-                </Form.Item>
-                <Form.Item
-                  name="adminPassword"
-                  label="Contraseña"
-                  rules={[{ required: true, message: 'Ingresá la contraseña' }]}
-                >
-                  <Input.Password prefix={<LockOutlined />} placeholder="Contraseña Supabase" autoComplete="current-password" />
-                </Form.Item>
-                <Button type="default" htmlType="submit" loading={cloudLoading} block>
-                  Ingresar como admin (cloud)
-                </Button>
-              </Form>
-            )}
-          </>
+        {typeof window !== 'undefined' && window.__IS_PWA__ ? (
+          <Text type="secondary" style={{ display: 'block', textAlign: 'center', marginTop: 8, fontSize: 12 }}>
+            {t('login.cloudHint')}
+          </Text>
+        ) : (
+          <Text type="secondary" style={{ display: 'block', textAlign: 'center', marginTop: 8, fontSize: 12 }}>
+            {t('login.defaultHint')}
+          </Text>
         )}
-
-        <p style={{ textAlign: 'center', fontSize: 12, color: '#999', marginTop: 16 }}>
-          Usuario local por defecto: admin / admin123
-        </p>
       </Card>
     </div>
   )

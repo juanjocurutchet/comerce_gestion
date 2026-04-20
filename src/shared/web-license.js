@@ -188,6 +188,53 @@ export async function activateLicenseWeb(cfg, rawKey, storage) {
   }
 }
 
+export async function submitDemoOnboardingWeb(cfg, payload) {
+  let safeCfg
+  try {
+    safeCfg = assertSupabasePublicCfg(cfg)
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) }
+  }
+  const row = {
+    contact_email: String(payload?.contact_email ?? '').trim(),
+    contact_name: String(payload?.contact_name ?? '').trim(),
+    business_name: String(payload?.business_name ?? '').trim(),
+    contact_phone: String(payload?.contact_phone ?? '').trim(),
+    notes: payload?.notes != null ? String(payload.notes) : '',
+    source: 'pwa',
+    status: 'pending'
+  }
+  if (!row.contact_email || !row.contact_name) {
+    return { ok: false, error: 'Completá email y nombre de contacto.' }
+  }
+  try {
+    const res = await fetch(`${safeCfg.url}/rest/v1/demo_onboarding_requests`, {
+      method: 'POST',
+      headers: {
+        apikey: safeCfg.anonKey,
+        Authorization: `Bearer ${safeCfg.anonKey}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal'
+      },
+      body: JSON.stringify(row)
+    })
+    if (!res.ok) {
+      const t = await res.text()
+      let detail = `HTTP ${res.status}`
+      try {
+        const j = JSON.parse(t)
+        detail = j.message || j.details || j.hint || detail
+      } catch {
+        if (t) detail = `${detail}: ${t.slice(0, 200)}`
+      }
+      throw new Error(detail)
+    }
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) }
+  }
+}
+
 export async function requestUpgradeWeb(cfg, payload) {
   if (!cfg?.url || !cfg?.anonKey) {
     return { ok: false, error: 'Sin configuración de servidor' }

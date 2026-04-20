@@ -29,10 +29,16 @@ export async function ensurePwaMinimalData() {
     await usuariosDB.create({
       nombre: 'Administrador',
       username: 'admin',
-      password: 'admin',
+      password: 'admin123',
       rol: 'admin',
       activo: 1
     })
+  } else {
+    // Instalaciones PWA viejas: el seed usaba password "admin"; Electron y la doc usan admin123.
+    const adminUser = users.find((u) => String(u.username).toLowerCase() === 'admin')
+    if (adminUser?.id != null && adminUser.password === 'admin') {
+      await usuariosDB.updatePassword(adminUser.id, 'admin123')
+    }
   }
 
   const cats = await categoriasDB.getAll()

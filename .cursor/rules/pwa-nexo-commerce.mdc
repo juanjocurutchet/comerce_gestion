@@ -10,7 +10,7 @@ Migrar de Electron a **PWA web** (menos bloqueos de antivirus), mismo diseño, *
 
 ## Archivos clave
 - **RLS admin licencias:** `supabase/licencias-license-admin-rls.sql` — allowlist por email en JWT; `src/shared/web-license-admin.js` (`*AsUser`).
-- **Build PWA:** `vite.pwa.config.js` — entrada `index-pwa.html`, Workbox.
+- **Build PWA:** `vite.pwa.config.js` — entrada `index-pwa.html`, Workbox. Enlace demo en panel Licencias: `VITE_PUBLIC_DEMO_URL` (no lee `resources/client.json`, eso es solo Electron).
 - **Entrada:** `src/renderer/index-pwa.html`, `src/renderer/main-pwa.jsx` — `await bootPwaApi()` antes de montar React.
 - **API web:** `src/renderer/src/pwa/bootPwaApi.js`, `pwaMockApi.js`, `ipcShape.js` (`ipcOk` / `ipcErr`).
 - **DB:** `src/shared/db-init.js` (`window.__IS_PWA__` → adaptador IndexedDB), `src/adapters/indexeddb/`, `src/renderer/src/pwa/pwaDbBridge.js`, `@shared/db/interface.js`.

@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../store/authStore'
 import { useLicenseStore } from '../store/licenseStore'
 import { TrialUpgradeModal } from '../components/LicenseGuard'
+import MustChangeCloudPasswordModal from '../components/MustChangeCloudPasswordModal'
 import nexoLogo from '../assets/nexo-commerce-logo.png'
 import nexoIcon from '../assets/nexo-commerce-icon.png'
 import { useThemeStore } from '../store/themeStore'
@@ -111,6 +112,8 @@ const MainLayout = ({ children }) => {
   }
 
   return (
+    <>
+      <MustChangeCloudPasswordModal />
     <Layout style={{ minHeight: '100vh' }}>
       <Sider
         trigger={null}
@@ -231,6 +234,7 @@ const MainLayout = ({ children }) => {
         onClose={() => setShowUpgrade(false)}
       />
     </Layout>
+    </>
   )
 }
 

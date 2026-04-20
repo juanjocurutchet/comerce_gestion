@@ -130,6 +130,70 @@ export function createPwaSupabaseAuthApi(cfg) {
     async getAccessToken() {
       const { session } = await this.getSession()
       return session?.access_token || null
+    },
+
+    /** Nueva contraseña definitiva; quita la obligación de cambio (user_metadata). */
+    async updatePassword(newPassword) {
+      if (!configured) throw new Error('Supabase no está configurado en la PWA')
+      const stored = readStoredSession()
+      if (!stored?.access_token) throw new Error('Sin sesión')
+      const pwd = String(newPassword || '').trim()
+      if (pwd.length < 6) throw new Error('La contraseña debe tener al menos 6 caracteres')
+      const res = await fetch(`${cfg.url}/auth/v1/user`, {
+        method: 'PUT',
+        headers: buildHeaders(cfg.anonKey, {
+          Authorization: `Bearer ${stored.access_token}`,
+          'Content-Type': 'application/json'
+        }),
+        body: JSON.stringify({
+          password: pwd,
+          data: { gcom_must_change_password: false }
+        })
+      })
+      const data = await parseJsonResponse(res)
+      const u = data?.user ?? data
+      if (u && typeof u === 'object' && u.id) {
+        const next = { ...stored, user: u }
+        writeStoredSession(next)
+      }
+      return data
+    },
+
+    async getMemberships() {
+      if (!configured) throw new Error('Supabase no está configurado en la PWA')
+      const token = await this.getAccessToken()
+      if (!token) return []
+      const params = new URLSearchParams()
+      params.set('select', 'commerce_id,role,activo')
+      params.set('activo', 'eq.true')
+      const res = await fetch(`${cfg.url}/rest/v1/user_commerces?${params.toString()}`, {
+        headers: buildHeaders(cfg.anonKey, {
+          Authorization: `Bearer ${token}`
+        })
+      })
+      const rows = await parseJsonResponse(res)
+      return Array.isArray(rows) ? rows : []
+    },
+
+    /** Coincide con public.license_admin_from_jwt() (RLS panel licencias). Sin membresía de comercio. */
+    async getLicenseAdminFromJwt() {
+      if (!configured) return false
+      const token = await this.getAccessToken()
+      if (!token) return false
+      try {
+        const res = await fetch(`${cfg.url}/rest/v1/rpc/license_admin_from_jwt`, {
+          method: 'POST',
+          headers: buildHeaders(cfg.anonKey, {
+            Authorization: `Bearer ${token}`
+          }),
+          body: '{}'
+        })
+        if (!res.ok) return false
+        const data = await res.json()
+        return data === true || data === 'true' || data === 't'
+      } catch {
+        return false
+      }
     }
   }
 }

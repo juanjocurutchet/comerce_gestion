@@ -1,7 +1,8 @@
 import {
   checkLicenseWeb,
   activateLicenseWeb,
-  requestUpgradeWeb
+  requestUpgradeWeb,
+  submitDemoOnboardingWeb
 } from '@shared/web-license.js'
 import {
   licenseAdminGetAll,
@@ -15,7 +16,14 @@ import {
   licenseAdminUpdateAsUser,
   licenseAdminDeleteAsUser,
   licenseAdminListUpgradeRequestsAsUser,
-  licenseAdminListCommercesAsUser
+  licenseAdminListCommercesAsUser,
+  licenseAdminListDemoOnboardingAsUser,
+  licenseAdminProvisionDemoRequestAsUser,
+  licenseAdminProvisionManualDemoAsUser,
+  licenseAdminUpdateDemoOnboardingMessageAsUser,
+  licenseAdminDeleteDemoOnboardingAsUser,
+  licenseAdminDeleteDemoOnboardingFullAsUser,
+  licenseAdminDeleteLicenseFullAsUser
 } from '@shared/web-license-admin.js'
 import {
   isPwaAdminBuild,
@@ -84,7 +92,12 @@ async function assertPwaLicenseAdminCaller() {
     const email = session?.user?.email
     if (!email) throw new Error('La sesión cloud no tiene email.')
     if (hasPwaAdminEmailAllowlist() && !isEmailInPwaAdminAllowlist(email)) {
-      throw new Error('Tu email no está en VITE_PWA_ADMIN_EMAILS (solo UI) o la sesión cloud venció.')
+      const chk = await window.api?.cloudAuth?.isLicenseAdminFromJwt?.()
+      if (!chk?.ok || !chk.data) {
+        throw new Error(
+          'Tu email no está en VITE_PWA_ADMIN_EMAILS ni en la allowlist de licencias en Supabase (license_admin_allowlist), o la sesión venció.'
+        )
+      }
     }
     return
   }
@@ -102,7 +115,6 @@ async function getAccessTokenOrThrow() {
   return tr.data
 }
 
-/** Parchea `window.api.license`. Modo JWT: CRUD directo a PostgREST con RLS (sin service role en Vercel). */
 export function patchApiWithSupabaseLicense(api, cfg) {
   const storage = createLocalStorageBackend()
   const useJwt = usesJwtLicenseAdmin()
@@ -190,6 +202,73 @@ export function patchApiWithSupabaseLicense(api, cfg) {
       stubNoAdmin ||
       (useJwt
         ? async () => runJwt((uc, t) => licenseAdminListCommercesAsUser({ ...uc, accessToken: t }))
-        : async () => runLegacy(() => licenseAdminListCommerces(legacyAdminCfg)))
+        : async () => runLegacy(() => licenseAdminListCommerces(legacyAdminCfg))),
+
+    listDemoOnboarding:
+      stubNoAdmin ||
+      (useJwt
+        ? async () => runJwt((uc, t) => licenseAdminListDemoOnboardingAsUser({ ...uc, accessToken: t }))
+        : async () => ({ ok: false, error: ERR_LICENSE_PWA_LEGACY_KEY })),
+
+    provisionDemoOnboarding:
+      stubNoAdmin ||
+      (useJwt
+        ? async (requestId, membershipRole, options) =>
+            runJwt((uc, t) =>
+              licenseAdminProvisionDemoRequestAsUser(
+                { ...uc, accessToken: t },
+                requestId,
+                membershipRole,
+                options
+              )
+            )
+        : async () => ({ ok: false, error: ERR_LICENSE_PWA_LEGACY_KEY })),
+
+    provisionManualDemo:
+      stubNoAdmin ||
+      (useJwt
+        ? async (payload) =>
+            runJwt((uc, t) => licenseAdminProvisionManualDemoAsUser({ ...uc, accessToken: t }, payload))
+        : async () => ({ ok: false, error: ERR_LICENSE_PWA_LEGACY_KEY })),
+
+    updateDemoOnboardingMessage:
+      stubNoAdmin ||
+      (useJwt
+        ? async (id, deliveryMessage) =>
+            runJwt((uc, t) =>
+              licenseAdminUpdateDemoOnboardingMessageAsUser(
+                { ...uc, accessToken: t },
+                id,
+                deliveryMessage
+              )
+            )
+        : async () => ({ ok: false, error: ERR_LICENSE_PWA_LEGACY_KEY })),
+
+    deleteDemoOnboarding:
+      stubNoAdmin ||
+      (useJwt
+        ? async (id) =>
+            runJwt((uc, t) => licenseAdminDeleteDemoOnboardingAsUser({ ...uc, accessToken: t }, id))
+        : async () => ({ ok: false, error: ERR_LICENSE_PWA_LEGACY_KEY })),
+
+    deleteDemoOnboardingFull:
+      stubNoAdmin ||
+      (useJwt
+        ? async (payload) =>
+            runJwt((uc, t) =>
+              licenseAdminDeleteDemoOnboardingFullAsUser({ ...uc, accessToken: t }, payload)
+            )
+        : async () => ({ ok: false, error: ERR_LICENSE_PWA_LEGACY_KEY })),
+
+    deleteLicenseFull:
+      stubNoAdmin ||
+      (useJwt
+        ? async (payload) =>
+            runJwt((uc, t) => licenseAdminDeleteLicenseFullAsUser({ ...uc, accessToken: t }, payload))
+        : async () => ({ ok: false, error: ERR_LICENSE_PWA_LEGACY_KEY }))
+  }
+
+  api.demoOnboarding = {
+    submit: (payload) => submitDemoOnboardingWeb(cfg, payload)
   }
 }

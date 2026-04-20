@@ -1,6 +1,7 @@
 import { ipcOk, ipcErr } from './ipcShape.js'
 import { exportWebSnapshot, importWebSnapshot } from './pwaSnapshot.js'
 import { configDB } from '@shared/db/interface.js'
+import { getPwaPublicDemoUrl } from './pwaEnv.js'
 
 export function createPwaMockApi() {
   return {
@@ -186,7 +187,8 @@ export function createPwaMockApi() {
     cloudAuth: {
       getSession: async () => ipcOk({ configured: false, session: null }),
       signIn: async () => ipcErr('Autenticación cloud no configurada en esta compilación.'),
-      signOut: async () => ipcOk(true)
+      signOut: async () => ipcOk(true),
+      updatePassword: async () => ipcErr('Autenticación cloud no configurada en esta compilación.')
     },
 
     seed: {
@@ -216,7 +218,7 @@ export function createPwaMockApi() {
     client: {
       getConfig: async () => ({
         clientName: '',
-        publicDemoUrl: '',
+        publicDemoUrl: getPwaPublicDemoUrl(),
         features: {
           ventas: true,
           cotizaciones: true,
@@ -256,7 +258,15 @@ export function createPwaMockApi() {
       delete: async () => ipcErr('Panel de licencias solo en la app de escritorio.'),
       requestUpgrade: async () => ipcOk(true),
       listUpgradeRequests: async () => ipcErr('Panel de licencias solo en la app de escritorio.'),
-      listCommerces: async () => ipcErr('Panel de licencias solo en la app de escritorio.')
+      listCommerces: async () => ipcErr('Panel de licencias solo en la app de escritorio.'),
+      listDemoOnboarding: async () => ipcErr('Panel de licencias solo en la app de escritorio.'),
+      provisionDemoOnboarding: async () => ipcErr('Panel de licencias solo en la app de escritorio.'),
+      provisionManualDemo: async () => ipcErr('Panel de licencias solo en la app de escritorio.')
+    },
+
+    demoOnboarding: {
+      submit: async () =>
+        ipcErr('Definí VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY en el build para enviar la solicitud.')
     },
 
     updater: {

@@ -18,6 +18,11 @@ export function getPublicSupabaseConfig() {
   return { url, anonKey }
 }
 
+/** URL pública de la PWA (panel Licencias). En build: `VITE_PUBLIC_DEMO_URL`. En Electron: `resources/client.json` → publicDemoUrl. */
+export function getPwaPublicDemoUrl() {
+  return unwrapQuotedEnv(import.meta.env?.VITE_PUBLIC_DEMO_URL)
+}
+
 /** Si es true, la PWA se comporta como build interno (sin gate de licencia comercial; solo entornos cerrados). */
 export function isPwaAdminBuild() {
   return import.meta.env?.VITE_PWA_ADMIN === 'true'
@@ -60,6 +65,12 @@ export function usesJwtLicenseAdmin() {
     .toLowerCase()
   if (v === 'true' || v === '1' || v === 'yes') return true
   return hasPwaAdminEmailAllowlist()
+}
+
+/** Para unificar login: usuario local o email Supabase admin. */
+export function looksLikeEmail(value) {
+  const s = String(value ?? '').trim()
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)
 }
 
 /**

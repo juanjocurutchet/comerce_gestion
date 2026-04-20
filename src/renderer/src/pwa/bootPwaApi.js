@@ -3,6 +3,7 @@ import { createPwaMockApi } from './pwaMockApi.js'
 import { buildDbBackedWindowApi } from './pwaDbBridge.js'
 import {
   getPublicSupabaseConfig,
+  getPwaPublicDemoUrl,
   isPwaAdminBuild,
   hasPwaAdminEmailAllowlist,
   isEmailInPwaAdminAllowlist,
@@ -11,7 +12,6 @@ import {
 import { patchApiWithSupabaseLicense } from './supabaseLicenseBridge.js'
 import { createPwaProductsSyncApi } from './pwaProductsSync.js'
 import { createPwaSupabaseAuthApi } from './pwaSupabaseAuth.js'
-
 function wrapIpc(fn) {
   return async (...args) => {
     try {
@@ -39,20 +39,29 @@ export async function bootPwaApi() {
       getSession: wrapIpc(() => cloudAuthApi.getSession()),
       signIn: wrapIpc((email, password) => cloudAuthApi.signIn(email, password)),
       signOut: wrapIpc(() => cloudAuthApi.signOut()),
-      getAccessToken: wrapIpc(() => cloudAuthApi.getAccessToken())
+      getAccessToken: wrapIpc(() => cloudAuthApi.getAccessToken()),
+      getMemberships: wrapIpc(() => cloudAuthApi.getMemberships()),
+      isLicenseAdminFromJwt: wrapIpc(() => cloudAuthApi.getLicenseAdminFromJwt()),
+      updatePassword: wrapIpc((newPassword) => cloudAuthApi.updatePassword(newPassword))
     }
 
     window.api.client.getConfig = async () => {
       let isAdmin = isPwaAdminBuild()
-      if (!isAdmin && usesJwtLicenseAdmin()) {
+      if (!isAdmin) {
         try {
           const r = await cloudAuthApi.getSession()
           const email = r?.session?.user?.email
           if (!email) {
             void 0
-          } else if (hasPwaAdminEmailAllowlist()) {
-            if (isEmailInPwaAdminAllowlist(email)) isAdmin = true
-          } else {
+          } else if (usesJwtLicenseAdmin()) {
+            if (hasPwaAdminEmailAllowlist()) {
+              if (isEmailInPwaAdminAllowlist(email)) isAdmin = true
+              else if (await cloudAuthApi.getLicenseAdminFromJwt()) isAdmin = true
+            } else {
+              isAdmin = true
+            }
+          } else if (await cloudAuthApi.getLicenseAdminFromJwt()) {
+            // Sesión Supabase + license_admin_allowlist: menú admin aunque no definas VITE_PWA_LICENSE_CLOUD_ADMIN
             isAdmin = true
           }
         } catch {
@@ -61,7 +70,7 @@ export async function bootPwaApi() {
       }
       return {
         clientName: '',
-        publicDemoUrl: '',
+        publicDemoUrl: getPwaPublicDemoUrl(),
         features: {
           ventas: true,
           cotizaciones: true,

@@ -2,9 +2,9 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import {
   Table, Button, Space, Typography, Tag, Card, Modal, Form,
   Input, DatePicker, Switch, InputNumber, Popconfirm, message,
-  Row, Col, Statistic, Alert, Checkbox, Divider, Tabs, AutoComplete
+  Row, Col, Statistic, Alert, Checkbox, Divider, Tabs, AutoComplete, Select
 } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, CopyOutlined, PlusCircleOutlined, LinkOutlined } from '@ant-design/icons'
+import { PlusOutlined, EditOutlined, DeleteOutlined, ReloadOutlined, CopyOutlined, PlusCircleOutlined, LinkOutlined, UserAddOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
 import { useClientStore } from '../store/clientStore'
@@ -26,18 +26,40 @@ const ALL_FEATURES = [
 
 const DEFAULT_FEATURES = Object.fromEntries(ALL_FEATURES.map(f => [f.key, true]))
 
+function extractCredentialPiecesFromNotes(notes) {
+  const raw = String(notes || '')
+  if (!raw) return { tempPassword: '', licenseKey: '' }
+  const passMatch = raw.match(/Contrase(?:ñ|n)a temporal[^:]*:\s*([^\.\n]+)/i)
+  const keyMatch = raw.match(/Clave demo:\s*([A-Z0-9-]+)/i)
+  return {
+    tempPassword: (passMatch?.[1] || '').trim(),
+    licenseKey: (keyMatch?.[1] || '').trim()
+  }
+}
+
 const Licencias = () => {
   const [data, setData] = useState([])
   const [loading, setLoading] = useState(false)
   const [modal, setModal] = useState({ open: false, record: null })
   const [newKey, setNewKey] = useState(null)
   const [form] = Form.useForm()
+  const [manualForm] = Form.useForm()
   const { t } = useTranslation()
   const publicDemoUrl = useClientStore((s) => s.publicDemoUrl)
   const [activeTab, setActiveTab] = useState('licenses')
   const [leads, setLeads] = useState([])
   const [leadsLoading, setLeadsLoading] = useState(false)
   const [commerces, setCommerces] = useState([])
+  const [demos, setDemos] = useState([])
+  const [demosLoading, setDemosLoading] = useState(false)
+  const [demoModal, setDemoModal] = useState({ open: false, record: null })
+  const [demoRole, setDemoRole] = useState('owner')
+  const [demoPassword, setDemoPassword] = useState('')
+  const [demoDays, setDemoDays] = useState(10)
+  const [demoProvisionLoading, setDemoProvisionLoading] = useState(false)
+  const [manualModalOpen, setManualModalOpen] = useState(false)
+  const [manualProvisionLoading, setManualProvisionLoading] = useState(false)
+  const [resendModal, setResendModal] = useState({ open: false, text: '', row: null })
 
   const load = async () => {
     setLoading(true)
@@ -60,11 +82,31 @@ const Licencias = () => {
     if (res.ok) setCommerces(res.data || [])
   }, [])
 
+  const loadDemos = useCallback(async () => {
+    setDemosLoading(true)
+    const res = await window.api.license.listDemoOnboarding?.()
+    if (res?.ok) setDemos(res.data || [])
+    else message.error(res?.error || 'Error')
+    setDemosLoading(false)
+  }, [])
+
   useEffect(() => { load() }, [])
 
   useEffect(() => {
-    if (activeTab === 'leads') loadLeads()
-  }, [activeTab, loadLeads])
+    if (activeTab === 'leads') {
+      loadLeads()
+      loadDemos()
+    }
+  }, [activeTab, loadLeads, loadDemos])
+
+  useEffect(() => {
+    if (activeTab === 'demos') {
+      loadDemos()
+      load()
+    }
+  }, [activeTab, loadDemos])
+
+  const paidLicenses = useMemo(() => (data || []).filter((r) => !r.es_demo), [data])
 
   useEffect(() => {
     if (modal.open && !newKey) loadCommerces()
@@ -138,10 +180,19 @@ const Licencias = () => {
     else message.error(res.error)
   }
 
-  const handleDelete = async (id) => {
-    const res = await window.api.license.delete(id)
-    if (res.ok) { message.success(t('licencias.deletedMsg')); load() }
-    else message.error(res.error)
+  const handleDelete = async (row) => {
+    const res = await window.api.license.deleteLicenseFull?.({
+      licenseId: row?.id,
+      commerceId: row?.commerce_id,
+      activationKey: row?.clave
+    })
+    if (res?.ok) {
+      message.success(t('licencias.deletedMsg'))
+      load()
+      loadDemos()
+    } else {
+      message.error(res?.error || t('common.error'))
+    }
   }
 
   const copyKey = (key) => {
@@ -153,6 +204,66 @@ const Licencias = () => {
     if (!publicDemoUrl?.trim()) return
     navigator.clipboard.writeText(publicDemoUrl.trim())
     message.success(t('licencias.demoUrlCopied'))
+  }
+
+  const buildProvisionMessage = (payload) => {
+    const email = String(payload?.email || '').trim()
+    const tempPassword = String(payload?.tempPassword || '').trim()
+    const licenseKey = String(payload?.licenseKey || '').trim()
+    const link = publicDemoUrl?.trim()
+    const lines = [
+      'Para dar de alta ingrese usuario, contraseña y luego la clave de activación.',
+      link ? `Ingrese a este link: ${link}` : null,
+      `Usuario: ${email || '—'}`,
+      `Contraseña temporal (un solo uso): ${tempPassword || '—'}`,
+      `Clave de activación: ${licenseKey || '—'}`,
+      'La contraseña es de un solo uso; cambiala una vez ingresado al sistema.'
+    ].filter(Boolean)
+    return lines.join('\n')
+  }
+
+  const copyProvisionPackage = (payload) => {
+    const text = String(payload?.message || '').trim() || buildProvisionMessage(payload)
+    navigator.clipboard.writeText(text)
+    message.success(t('licencias.credentialsCopied'))
+  }
+
+  const openResendModal = (payload, row) => {
+    const text = String(payload?.message || '').trim() || buildProvisionMessage(payload)
+    setResendModal({ open: true, text, row })
+  }
+
+  const handleCopyResendMessage = () => {
+    navigator.clipboard.writeText(resendModal.text || '')
+    message.success(t('licencias.credentialsCopied'))
+  }
+
+  const handleSaveResendMessage = async () => {
+    const id = resendModal?.row?.id
+    if (!id) return
+    const res = await window.api.license.updateDemoOnboardingMessage?.(id, resendModal.text || '')
+    if (res?.ok) {
+      message.success(t('licencias.resendSaved'))
+      setResendModal({ open: false, text: '', row: null })
+      loadDemos()
+    } else {
+      message.error(res?.error || t('common.error'))
+    }
+  }
+
+  const handleDeleteDemoOnboarding = async (row) => {
+    const res = await window.api.license.deleteDemoOnboardingFull?.({
+      requestId: row?.id,
+      commerceId: row?.commerce_id,
+      activationKey: row?.activation_key
+    })
+    if (res?.ok) {
+      message.success(t('licencias.demoDeleted'))
+      loadDemos()
+      load()
+    } else {
+      message.error(res?.error || t('common.error'))
+    }
   }
 
   const statusTag = (row) => {
@@ -224,7 +335,7 @@ const Licencias = () => {
             <Button size="small" type="primary" icon={<PlusCircleOutlined />} title="+1 mes" />
           </Popconfirm>
           <Button size="small" icon={<EditOutlined />} onClick={() => openModal(r)} />
-          <Popconfirm title={t('licencias.deleteConfirm')} onConfirm={() => handleDelete(r.id)} okText={t('common.yes')} cancelText={t('common.no')}>
+          <Popconfirm title={t('licencias.deleteConfirm')} onConfirm={() => handleDelete(r)} okText={t('common.yes')} cancelText={t('common.no')}>
             <Button size="small" danger icon={<DeleteOutlined />} />
           </Popconfirm>
         </Space>
@@ -232,7 +343,238 @@ const Licencias = () => {
     }
   ]
 
+  const openDemoProvision = (record) => {
+    setDemoRole('owner')
+    setDemoPassword('')
+    setDemoDays(10)
+    setDemoModal({ open: true, record })
+  }
+
+  const openManualDemoModal = () => {
+    manualForm.setFieldsValue({
+      email: '',
+      businessName: '',
+      membershipRole: 'owner',
+      password: '',
+      demoDays: 10
+    })
+    setManualModalOpen(true)
+  }
+
+  const runManualDemoProvision = async () => {
+    let values
+    try {
+      values = await manualForm.validateFields()
+    } catch {
+      return
+    }
+    setManualProvisionLoading(true)
+    try {
+      const res = await window.api.license.provisionManualDemo?.({
+        email: String(values.email || '').trim(),
+        businessName: String(values.businessName || '').trim(),
+        membershipRole: values.membershipRole || 'owner',
+        password: String(values.password || '').trim() || undefined,
+        demoDays: values.demoDays
+      })
+      if (res?.ok) {
+        const cid = res.data?.commerce_id
+        message.success(t('licencias.demoProvisionOk', { commerceId: cid || '—' }))
+        const passToShow = res.data?.passwordForClient || res.data?.generatedPassword
+        if (passToShow || res.data?.licenseKey) {
+          const pass = passToShow ? `\nPassword temporal: ${passToShow}` : ''
+          const key = res.data?.licenseKey ? `\nClave demo: ${res.data.licenseKey}` : ''
+          Modal.info({
+            title: t('licencias.demoProvisionCredentialsTitle'),
+            content: (
+              <pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>
+                {`Email: ${res.data?.email || values.email}\nCommerce: ${cid || '—'}${pass}${key}`}
+              </pre>
+            )
+          })
+        }
+        setManualModalOpen(false)
+        manualForm.resetFields()
+        loadDemos()
+      } else {
+        message.error(res?.error || 'Error')
+      }
+    } finally {
+      setManualProvisionLoading(false)
+    }
+  }
+
+  const runDemoProvision = async () => {
+    const rec = demoModal.record
+    if (!rec?.id) return
+    setDemoProvisionLoading(true)
+    try {
+      const res = await window.api.license.provisionDemoOnboarding?.(rec.id, demoRole, {
+        password: demoPassword.trim() || undefined,
+        demoDays
+      })
+      if (res?.ok) {
+        const cid = res.data?.commerce_id
+        message.success(t('licencias.demoProvisionOk', { commerceId: cid || '—' }))
+        const passToShowReq = res.data?.passwordForClient || res.data?.generatedPassword
+        if (passToShowReq || res.data?.licenseKey) {
+          const pass = passToShowReq ? `\nPassword temporal: ${passToShowReq}` : ''
+          const key = res.data?.licenseKey ? `\nClave demo: ${res.data.licenseKey}` : ''
+          Modal.info({
+            title: t('licencias.demoProvisionCredentialsTitle'),
+            content: (
+              <pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>
+                {`Email: ${res.data.email || rec.contact_email}\nCommerce: ${cid || '—'}${pass}${key}`}
+              </pre>
+            )
+          })
+        }
+        setDemoModal({ open: false, record: null })
+        loadDemos()
+      } else {
+        message.error(res?.error || 'Error')
+      }
+    } finally {
+      setDemoProvisionLoading(false)
+    }
+  }
+
+  const paidColumns = [
+    { title: t('licencias.colClient'), dataIndex: 'cliente_nombre', ellipsis: true },
+    {
+      title: t('licencias.colKey'),
+      dataIndex: 'clave',
+      width: 200,
+      render: (v) => (
+        <Space>
+          <Text code style={{ fontSize: 12 }}>{v}</Text>
+          <Button size="small" type="text" icon={<CopyOutlined />} onClick={() => copyKey(v)} />
+        </Space>
+      )
+    },
+    {
+      title: t('licencias.colCommerceId'),
+      dataIndex: 'commerce_id',
+      ellipsis: true,
+      render: (v) => (v ? <Text code ellipsis={{ tooltip: v }}>{v}</Text> : <Text type="secondary">—</Text>)
+    },
+    {
+      title: t('licencias.fieldNotes'),
+      dataIndex: 'notas',
+      ellipsis: true,
+      width: 220,
+      render: (v) => (v ? <Text ellipsis={{ tooltip: v }}>{v}</Text> : <Text type="secondary">—</Text>)
+    },
+    {
+      title: t('licencias.colExpiry'),
+      dataIndex: 'vence_en',
+      width: 110,
+      render: (v) => (v ? dayjs(v).format('DD/MM/YYYY') : '—')
+    },
+    { title: t('licencias.colStatus'), render: (_, r) => statusTag(r) }
+  ]
+
+  const demoColumns = [
+    {
+      title: t('licencias.demoColCreated'),
+      dataIndex: 'created_at',
+      width: 170,
+      render: (v) => (v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '—')
+    },
+    { title: t('licencias.demoColEmail'), dataIndex: 'contact_email', ellipsis: true },
+    { title: t('licencias.demoColName'), dataIndex: 'contact_name', ellipsis: true },
+    { title: t('licencias.demoColBusiness'), dataIndex: 'business_name', ellipsis: true },
+    { title: t('licencias.demoColPhone'), dataIndex: 'contact_phone', width: 120, ellipsis: true },
+    {
+      title: t('licencias.demoColSource'),
+      dataIndex: 'source',
+      width: 130,
+      render: (src) =>
+        src === 'manual' ? (
+          <Tag color="geekblue">{t('licencias.demoSourceManual')}</Tag>
+        ) : (
+          <Tag>{t('licencias.demoSourceForm')}</Tag>
+        )
+    },
+    {
+      title: t('licencias.demoColStatus'),
+      dataIndex: 'status',
+      width: 110,
+      render: (s) => <Tag>{s || '—'}</Tag>
+    },
+    {
+      title: t('licencias.demoColCommerce'),
+      dataIndex: 'commerce_id',
+      ellipsis: true,
+      render: (v) => (v ? <Text code>{v}</Text> : <Text type="secondary">—</Text>)
+    },
+    {
+      title: t('licencias.demoColNotes'),
+      dataIndex: 'notes',
+      ellipsis: true,
+      width: 220,
+      render: (v) => (v ? <Text ellipsis={{ tooltip: v }}>{v}</Text> : <Text type="secondary">—</Text>)
+    },
+    {
+      title: t('licencias.demoCredentials'),
+      key: 'cred',
+      width: 300,
+      render: (_, r) => {
+        const pieces = extractCredentialPiecesFromNotes(r?.notes)
+        const payload = {
+          email: String(r?.contact_email || '').trim(),
+          tempPassword: String(r?.temp_password || pieces.tempPassword || '').trim(),
+          licenseKey: String(r?.activation_key || pieces.licenseKey || '').trim(),
+          message: String(r?.delivery_message || '').trim()
+        }
+        const canCopy = Boolean(payload.email && (payload.tempPassword || payload.licenseKey))
+        return (
+          <Space direction="vertical" size={2}>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {payload.tempPassword ? `Pass: ${payload.tempPassword}` : t('licencias.demoNoTempPassword')}
+            </Text>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {payload.licenseKey ? `Clave: ${payload.licenseKey}` : 'Clave: —'}
+            </Text>
+            <Space size={4}>
+              <Button size="small" icon={<CopyOutlined />} disabled={!canCopy} onClick={() => copyProvisionPackage(payload)}>
+                {t('licencias.copyCredentials')}
+              </Button>
+              <Button size="small" disabled={!canCopy} onClick={() => openResendModal(payload, r)}>
+                {t('licencias.resendCredentials')}
+              </Button>
+            </Space>
+          </Space>
+        )
+      }
+    },
+    {
+      title: t('licencias.colActions'),
+      key: 'demoacc',
+      width: 170,
+      align: 'center',
+      render: (_, r) =>
+        r.status === 'pending' ? (
+          <Button size="small" type="primary" onClick={() => openDemoProvision(r)}>
+            {t('licencias.demoProvision')}
+          </Button>
+        ) : (
+          <Popconfirm
+            title={t('licencias.demoDeleteConfirm')}
+            onConfirm={() => handleDeleteDemoOnboarding(r)}
+            okText={t('common.yes')}
+            cancelText={t('common.no')}
+          >
+            <Button size="small" danger icon={<DeleteOutlined />}>
+              {t('licencias.deleteFull')}
+            </Button>
+          </Popconfirm>
+        )
+    }
+  ]
+
   const leadColumns = [
+    { title: t('licencias.leadType'), dataIndex: 'lead_kind', width: 140, render: (v) => (v === 'demo' ? <Tag color="purple">{t('licencias.leadTypeDemo')}</Tag> : <Tag>{t('licencias.leadTypeUpgrade')}</Tag>) },
     { title: t('licencias.colLeadRequestedAt'), dataIndex: 'requested_at', width: 170, render: (v) => (v ? dayjs(v).format('DD/MM/YYYY HH:mm') : '—') },
     { title: t('licencias.colLeadClientName'), dataIndex: 'client_name', ellipsis: true },
     { title: t('licencias.colLeadContactName'), dataIndex: 'contact_name', ellipsis: true },
@@ -240,8 +582,46 @@ const Licencias = () => {
     { title: t('licencias.colLeadPhone'), dataIndex: 'contact_phone', width: 120, ellipsis: true },
     { title: t('licencias.colLeadSize'), dataIndex: 'commerce_size', ellipsis: true },
     { title: t('licencias.colLeadDaysLeft'), dataIndex: 'current_days_left', width: 90, align: 'center' },
-    { title: t('licencias.colLeadSource'), dataIndex: 'source', width: 90 }
+    { title: t('licencias.colLeadSource'), dataIndex: 'source', width: 90 },
+    {
+      title: t('licencias.colActions'),
+      key: 'lead_actions',
+      width: 130,
+      align: 'center',
+      render: (_, row) =>
+        row.lead_kind === 'demo' ? (
+          row.status === 'pending' ? (
+            <Button size="small" type="primary" onClick={() => openDemoProvision(row)}>
+              {t('licencias.leadProvision')}
+            </Button>
+          ) : (
+            <Tag>{row.status || '—'}</Tag>
+          )
+        ) : (
+          <Text type="secondary">—</Text>
+        )
+    }
   ]
+
+  const planRequestsRows = useMemo(() => {
+    const upgradeRows = (leads || []).map((r) => ({
+      ...r,
+      lead_kind: 'upgrade'
+    }))
+    const demoFormRows = (demos || [])
+      .filter((r) => String(r?.source || 'pwa') !== 'manual')
+      .map((r) => ({
+        ...r,
+        id: `demo:${r.id}`,
+        lead_kind: 'demo',
+        requested_at: r.created_at,
+        client_name: r.business_name || r.contact_name || r.contact_email || '—',
+        commerce_size: r.notes || '—',
+        current_days_left: '',
+        source: r.source || 'pwa'
+      }))
+    return [...demoFormRows, ...upgradeRows]
+  }, [leads, demos])
 
   const licensePanel = (
     <div>
@@ -292,19 +672,82 @@ const Licencias = () => {
     </div>
   )
 
+  const demosPanel = (
+    <div>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Title level={4} style={{ margin: 0 }}>{t('licencias.demoTitle')}</Title>
+        <Space>
+          <Button type="primary" icon={<UserAddOutlined />} onClick={openManualDemoModal}>
+            {t('licencias.demoManualButton')}
+          </Button>
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={() => {
+              loadDemos()
+              load()
+            }}
+          >
+            {t('common.refresh')}
+          </Button>
+        </Space>
+      </div>
+      <Alert
+        type="info"
+        showIcon
+        style={{ margin: '12px 0 16px' }}
+        message={t('licencias.demoHintShort')}
+      />
+      <Card title={t('licencias.demoOnboardingTableTitle')}>
+        <Table
+          columns={demoColumns}
+          dataSource={demos}
+          rowKey="id"
+          loading={demosLoading}
+          size="small"
+          pagination={{ pageSize: 15 }}
+          locale={{ emptyText: t('licencias.demoEmpty') }}
+        />
+      </Card>
+      {paidLicenses.length > 0 ? (
+        <Card title={t('licencias.paidSectionTitle')} style={{ marginTop: 16 }}>
+          <Text type="secondary" style={{ display: 'block', marginBottom: 12, fontSize: 12 }}>
+            {t('licencias.paidSectionExtra')}
+          </Text>
+          <Table
+            columns={paidColumns}
+            dataSource={paidLicenses}
+            rowKey="id"
+            loading={loading}
+            size="small"
+            pagination={{ pageSize: 15 }}
+            locale={{ emptyText: t('licencias.paidSectionEmpty') }}
+          />
+        </Card>
+      ) : null}
+    </div>
+  )
+
   const leadsPanel = (
     <div>
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Title level={4} style={{ margin: 0 }}>{t('licencias.leadsTitle')}</Title>
-        <Button icon={<ReloadOutlined />} onClick={loadLeads}>{t('common.refresh')}</Button>
+        <Button
+          icon={<ReloadOutlined />}
+          onClick={() => {
+            loadLeads()
+            loadDemos()
+          }}
+        >
+          {t('common.refresh')}
+        </Button>
       </div>
       <Alert type="info" showIcon style={{ margin: '12px 0 16px' }} message={t('licencias.leadsHint')} />
       <Card>
         <Table
           columns={leadColumns}
-          dataSource={leads}
+          dataSource={planRequestsRows}
           rowKey="id"
-          loading={leadsLoading}
+          loading={leadsLoading || demosLoading}
           size="small"
           pagination={{ pageSize: 15 }}
           locale={{ emptyText: t('licencias.leadsEmpty') }}
@@ -320,9 +763,128 @@ const Licencias = () => {
         onChange={setActiveTab}
         items={[
           { key: 'licenses', label: t('licencias.tabLicenses'), children: licensePanel },
-          { key: 'leads', label: t('licencias.tabLeads'), children: leadsPanel }
+          { key: 'leads', label: t('licencias.tabLeads'), children: leadsPanel },
+          { key: 'demos', label: t('licencias.tabDemo'), children: demosPanel }
         ]}
       />
+
+      <Modal
+        open={manualModalOpen}
+        title={t('licencias.demoManualModalTitle')}
+        onOk={runManualDemoProvision}
+        onCancel={() => { setManualModalOpen(false); manualForm.resetFields() }}
+        okText={t('licencias.demoManualButton')}
+        confirmLoading={manualProvisionLoading}
+        destroyOnHidden
+        width={480}
+      >
+        <Form form={manualForm} layout="vertical" style={{ marginTop: 8 }}>
+          <Form.Item
+            name="email"
+            label={t('licencias.demoManualEmail')}
+            rules={[
+              { required: true, message: t('licencias.demoManualEmailRequired') },
+              { type: 'email', message: t('licencias.demoManualEmailInvalid') }
+            ]}
+          >
+            <Input autoComplete="off" placeholder="nombre@empresa.com" />
+          </Form.Item>
+          <Form.Item
+            name="businessName"
+            label={t('licencias.demoManualBusiness')}
+            rules={[{ required: true, message: t('licencias.demoManualBusinessRequired') }]}
+          >
+            <Input placeholder={t('licencias.demoManualBusinessPlaceholder')} />
+          </Form.Item>
+          <Form.Item name="membershipRole" label={t('licencias.demoRoleLabel')} initialValue="owner">
+            <Select
+              options={[
+                { value: 'owner', label: t('licencias.demoRoleOwner') },
+                { value: 'admin', label: t('licencias.demoRoleAdmin') }
+              ]}
+            />
+          </Form.Item>
+          <Form.Item name="password" label={t('licencias.demoPasswordLabel')}>
+            <Input.Password placeholder={t('licencias.demoPasswordPlaceholder')} />
+          </Form.Item>
+          <Text type="secondary" style={{ display: 'block', marginTop: -12, marginBottom: 12, fontSize: 12 }}>
+            {t('licencias.demoPasswordHint')}
+          </Text>
+          <Form.Item name="demoDays" label={t('licencias.demoDaysLabel')} initialValue={10}>
+            <InputNumber min={1} max={90} style={{ width: '100%' }} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        open={resendModal.open}
+        title={t('licencias.resendModalTitle')}
+        onCancel={() => setResendModal({ open: false, text: '', row: null })}
+        footer={[
+          <Button key="cancel" onClick={() => setResendModal({ open: false, text: '', row: null })}>
+            {t('common.cancel')}
+          </Button>,
+          <Button key="copy" icon={<CopyOutlined />} onClick={handleCopyResendMessage}>
+            {t('licencias.copyCredentials')}
+          </Button>,
+          <Button key="save" type="primary" onClick={handleSaveResendMessage}>
+            {t('common.save')}
+          </Button>
+        ]}
+        width={620}
+      >
+        <Input.TextArea
+          rows={8}
+          value={resendModal.text}
+          onChange={(e) => setResendModal((prev) => ({ ...prev, text: e.target.value }))}
+        />
+      </Modal>
+
+      <Modal
+        open={demoModal.open}
+        title={t('licencias.demoProvision')}
+        onOk={runDemoProvision}
+        onCancel={() => setDemoModal({ open: false, record: null })}
+        okText={t('licencias.demoProvision')}
+        confirmLoading={demoProvisionLoading}
+        destroyOnHidden
+      >
+        <p>{demoModal.record?.contact_email}</p>
+        <div style={{ marginTop: 12 }}>
+          <Text type="secondary">{t('licencias.demoRoleLabel')}</Text>
+          <Select
+            style={{ width: '100%', marginTop: 8 }}
+            value={demoRole}
+            onChange={setDemoRole}
+            options={[
+              { value: 'owner', label: t('licencias.demoRoleOwner') },
+              { value: 'admin', label: t('licencias.demoRoleAdmin') }
+            ]}
+          />
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <Text type="secondary">{t('licencias.demoPasswordLabel')}</Text>
+          <Input.Password
+            value={demoPassword}
+            onChange={(e) => setDemoPassword(e.target.value)}
+            placeholder={t('licencias.demoPasswordPlaceholder')}
+            style={{ marginTop: 8 }}
+          />
+          <Text type="secondary" style={{ display: 'block', marginTop: 4, fontSize: 12 }}>
+            {t('licencias.demoPasswordHint')}
+          </Text>
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <Text type="secondary">{t('licencias.demoDaysLabel')}</Text>
+          <InputNumber
+            min={1}
+            max={90}
+            value={demoDays}
+            onChange={(v) => setDemoDays(Number(v) || 10)}
+            style={{ width: '100%', marginTop: 8 }}
+          />
+        </div>
+      </Modal>
 
       <Modal
         open={modal.open}

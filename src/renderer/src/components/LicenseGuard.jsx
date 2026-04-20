@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Result, Button, Typography, Space, Alert, Input, Form, Card, Modal, message } from 'antd'
 import { LockOutlined, WifiOutlined, CalendarOutlined, StopOutlined, KeyOutlined } from '@ant-design/icons'
 import nexoLogo from '../assets/nexo-commerce-logo.png'
@@ -60,6 +61,14 @@ export const ActivationScreen = ({ onActivated }) => {
         <Text type="secondary" style={{ display: 'block', textAlign: 'center', marginTop: 16, fontSize: 12 }}>
           ¿No tenés tu clave? Contactá al soporte.
         </Text>
+        {typeof window !== 'undefined' && window.__IS_PWA__ ? (
+          <div style={{ textAlign: 'center', marginTop: 12 }}>
+            <Link to="/login">Ir al inicio de sesión</Link>
+            <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 11 }}>
+              Si sos administrador (Supabase), podés entrar con email y contraseña sin activar antes.
+            </Text>
+          </div>
+        ) : null}
       </Card>
     </div>
   )

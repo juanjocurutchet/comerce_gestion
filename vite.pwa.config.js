@@ -1,7 +1,60 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import { resolve } from 'path'
+import { createRequire } from 'node:module'
+import { fileURLToPath } from 'node:url'
+import path from 'node:path'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const require = createRequire(import.meta.url)
+
+/** En dev (`npm run dev:pwa`) no existe `/api/*` en Vercel: ejecutamos el mismo handler que en producción. */
+function pwaAdminOnboardingDevApi() {
+  let handler
+  return {
+    name: 'pwa-admin-onboarding-dev-api',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        const pathOnly = (req.url || '').split('?')[0] || ''
+        if (pathOnly !== '/api/admin-onboarding') return next()
+
+        const env = loadEnv(server.config.mode, server.config.envDir || __dirname, '')
+        const set = (k, v) => {
+          const s = v != null ? String(v).trim() : ''
+          if (s) process.env[k] = s
+        }
+        set('SUPABASE_URL', env.SUPABASE_URL || env.VITE_SUPABASE_URL)
+        set('SUPABASE_ANON_KEY', env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY)
+        set('SUPABASE_SERVICE_ROLE_KEY', env.SUPABASE_SERVICE_ROLE_KEY)
+        set('PUBLIC_DEMO_URL', env.PUBLIC_DEMO_URL || env.VITE_PUBLIC_DEMO_URL)
+        set('RESEND_API_KEY', env.RESEND_API_KEY)
+        set('MAIL_FROM_EMAIL', env.MAIL_FROM_EMAIL)
+        set('MAIL_FROM_NAME', env.MAIL_FROM_NAME)
+        set('MAIL_LOGO_URL', env.MAIL_LOGO_URL)
+
+        try {
+          if (!handler) handler = require(path.join(__dirname, 'api', 'admin-onboarding.js'))
+        } catch (e) {
+          res.statusCode = 500
+          res.setHeader('Content-Type', 'application/json; charset=utf-8')
+          res.end(JSON.stringify({ ok: false, error: e?.message || 'No se pudo cargar api/admin-onboarding.js' }))
+          return
+        }
+
+        try {
+          await handler(req, res)
+        } catch (e) {
+          if (!res.headersSent) {
+            res.statusCode = 500
+            res.setHeader('Content-Type', 'application/json; charset=utf-8')
+            res.end(JSON.stringify({ ok: false, error: e?.message || String(e) }))
+          }
+        }
+      })
+    }
+  }
+}
 
 /** Con root en src/renderer, Vite por defecto abre index.html (Electron). Forzamos la entrada PWA. */
 function pwaDefaultHtmlPlugin() {
@@ -36,6 +89,7 @@ export default defineConfig({
   envDir: resolve(__dirname),
   plugins: [
     pwaDefaultHtmlPlugin(),
+    pwaAdminOnboardingDevApi(),
     react(),
     VitePWA({
       registerType: 'autoUpdate',

@@ -32,10 +32,65 @@ function PrivateRoute({ children }) {
   return user ? children : <Navigate to="/login" replace />
 }
 
+/** Clave GCOM / estado de suscripción solo después de tener usuario local (login primero). */
+function CommercialLicenseGate({ children }) {
+  const user = useAuthStore((s) => s.user)
+  const { isAdmin } = useClientStore()
+  const { status, check } = useLicenseStore()
+
+  const isPwa = typeof window !== 'undefined' && window.__IS_PWA__
+  const isCloudUser = user?.authSource === 'cloud'
+  const needsCommercialLicense =
+    ((isPwa && !isPwaAdminBuild() && !isAdmin) || (!isPwa && !isAdmin)) && !isCloudUser
+
+  if (needsCommercialLicense) {
+    if (status?.reason === 'no_key' || status?.reason === 'not_found') {
+      return <ActivationScreen onActivated={() => check()} />
+    }
+    if (status && !status.valid) {
+      return <LicenseBlock status={status} onRetry={() => check()} />
+    }
+  }
+
+  return children
+}
+
+function LicensedRoutes() {
+  const { features, isAdmin } = useClientStore()
+  return (
+    <PrivateRoute>
+      <CommercialLicenseGate>
+        <MainLayout>
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            {features.productos && <Route path="/productos" element={<Productos />} />}
+            {features.stock && <Route path="/stock" element={<Stock />} />}
+            {features.ventas && <Route path="/ventas" element={<Ventas />} />}
+            {features.cotizaciones && <Route path="/cotizaciones" element={<Cotizaciones />} />}
+            {features.proveedores && <Route path="/proveedores" element={<Proveedores />} />}
+            <Route path="/clientes" element={<Clientes />} />
+            <Route path="/gastos" element={<Gastos />} />
+            <Route path="/listas-precio" element={<ListasPrecios />} />
+            {features.caja && <Route path="/caja" element={<Caja />} />}
+            {features.reportes && <Route path="/reportes" element={<Reportes />} />}
+            {features.usuarios && <Route path="/usuarios" element={<Usuarios />} />}
+            {features.configuracion && <Route path="/configuracion" element={<Configuracion />} />}
+            {features.backup && <Route path="/backup" element={<Backup />} />}
+            {isAdmin && <Route path="/comercios" element={<Comercios />} />}
+            {isAdmin && <Route path="/licencias" element={<Licencias />} />}
+            <Route path="/ayuda" element={<Ayuda />} />
+          </Routes>
+        </MainLayout>
+      </CommercialLicenseGate>
+    </PrivateRoute>
+  )
+}
+
 export default function App() {
   const dark = useThemeStore((s) => s.dark)
-  const { features, isAdmin, loaded: clientLoaded, load: loadClient } = useClientStore()
-  const { status, checked, check } = useLicenseStore()
+  const { loaded: clientLoaded, load: loadClient } = useClientStore()
+  const { checked, check } = useLicenseStore()
 
   useEffect(() => {
     document.body.classList.toggle('dark', dark)
@@ -48,53 +103,12 @@ export default function App() {
 
   if (!checked || !clientLoaded) return null
 
-  const isPwa = typeof window !== 'undefined' && window.__IS_PWA__
-  const needsCommercialLicense =
-    (isPwa && !isPwaAdminBuild()) || (!isPwa && !isAdmin)
-
-  if (needsCommercialLicense) {
-    if (status?.reason === 'no_key' || status?.reason === 'not_found') {
-      return <ActivationScreen onActivated={() => check()} />
-    }
-    if (status && !status.valid) {
-      return <LicenseBlock status={status} onRetry={() => check()} />
-    }
-  }
-
   return (
     <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       {!window.__IS_PWA__ && <UpdateNotifier />}
       <Routes>
         <Route path="/login" element={<Login />} />
-        <Route
-          path="/*"
-          element={
-            <PrivateRoute>
-              <MainLayout>
-                <Routes>
-                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  {features.productos     && <Route path="/productos"     element={<Productos />} />}
-                  {features.stock         && <Route path="/stock"         element={<Stock />} />}
-                  {features.ventas        && <Route path="/ventas"        element={<Ventas />} />}
-                  {features.cotizaciones  && <Route path="/cotizaciones"  element={<Cotizaciones />} />}
-                  {features.proveedores   && <Route path="/proveedores"   element={<Proveedores />} />}
-                  <Route path="/clientes"      element={<Clientes />} />
-                  <Route path="/gastos"        element={<Gastos />} />
-                  <Route path="/listas-precio" element={<ListasPrecios />} />
-                  {features.caja          && <Route path="/caja"          element={<Caja />} />}
-                  {features.reportes      && <Route path="/reportes"      element={<Reportes />} />}
-                  {features.usuarios      && <Route path="/usuarios"      element={<Usuarios />} />}
-                  {features.configuracion && <Route path="/configuracion" element={<Configuracion />} />}
-                  {features.backup        && <Route path="/backup"        element={<Backup />} />}
-                  {isAdmin                && <Route path="/comercios"     element={<Comercios />} />}
-                  {isAdmin                && <Route path="/licencias"     element={<Licencias />} />}
-                  <Route path="/ayuda" element={<Ayuda />} />
-                </Routes>
-              </MainLayout>
-            </PrivateRoute>
-          }
-        />
+        <Route path="/*" element={<LicensedRoutes />} />
       </Routes>
     </HashRouter>
   )
