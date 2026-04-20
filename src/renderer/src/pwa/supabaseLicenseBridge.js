@@ -81,8 +81,13 @@ const ERR_LICENSE_PWA_LEGACY_KEY =
 const ERR_LICENSE_JWT_RLS =
   'No tenés permiso para el panel de licencias o la sesión caducó. Iniciá sesión de nuevo o contactá soporte.'
 
-async function assertPwaLicenseAdminCaller() {
-  if (usesJwtLicenseAdmin()) {
+function isLicenseJwtBridgeMode(cfg) {
+  if (cfg?.url && cfg?.anonKey) return true
+  return usesJwtLicenseAdmin()
+}
+
+async function assertPwaLicenseAdminCaller(cfg) {
+  if (isLicenseJwtBridgeMode(cfg)) {
     if (!window.api?.cloudAuth?.getSession) {
       throw new Error('Inicio de sesión con email no disponible. Recargá la página o contactá soporte.')
     }
@@ -113,8 +118,8 @@ async function getAccessTokenOrThrow() {
 
 export function patchApiWithSupabaseLicense(api, cfg) {
   const storage = createLocalStorageBackend()
-  const useJwt = usesJwtLicenseAdmin()
-  const serviceKey = getPwaLicenseServiceRole()
+  const useJwt = isLicenseJwtBridgeMode(cfg)
+  const serviceKey = useJwt ? '' : getPwaLicenseServiceRole()
   const legacyAdminCfg = !useJwt && serviceKey && cfg?.url ? { url: cfg.url, serviceKey } : null
 
   const stubDesktop = async () => ({ ok: false, error: ERR_LICENSE_DESKTOP })
@@ -135,7 +140,7 @@ export function patchApiWithSupabaseLicense(api, cfg) {
 
   async function runJwt(run) {
     try {
-      await assertPwaLicenseAdminCaller()
+      await assertPwaLicenseAdminCaller(cfg)
       if (!userCfg) throw new Error('Falta configuración Supabase pública (url / anon key).')
       const token = await getAccessTokenOrThrow()
       return await run(userCfg, token)
@@ -147,7 +152,7 @@ export function patchApiWithSupabaseLicense(api, cfg) {
   async function runLegacy(run) {
     if (!legacyAdminCfg) return stubPwaAdminNeedKey()
     try {
-      await assertPwaLicenseAdminCaller()
+      await assertPwaLicenseAdminCaller(cfg)
     } catch (e) {
       return { ok: false, error: e?.message || String(e) }
     }

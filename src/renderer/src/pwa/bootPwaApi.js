@@ -6,8 +6,7 @@ import {
   getPwaPublicDemoUrl,
   isPwaAdminBuild,
   hasPwaAdminEmailAllowlist,
-  isEmailInPwaAdminAllowlist,
-  usesJwtLicenseAdmin
+  isEmailInPwaAdminAllowlist
 } from './pwaEnv.js'
 import { patchApiWithSupabaseLicense } from './supabaseLicenseBridge.js'
 import { createPwaProductsSyncApi } from './pwaProductsSync.js'
@@ -53,15 +52,13 @@ export async function bootPwaApi() {
           const email = r?.session?.user?.email
           if (!email) {
             void 0
-          } else if (usesJwtLicenseAdmin()) {
+          } else {
             if (hasPwaAdminEmailAllowlist()) {
               if (isEmailInPwaAdminAllowlist(email)) isAdmin = true
               else if (await cloudAuthApi.getLicenseAdminFromJwt()) isAdmin = true
             } else if (await cloudAuthApi.getLicenseAdminFromJwt()) {
               isAdmin = true
             }
-          } else if (await cloudAuthApi.getLicenseAdminFromJwt()) {
-            isAdmin = true
           }
         } catch {
           void 0
