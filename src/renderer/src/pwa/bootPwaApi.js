@@ -57,7 +57,7 @@ export async function bootPwaApi() {
             if (hasPwaAdminEmailAllowlist()) {
               if (isEmailInPwaAdminAllowlist(email)) isAdmin = true
               else if (await cloudAuthApi.getLicenseAdminFromJwt()) isAdmin = true
-            } else {
+            } else if (await cloudAuthApi.getLicenseAdminFromJwt()) {
               isAdmin = true
             }
           } else if (await cloudAuthApi.getLicenseAdminFromJwt()) {

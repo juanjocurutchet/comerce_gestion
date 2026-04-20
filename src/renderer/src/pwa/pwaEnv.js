@@ -51,20 +51,16 @@ export function isEmailInPwaAdminAllowlist(email) {
   return getPwaAdminEmailAllowlist().includes(e)
 }
 
-/**
- * Panel de licencias PWA con PostgREST + JWT de usuario y RLS en Postgres
- * (tabla public.license_admin_allowlist). Sin service role ni API serverless.
- *
- * Se activa con VITE_PWA_LICENSE_CLOUD_ADMIN=true o con VITE_PWA_ADMIN_EMAILS
- * (la lista en cliente solo acota la UI; la autorización real está en RLS).
- */
 export function usesJwtLicenseAdmin() {
   const raw = import.meta.env?.VITE_PWA_LICENSE_CLOUD_ADMIN
   const v = String(raw ?? '')
     .trim()
     .toLowerCase()
   if (v === 'true' || v === '1' || v === 'yes') return true
-  return hasPwaAdminEmailAllowlist()
+  if (hasPwaAdminEmailAllowlist()) return true
+  const { url, anonKey } = getPublicSupabaseConfig()
+  if (url && anonKey) return true
+  return false
 }
 
 /** Para unificar login: usuario local o email Supabase admin. */
