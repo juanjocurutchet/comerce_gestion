@@ -61,7 +61,6 @@ export async function bootPwaApi() {
               isAdmin = true
             }
           } else if (await cloudAuthApi.getLicenseAdminFromJwt()) {
-            // Sesión Supabase + license_admin_allowlist: menú admin aunque no definas VITE_PWA_LICENSE_CLOUD_ADMIN
             isAdmin = true
           }
         } catch {

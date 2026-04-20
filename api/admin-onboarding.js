@@ -492,6 +492,20 @@ async function provisionDemoTenant(supabaseUrl, serviceKey, anonKey, params) {
     }
   }
 
+  if (passwordForClient) {
+    const verified = await fetchAuthUserWithPasswordGrant(
+      supabaseUrl,
+      anonKey,
+      email,
+      passwordForClient
+    )
+    if (!verified?.id) {
+      throw new Error(
+        'No se pudo comprobar el inicio de sesión con la contraseña entregada. En Supabase → Authentication → Providers activá el acceso por email y contraseña.'
+      )
+    }
+  }
+
   const commerceId = generateCommerceId()
   await postgrestInsert(supabaseUrl, serviceKey, 'commerces', {
     id: commerceId,
@@ -682,6 +696,12 @@ module.exports = async function handler(req, res) {
 
     const email = String(request.contact_email || '').trim().toLowerCase()
     if (!email) return json(res, 400, { ok: false, error: 'La solicitud no tiene email válido' })
+    if (email === normalizeEmail(v.email)) {
+      return json(res, 400, {
+        ok: false,
+        error: 'No podés aprovisionar una solicitud demo con tu mismo email de administrador. Usá el email del cliente.'
+      })
+    }
 
     const businessName =
       String(request.business_name || '').trim() || String(request.contact_name || '').trim() || email

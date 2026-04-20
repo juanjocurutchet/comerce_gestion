@@ -73,44 +73,40 @@ function createLocalStorageBackend() {
 }
 
 const ERR_LICENSE_DESKTOP =
-  'El panel de licencias solo está disponible en la aplicación de escritorio (con service key en resources/supabase.json).'
+  'El panel de licencias no está disponible en esta versión. Usá la aplicación de escritorio o contactá soporte.'
 
 const ERR_LICENSE_PWA_LEGACY_KEY =
-  'PWA (legacy): definí VITE_SUPABASE_LICENSE_SERVICE_ROLE en el build. La clave queda en el JS del cliente: no uses esto en sitios públicos.'
+  'No hay permisos para el panel de licencias en esta instalación. Contactá soporte.'
 
 const ERR_LICENSE_JWT_RLS =
-  'Licencias (RLS): en Supabase ejecutá supabase/licencias-license-admin-rls.sql, insertá tu email en public.license_admin_allowlist, y en el build usá VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY. Iniciá sesión admin (cloud) en el login. Opcional: VITE_PWA_ADMIN_EMAILS o VITE_PWA_LICENSE_CLOUD_ADMIN=true para mostrar el panel.'
+  'No tenés permiso para el panel de licencias o la sesión caducó. Iniciá sesión de nuevo o contactá soporte.'
 
 async function assertPwaLicenseAdminCaller() {
   if (usesJwtLicenseAdmin()) {
     if (!window.api?.cloudAuth?.getSession) {
-      throw new Error('Autenticación cloud no disponible (revisá VITE_SUPABASE_URL y anon key en el build).')
+      throw new Error('Inicio de sesión con email no disponible. Recargá la página o contactá soporte.')
     }
     const wrapped = await window.api.cloudAuth.getSession()
-    if (!wrapped?.ok) throw new Error(wrapped?.error || 'Iniciá sesión con Supabase Auth (sección admin en el login).')
+    if (!wrapped?.ok) throw new Error(wrapped?.error || 'Iniciá sesión de nuevo con tu email y contraseña.')
     const session = wrapped.data?.session
     const email = session?.user?.email
-    if (!email) throw new Error('La sesión cloud no tiene email.')
+    if (!email) throw new Error('La sesión no tiene email. Volvé a iniciar sesión.')
     if (hasPwaAdminEmailAllowlist() && !isEmailInPwaAdminAllowlist(email)) {
       const chk = await window.api?.cloudAuth?.isLicenseAdminFromJwt?.()
       if (!chk?.ok || !chk.data) {
-        throw new Error(
-          'Tu email no está en VITE_PWA_ADMIN_EMAILS ni en la allowlist de licencias en Supabase (license_admin_allowlist), o la sesión venció.'
-        )
+        throw new Error('Tu usuario no tiene permiso para el panel de licencias o la sesión venció.')
       }
     }
     return
   }
   if (isPwaAdminBuild()) return
-  throw new Error(
-    'Para el panel de licencias en PWA: RLS (VITE_PWA_LICENSE_CLOUD_ADMIN o VITE_PWA_ADMIN_EMAILS + SQL en Supabase), o solo en entornos cerrados VITE_PWA_ADMIN=true con service role en el cliente.'
-  )
+  throw new Error('No hay permisos para el panel de licencias en esta instalación. Contactá soporte.')
 }
 
 async function getAccessTokenOrThrow() {
   const tr = await window.api.cloudAuth.getAccessToken()
   if (!tr?.ok || !tr.data) {
-    throw new Error('Sin sesión Supabase. Iniciá sesión admin (cloud) en el login.')
+    throw new Error('Sesión no válida. Iniciá sesión de nuevo.')
   }
   return tr.data
 }

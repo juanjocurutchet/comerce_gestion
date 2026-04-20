@@ -106,8 +106,10 @@ export function createPwaSupabaseAuthApi(cfg) {
 
     async signIn(email, password) {
       if (!configured) throw new Error('Supabase no está configurado en la PWA')
-      if (!email || !password) throw new Error('Completá email y contraseña')
-      return signInWithPassword(cfg, String(email).trim(), String(password))
+      const em = String(email || '').trim()
+      const pwd = String(password ?? '').trim()
+      if (!em || !pwd) throw new Error('Completá email y contraseña')
+      return signInWithPassword(cfg, em, pwd)
     },
 
     async signOut() {

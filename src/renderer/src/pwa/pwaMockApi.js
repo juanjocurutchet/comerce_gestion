@@ -10,7 +10,7 @@ export function createPwaMockApi() {
       login: async (u, p) => {
         const user = String(u ?? '').trim()
         const pass = String(p ?? '')
-        if (user === 'admin' && pass === 'admin') {
+        if (user === 'admin' && (pass === 'admin' || pass === 'admin123')) {
           return ipcOk({ id: 1, nombre: 'Admin', username: 'admin', rol: 'admin' })
         }
         return ipcErr('Credenciales inválidas')

@@ -94,7 +94,16 @@
     "usernameRequired": "Ingresá el usuario",
     "passwordRequired": "Ingresá la contraseña",
     "invalidCredentials": "Usuario o contraseña incorrectos",
-    "internalError": "Error interno: {{error}}"
+    "internalError": "Error interno: {{error}}",
+    "cloudUnavailable": "Esta versión no tiene vinculado el acceso con email. Pedí a soporte que revisen el despliegue.",
+    "cloudLoginRejected": "Email o contraseña incorrectos. Si copiaste la contraseña, probá sin espacios al inicio o al final.",
+    "apiNotReady": "La aplicación no está lista. Recargá la página o probá más tarde.",
+    "emailRequired": "Ingresá un email válido."
+  },
+  "licenseGate": {
+    "activateFooter": "¿No tenés tu clave? Contactá al soporte.",
+    "adminHint": "Si sos administrador, usá el mismo ingreso con tu email y contraseña.",
+    "blockNoConfig": "No pudimos verificar la licencia. Contactá a soporte."
   },
   "demoOnboarding": {
     "title": "Solicitar demo",

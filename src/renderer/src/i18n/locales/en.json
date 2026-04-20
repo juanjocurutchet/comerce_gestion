@@ -94,7 +94,16 @@
     "usernameRequired": "Enter your username",
     "passwordRequired": "Enter your password",
     "invalidCredentials": "Invalid username or password",
-    "internalError": "Internal error: {{error}}"
+    "internalError": "Internal error: {{error}}",
+    "cloudUnavailable": "This build is not linked to email sign-in. Please contact support.",
+    "cloudLoginRejected": "Incorrect email or password. If you pasted the password, try without leading or trailing spaces.",
+    "apiNotReady": "The app is not ready yet. Reload the page or try again later.",
+    "emailRequired": "Please enter a valid email address."
+  },
+  "licenseGate": {
+    "activateFooter": "Don't have your key? Contact support.",
+    "adminHint": "If you are an administrator, sign in with your email and password on the login screen.",
+    "blockNoConfig": "We could not verify the license. Please contact support."
   },
   "demoOnboarding": {
     "title": "Request a demo",

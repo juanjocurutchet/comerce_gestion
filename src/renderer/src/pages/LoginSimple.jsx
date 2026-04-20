@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Form, Input, Button, Card, Typography } from 'antd'
+import { Form, Input, Button, Card, Typography, message } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { UserOutlined, LockOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
@@ -27,29 +27,41 @@ const LoginSimple = () => {
   const checkLicense = useLicenseStore((s) => s.check)
   const navigate = useNavigate()
 
+  const mapCloudAuthError = (err) => {
+    const raw = String(err || '').toLowerCase()
+    if (raw.includes('invalid login') || raw.includes('invalid_grant') || raw.includes('invalid credentials')) {
+      return t('login.cloudLoginRejected')
+    }
+    return String(err || '').trim() || t('login.invalidCredentials')
+  }
+
   const handleSubmit = async (values) => {
     setLoading(true)
     try {
       if (!window.api?.usuarios?.login) {
-        alert(
-          'La API no está inicializada. Si usás la PWA, abrí /index-pwa.html o reiniciá con npm run dev:pwa y entrá por http://localhost:3000/ (debe cargar la versión web).'
-        )
+        message.error(t('login.apiNotReady'))
         return
       }
       const u = String(values.username ?? '').trim()
-      const p = String(values.password ?? '')
+      const p = String(values.password ?? '').trim()
       const pwa = typeof window !== 'undefined' && window.__IS_PWA__
-      const cloudEnabled = pwa && window.api?.cloudAuth?.signIn
+      const cloudAuthAvailable = Boolean(window.api?.cloudAuth?.signIn)
+      const cloudEnabled = pwa && cloudAuthAvailable
       let res = null
+
+      if (pwa && looksLikeEmail(u) && !cloudAuthAvailable) {
+        message.error(t('login.cloudUnavailable'))
+        return
+      }
 
       if (cloudEnabled) {
         if (!looksLikeEmail(u)) {
-          alert('Ingresá un email válido.')
+          message.error(t('login.emailRequired'))
           return
         }
         const cloud = await window.api.cloudAuth.signIn(u, p)
         if (!cloud?.ok) {
-          alert(cloud?.error || 'Credenciales inválidas')
+          message.error(mapCloudAuthError(cloud?.error))
           return
         }
         const session = await window.api.cloudAuth.getSession()
@@ -93,7 +105,6 @@ const LoginSimple = () => {
         }
         res = { ok: true, data: cloudUser }
       } else {
-        // Escritorio / modo sin cloud auth: mantiene login local legado.
         res = await window.api.usuarios.login(u, p)
       }
 
@@ -104,10 +115,10 @@ const LoginSimple = () => {
         await checkLicense()
         navigate('/dashboard')
       } else {
-        alert(res?.error || 'Credenciales inválidas')
+        message.error(res?.error || t('login.invalidCredentials'))
       }
     } catch (error) {
-      alert(`Error en el login: ${error?.message || error}`)
+      message.error(`${t('login.internalError', { error: error?.message || error })}`)
     } finally {
       setLoading(false)
     }

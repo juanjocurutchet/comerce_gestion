@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Result, Button, Typography, Space, Alert, Input, Form, Card, Modal, message } from 'antd'
 import { LockOutlined, WifiOutlined, CalendarOutlined, StopOutlined, KeyOutlined } from '@ant-design/icons'
 import nexoLogo from '../assets/nexo-commerce-logo.png'
@@ -7,6 +8,7 @@ import nexoLogo from '../assets/nexo-commerce-logo.png'
 const { Text, Title } = Typography
 
 export const ActivationScreen = ({ onActivated }) => {
+  const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [form] = Form.useForm()
@@ -59,13 +61,13 @@ export const ActivationScreen = ({ onActivated }) => {
         </Form>
 
         <Text type="secondary" style={{ display: 'block', textAlign: 'center', marginTop: 16, fontSize: 12 }}>
-          ¿No tenés tu clave? Contactá al soporte.
+          {t('licenseGate.activateFooter')}
         </Text>
         {typeof window !== 'undefined' && window.__IS_PWA__ ? (
           <div style={{ textAlign: 'center', marginTop: 12 }}>
             <Link to="/login">Ir al inicio de sesión</Link>
             <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 11 }}>
-              Si sos administrador (Supabase), podés entrar con email y contraseña sin activar antes.
+              {t('licenseGate.adminHint')}
             </Text>
           </div>
         ) : null}
@@ -79,14 +81,17 @@ const BLOCK_CONFIG = {
   expired:       { icon: <CalendarOutlined style={{ color: '#ff4d4f' }} />, title: 'Suscripción vencida',       subTitle: 'Tu período de suscripción ha finalizado. Renovála para continuar.' },
   not_found:     { icon: <LockOutlined style={{ color: '#ff4d4f' }} />,     title: 'Clave no válida',           subTitle: 'La clave de activación no fue reconocida. Contactá al soporte.' },
   grace_exceeded:{ icon: <WifiOutlined style={{ color: '#ff4d4f' }} />,     title: 'Sin conexión prolongada',   subTitle: null },
-  no_config:     { icon: <LockOutlined style={{ color: '#faad14' }} />,     title: 'Configuración incompleta',  subTitle: 'Faltan variables de entorno en el despliegue (VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY). En Vercel: Project → Settings → Environment Variables, agregalas para Production y volvé a desplegar. El .env local no viaja al build.' }
+  no_config:     { icon: <LockOutlined style={{ color: '#faad14' }} />,     title: 'Configuración incompleta',  subTitle: null }
 }
 
 export const LicenseBlock = ({ status, onRetry }) => {
+  const { t } = useTranslation()
   const cfg = BLOCK_CONFIG[status.reason] || BLOCK_CONFIG.no_config
   const subTitle = status.reason === 'grace_exceeded'
     ? `Llevás ${status.daysOffline} días sin conexión (límite: ${status.grace} días). Conectate a internet para verificar tu suscripción.`
-    : cfg.subTitle
+    : status.reason === 'no_config'
+      ? t('licenseGate.blockNoConfig')
+      : cfg.subTitle
 
   return (
     <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f5' }}>
