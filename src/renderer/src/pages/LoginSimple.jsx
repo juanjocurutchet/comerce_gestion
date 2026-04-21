@@ -1,8 +1,8 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Form, Input, Button, Card, Typography, message } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { UserOutlined, LockOutlined } from '@ant-design/icons'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { useClientStore } from '../store/clientStore'
 import { useLicenseStore } from '../store/licenseStore'
@@ -16,6 +16,9 @@ const { Title, Text } = Typography
 const LoginSimple = () => {
   const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
+  const [installPrompt, setInstallPrompt] = useState(null)
+  const [installing, setInstalling] = useState(false)
+  const user = useAuthStore((s) => s.user)
   const setUser = useAuthStore((s) => s.setUser)
   const loadClient = useClientStore((s) => s.load)
   const checkLicense = useLicenseStore((s) => s.check)
@@ -28,6 +31,37 @@ const LoginSimple = () => {
     }
     return String(err || '').trim() || t('login.invalidCredentials')
   }
+
+  useEffect(() => {
+    setInstallPrompt(window.__PWA_INSTALL_PROMPT__ || null)
+    const onBeforeInstallPrompt = () => setInstallPrompt(window.__PWA_INSTALL_PROMPT__ || null)
+    const onInstalled = () => {
+      setInstallPrompt(null)
+      setInstalling(false)
+    }
+    window.addEventListener('gcom:pwa-install-available', onBeforeInstallPrompt)
+    window.addEventListener('gcom:pwa-installed', onInstalled)
+    return () => {
+      window.removeEventListener('gcom:pwa-install-available', onBeforeInstallPrompt)
+      window.removeEventListener('gcom:pwa-installed', onInstalled)
+    }
+  }, [])
+
+  const handleInstallApp = async () => {
+    if (!installPrompt) return
+    setInstalling(true)
+    try {
+      await installPrompt.prompt()
+      await installPrompt.userChoice
+      setInstallPrompt(null)
+    } catch {
+      void 0
+    } finally {
+      setInstalling(false)
+    }
+  }
+
+  if (user) return <Navigate to="/dashboard" replace />
 
   const handleSubmit = async (values) => {
     setLoading(true)
@@ -146,9 +180,26 @@ const LoginSimple = () => {
         </Form>
 
         {typeof window !== 'undefined' && window.__IS_PWA__ ? (
-          <Text type="secondary" style={{ display: 'block', textAlign: 'center', marginTop: 8, fontSize: 12 }}>
-            {t('login.cloudHint')}
-          </Text>
+          <>
+            <Text type="secondary" style={{ display: 'block', textAlign: 'center', marginTop: 8, fontSize: 12 }}>
+              {t('login.cloudHint')}
+            </Text>
+            {installPrompt ? (
+              <Button
+                style={{ marginTop: 12 }}
+                type="default"
+                block
+                loading={installing}
+                onClick={handleInstallApp}
+              >
+                {t('login.installApp')}
+              </Button>
+            ) : (
+              <Text type="secondary" style={{ display: 'block', textAlign: 'center', marginTop: 10, fontSize: 11 }}>
+                {t('login.installAppHint')}
+              </Text>
+            )}
+          </>
         ) : (
           <Text type="secondary" style={{ display: 'block', textAlign: 'center', marginTop: 8, fontSize: 12 }}>
             {t('login.defaultHint')}

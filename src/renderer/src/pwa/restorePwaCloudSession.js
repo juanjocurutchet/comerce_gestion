@@ -9,6 +9,21 @@ function mergeSnapshotUser(sessionUser, snapCloudUser) {
   }
 }
 
+function buildOfflineFallbackUser(sessionUser, snapshot = null) {
+  const email = sessionUser?.email || ''
+  const userId = sessionUser?.id || email
+  const memberships = Array.isArray(snapshot?.memberships) ? snapshot.memberships : []
+  return {
+    id: `cloud:${userId}`,
+    nombre: email,
+    username: email,
+    rol: snapshot?.rol || 'cliente',
+    memberships,
+    authSource: 'cloud',
+    mustChangePassword: sessionUser?.user_metadata?.gcom_must_change_password === true
+  }
+}
+
 export async function restorePwaCloudSession() {
   if (typeof window === 'undefined' || !window.__IS_PWA__ || !window.api?.cloudAuth?.getSession) return
 
@@ -54,5 +69,8 @@ export async function restorePwaCloudSession() {
     const merged = mergeSnapshotUser(sessionUser, snap.cloudUser)
     await persistPrimaryCommerceId(merged.memberships || [])
     setUser(merged)
+    return
   }
+
+  setUser(buildOfflineFallbackUser(sessionUser))
 }

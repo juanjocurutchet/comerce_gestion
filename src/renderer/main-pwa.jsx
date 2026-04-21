@@ -17,6 +17,16 @@ import { useLanguageStore } from './src/store/languageStore'
 if (typeof window !== 'undefined') {
   window.__IS_PWA__ = true
   window.__IS_ELECTRON__ = false
+  window.__PWA_INSTALL_PROMPT__ = null
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault()
+    window.__PWA_INSTALL_PROMPT__ = e
+    window.dispatchEvent(new CustomEvent('gcom:pwa-install-available'))
+  })
+  window.addEventListener('appinstalled', () => {
+    window.__PWA_INSTALL_PROMPT__ = null
+    window.dispatchEvent(new CustomEvent('gcom:pwa-installed'))
+  })
 }
 
 async function initPWA() {
