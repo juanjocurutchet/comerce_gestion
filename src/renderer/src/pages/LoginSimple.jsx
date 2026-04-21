@@ -7,17 +7,11 @@ import { useAuthStore } from '../store/authStore'
 import { useClientStore } from '../store/clientStore'
 import { useLicenseStore } from '../store/licenseStore'
 import { looksLikeEmail } from '../pwa/pwaEnv.js'
-
-const COMMERCE_ID_STORAGE_KEY = 'gcom_commerce_id'
+import { isLikelyNetworkFailure } from '@shared/web-license.js'
+import { buildCloudUser, persistPrimaryCommerceId } from '../pwa/cloudSessionShared.js'
+import { writeCloudUserSnapshot } from '../pwa/cloudAuthSnapshot.js'
 
 const { Title, Text } = Typography
-
-function mapMembershipToCommerceRole(memberships) {
-  const roles = (memberships || []).map((m) => String(m?.role || '').toLowerCase()).filter(Boolean)
-  if (roles.some((r) => r === 'owner')) return 'propietario'
-  if (roles.some((r) => r === 'admin')) return 'gestor'
-  return 'cliente'
-}
 
 const LoginSimple = () => {
   const { t } = useTranslation()
@@ -61,21 +55,23 @@ const LoginSimple = () => {
         }
         const cloud = await window.api.cloudAuth.signIn(u, p)
         if (!cloud?.ok) {
-          message.error(mapCloudAuthError(cloud?.error))
+          const errRaw = String(cloud?.error || '')
+          if (isLikelyNetworkFailure(null, errRaw)) {
+            message.error(t('login.offlineSignInFailed'))
+          } else {
+            message.error(mapCloudAuthError(cloud?.error))
+          }
           return
         }
-        const session = await window.api.cloudAuth.getSession()
-        const sessUser = session?.ok ? session.data?.session?.user : null
-        const email = sessUser?.email || u
-        const userId = sessUser?.id || email
-        const mustChangePassword =
-          sessUser?.user_metadata?.gcom_must_change_password === true
+        const sessionWrap = await window.api.cloudAuth.getSession()
+        const inner = sessionWrap?.ok ? sessionWrap.data : null
+        const sessUser = inner?.session?.user || null
         const membershipsResp = await window.api.cloudAuth.getMemberships()
-        const memberships = membershipsResp?.ok && Array.isArray(membershipsResp.data) ? membershipsResp.data : []
+        const memberships =
+          membershipsResp?.ok && Array.isArray(membershipsResp.data) ? membershipsResp.data : []
         const licenseAdminRpc = await window.api.cloudAuth.isLicenseAdminFromJwt?.()
-        const isLicenseAdminOnly =
-          !memberships.length && licenseAdminRpc?.ok === true && licenseAdminRpc.data === true
-        if (!memberships.length && !isLicenseAdminOnly) {
+        const built = buildCloudUser({ sessionUser: sessUser, memberships, licenseAdminRpc })
+        if (!built.ok) {
           try {
             await window.api.cloudAuth.signOut()
           } catch {
@@ -84,26 +80,9 @@ const LoginSimple = () => {
           alert(t('login.noCommerceAssigned'))
           return
         }
-        const commerceRole = memberships.length ? mapMembershipToCommerceRole(memberships) : 'propietario'
-        const primaryCommerceId = memberships.map((m) => m.commerce_id).find(Boolean)
-        if (primaryCommerceId) {
-          try {
-            await window.api?.config?.setMany?.({ commerceId: primaryCommerceId })
-            localStorage.setItem(COMMERCE_ID_STORAGE_KEY, primaryCommerceId)
-          } catch {
-            void 0
-          }
-        }
-        const cloudUser = {
-          id: `cloud:${userId}`,
-          nombre: email,
-          username: email,
-          rol: commerceRole,
-          memberships,
-          authSource: 'cloud',
-          mustChangePassword
-        }
-        res = { ok: true, data: cloudUser }
+        await persistPrimaryCommerceId(memberships)
+        if (sessUser?.id) writeCloudUserSnapshot(sessUser.id, built.cloudUser)
+        res = { ok: true, data: built.cloudUser }
       } else {
         res = await window.api.usuarios.login(u, p)
       }

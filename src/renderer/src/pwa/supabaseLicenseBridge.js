@@ -11,12 +11,14 @@ import {
   licenseAdminDelete,
   licenseAdminListUpgradeRequests,
   licenseAdminListCommerces,
+  licenseAdminListCommerceDeactivationHistory,
   licenseAdminGetAllAsUser,
   licenseAdminCreateAsUser,
   licenseAdminUpdateAsUser,
   licenseAdminDeleteAsUser,
   licenseAdminListUpgradeRequestsAsUser,
   licenseAdminListCommercesAsUser,
+  licenseAdminListCommerceDeactivationHistoryAsUser,
   licenseAdminListDemoOnboardingAsUser,
   licenseAdminProvisionDemoRequestAsUser,
   licenseAdminProvisionManualDemoAsUser,
@@ -47,7 +49,8 @@ function createLocalStorageBackend() {
     },
     writeKey: (k) => {
       try {
-        localStorage.setItem(LS_KEY, k)
+        if (k == null || k === '') localStorage.removeItem(LS_KEY)
+        else localStorage.setItem(LS_KEY, k)
       } catch {
         void 0
       }
@@ -204,6 +207,15 @@ export function patchApiWithSupabaseLicense(api, cfg) {
       (useJwt
         ? async () => runJwt((uc, t) => licenseAdminListCommercesAsUser({ ...uc, accessToken: t }))
         : async () => runLegacy(() => licenseAdminListCommerces(legacyAdminCfg))),
+
+    listCommerceDeactivationHistory:
+      stubNoAdmin ||
+      (useJwt
+        ? async () =>
+            runJwt((uc, t) =>
+              licenseAdminListCommerceDeactivationHistoryAsUser({ ...uc, accessToken: t })
+            )
+        : async () => runLegacy(() => licenseAdminListCommerceDeactivationHistory(legacyAdminCfg))),
 
     listDemoOnboarding:
       stubNoAdmin ||

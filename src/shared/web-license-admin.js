@@ -164,7 +164,7 @@ export async function licenseAdminListCommerces({ url, serviceKey }) {
       url,
       serviceKey,
       'GET',
-      'commerces?select=id,nombre,activo&order=nombre.asc',
+      'commerces?select=*&order=created_at.desc',
       null
     )
     return { ok: true, data: Array.isArray(rows) ? rows : [] }
@@ -258,7 +258,38 @@ export async function licenseAdminListCommercesAsUser({ url, anonKey, accessToke
       anonKey,
       accessToken,
       'GET',
-      'commerces?select=id,nombre,activo&order=nombre.asc',
+      'commerces?select=*&order=created_at.desc',
+      null
+    )
+    return { ok: true, data: Array.isArray(rows) ? rows : [] }
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) }
+  }
+}
+
+export async function licenseAdminListCommerceDeactivationHistory({ url, serviceKey }) {
+  try {
+    const rows = await adminFetch(
+      url,
+      serviceKey,
+      'GET',
+      'commerce_deactivation_history?select=*&order=created_at.desc',
+      null
+    )
+    return { ok: true, data: Array.isArray(rows) ? rows : [] }
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) }
+  }
+}
+
+export async function licenseAdminListCommerceDeactivationHistoryAsUser({ url, anonKey, accessToken }) {
+  try {
+    const rows = await adminFetchAsUser(
+      url,
+      anonKey,
+      accessToken,
+      'GET',
+      'commerce_deactivation_history?select=*&order=created_at.desc',
       null
     )
     return { ok: true, data: Array.isArray(rows) ? rows : [] }

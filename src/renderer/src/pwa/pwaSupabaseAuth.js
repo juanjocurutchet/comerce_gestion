@@ -1,3 +1,6 @@
+import { isLikelyNetworkFailure } from '@shared/web-license.js'
+import { clearCloudUserSnapshot } from './cloudAuthSnapshot.js'
+
 const STORAGE_KEY = 'gcom_supabase_session'
 
 function buildHeaders(apiKey, extra = {}) {
@@ -98,7 +101,11 @@ export function createPwaSupabaseAuthApi(cfg) {
       try {
         const refreshed = await refreshSession(cfg, stored.refresh_token)
         return { configured: true, session: refreshed }
-      } catch {
+      } catch (e) {
+        const msg = e?.message || String(e)
+        if (isLikelyNetworkFailure(e, msg) && stored) {
+          return { configured: true, session: stored }
+        }
         writeStoredSession(null)
         return { configured: true, session: null }
       }
@@ -115,6 +122,7 @@ export function createPwaSupabaseAuthApi(cfg) {
     async signOut() {
       const stored = readStoredSession()
       writeStoredSession(null)
+      clearCloudUserSnapshot()
       if (!configured || !stored?.access_token) return true
       try {
         await fetch(`${cfg.url}/auth/v1/logout`, {
@@ -134,7 +142,6 @@ export function createPwaSupabaseAuthApi(cfg) {
       return session?.access_token || null
     },
 
-    /** Nueva contraseña definitiva; quita la obligación de cambio (user_metadata). */
     async updatePassword(newPassword) {
       if (!configured) throw new Error('Supabase no está configurado en la PWA')
       const stored = readStoredSession()
@@ -177,7 +184,6 @@ export function createPwaSupabaseAuthApi(cfg) {
       return Array.isArray(rows) ? rows : []
     },
 
-    /** Coincide con public.license_admin_from_jwt() (RLS panel licencias). Sin membresía de comercio. */
     async getLicenseAdminFromJwt() {
       if (!configured) return false
       const token = await this.getAccessToken()

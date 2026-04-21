@@ -121,7 +121,8 @@ contextBridge.exposeInMainWorld('api', {
     delete: (id) => invoke('license:delete', id),
     requestUpgrade: (payload) => invoke('license:requestUpgrade', payload),
     listUpgradeRequests: () => invoke('license:listUpgradeRequests'),
-    listCommerces: () => invoke('license:listCommerces')
+    listCommerces: () => invoke('license:listCommerces'),
+    listCommerceDeactivationHistory: () => invoke('license:listCommerceDeactivationHistory')
   },
   clientes: {
     getAll: () => invoke('clientes:getAll'),

@@ -59,6 +59,7 @@ alter table public.licencias enable row level security;
 
 -- Sustituye la política “anon + authenticated” si existía (authenticated ya no lee todo).
 drop policy if exists "licencias_select_anon_clave" on public.licencias;
+drop policy if exists licencias_select_anon_activation on public.licencias;
 create policy licencias_select_anon_activation
   on public.licencias
   for select
@@ -140,6 +141,39 @@ create policy license_deletions_history_insert_license_admin
 drop policy if exists license_deletions_history_select_license_admin on public.license_deletions_history;
 create policy license_deletions_history_select_license_admin
   on public.license_deletions_history
+  for select
+  to authenticated
+  using (public.license_admin_from_jwt());
+
+create table if not exists public.commerce_deactivation_history (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  commerce_id text,
+  actor_email text,
+  reason text,
+  commerce_snapshot jsonb
+);
+
+comment on table public.commerce_deactivation_history is 'Auditoría: bajas (licencia eliminada o comercio desactivado desde panel admin). commerce_id puede ser null si la licencia no tenía comercio vinculado.';
+comment on column public.commerce_deactivation_history.reason is 'delete_onboarding_full | delete_license_full | …';
+
+alter table public.commerce_deactivation_history alter column commerce_id drop not null;
+
+grant select, insert on public.commerce_deactivation_history to authenticated;
+grant select, insert, update, delete on public.commerce_deactivation_history to service_role;
+
+alter table public.commerce_deactivation_history enable row level security;
+
+drop policy if exists commerce_deactivation_history_insert_license_admin on public.commerce_deactivation_history;
+create policy commerce_deactivation_history_insert_license_admin
+  on public.commerce_deactivation_history
+  for insert
+  to authenticated
+  with check (public.license_admin_from_jwt());
+
+drop policy if exists commerce_deactivation_history_select_license_admin on public.commerce_deactivation_history;
+create policy commerce_deactivation_history_select_license_admin
+  on public.commerce_deactivation_history
   for select
   to authenticated
   using (public.license_admin_from_jwt());

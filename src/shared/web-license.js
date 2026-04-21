@@ -14,7 +14,7 @@ function unwrapQuotedEnv(value) {
   return s
 }
 
-function isLikelyNetworkFailure(err, msg) {
+export function isLikelyNetworkFailure(err, msg) {
   const m = String(msg || '')
   if (/failed to fetch|networkerror|load failed|network request failed|fetch failed|not reachable|connection refused|timed out|aborted|err_name_not_resolved|internet disconnected/i.test(m))
     return true
@@ -61,7 +61,15 @@ export async function fetchLicenseRow(url, anonKey, licenseKey) {
   return Array.isArray(rows) ? rows[0] || null : null
 }
 
-/** Valida licencia contra Supabase; `storage` persiste clave y caché. */
+function clearStoredLicense(storage) {
+  try {
+    if (typeof storage.writeCache === 'function') storage.writeCache(null)
+    if (typeof storage.writeKey === 'function') storage.writeKey(null)
+  } catch {
+    void 0
+  }
+}
+
 export async function checkLicenseWeb(cfg, storage) {
   let url
   let anonKey
@@ -78,18 +86,18 @@ export async function checkLicenseWeb(cfg, storage) {
     const row = await fetchLicenseRow(url, anonKey, licenseKey)
 
     if (!row) {
-      storage.writeCache(null)
+      clearStoredLicense(storage)
       return { valid: false, reason: 'not_found', offline: false }
     }
 
-    storage.writeCache({ ...row, last_check: new Date().toISOString() })
-
     if (!row.activo) {
+      clearStoredLicense(storage)
       return { valid: false, reason: 'disabled', offline: false, clientName: row.cliente_nombre }
     }
 
     const days = daysUntil(row.vence_en)
     if (days < 0) {
+      clearStoredLicense(storage)
       return {
         valid: false,
         reason: 'expired',
@@ -98,6 +106,8 @@ export async function checkLicenseWeb(cfg, storage) {
         clientName: row.cliente_nombre
       }
     }
+
+    storage.writeCache({ ...row, last_check: new Date().toISOString() })
 
     return {
       valid: true,

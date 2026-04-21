@@ -26,22 +26,22 @@ import { useThemeStore } from './store/themeStore'
 import { useClientStore } from './store/clientStore'
 import { useLicenseStore } from './store/licenseStore'
 import { isPwaAdminBuild } from './pwa/pwaEnv.js'
+import { restorePwaCloudSession } from './pwa/restorePwaCloudSession.js'
 
 function PrivateRoute({ children }) {
   const user = useAuthStore((s) => s.user)
   return user ? children : <Navigate to="/login" replace />
 }
 
-/** Clave GCOM / estado de suscripción solo después de tener usuario local (login primero). */
+/** Clave GCOM / estado de suscripción después del login (local o nube). Los admins del panel no pasan por acá. */
 function CommercialLicenseGate({ children }) {
   const user = useAuthStore((s) => s.user)
   const { isAdmin } = useClientStore()
   const { status, check } = useLicenseStore()
 
   const isPwa = typeof window !== 'undefined' && window.__IS_PWA__
-  const isCloudUser = user?.authSource === 'cloud'
   const needsCommercialLicense =
-    ((isPwa && !isPwaAdminBuild() && !isAdmin) || (!isPwa && !isAdmin)) && !isCloudUser
+    (isPwa && !isPwaAdminBuild() && !isAdmin) || (!isPwa && !isAdmin)
 
   if (needsCommercialLicense) {
     if (status?.reason === 'no_key' || status?.reason === 'not_found') {
@@ -97,8 +97,11 @@ export default function App() {
   }, [dark])
 
   useEffect(() => {
-    loadClient()
-    check()
+    void (async () => {
+      await restorePwaCloudSession()
+      await loadClient()
+      await check()
+    })()
   }, [])
 
   if (!checked || !clientLoaded) return null

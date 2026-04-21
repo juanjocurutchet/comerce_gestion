@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 
+export const APP_BROWSER_TITLE = 'Nexo Commerce'
+
 const DEFAULT_FEATURES = {
   ventas: true,
   cotizaciones: true,
@@ -36,7 +38,7 @@ export const useClientStore = create((set) => ({
       logoIcon: config.logo?.icon || null,
       loaded: true
     })
-    if (config.clientName && window.api.client.setTitle) window.api.client.setTitle(config.clientName)
+    if (window.api.client?.setTitle) window.api.client.setTitle(APP_BROWSER_TITLE)
   },
   setFromLicense: (clientName, features) => {
     set({

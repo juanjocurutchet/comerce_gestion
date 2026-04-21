@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { useClientStore } from './clientStore'
+import { useClientStore, APP_BROWSER_TITLE } from './clientStore'
 
 export const useLicenseStore = create((set) => ({
   status: null,
@@ -13,7 +13,7 @@ export const useLicenseStore = create((set) => ({
     set({ status, checked: true })
     if (status.valid && status.clientName && !useClientStore.getState().isAdmin) {
       useClientStore.getState().setFromLicense(status.clientName, status.features)
-      if (window.api.client?.setTitle) window.api.client.setTitle(status.clientName)
+      if (window.api.client?.setTitle) window.api.client.setTitle(APP_BROWSER_TITLE)
     }
     return status
   }

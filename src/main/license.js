@@ -1,6 +1,6 @@
 import { app, ipcMain } from 'electron'
 import { join } from 'path'
-import { readFileSync, writeFileSync, existsSync } from 'fs'
+import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'fs'
 
 const GRACE_DAYS = 15
 const CACHE_PATH = () => join(app.getPath('userData'), 'license_cache.json')
@@ -39,7 +39,13 @@ function readStoredKey() {
 }
 
 function writeStoredKey(key) {
-  try { writeFileSync(KEY_PATH(), JSON.stringify({ key })) } catch {}
+  try {
+    if (key == null || key === '') {
+      if (existsSync(KEY_PATH())) unlinkSync(KEY_PATH())
+      return
+    }
+    writeFileSync(KEY_PATH(), JSON.stringify({ key }))
+  } catch {}
 }
 
 function daysSince(isoDate) {
@@ -107,16 +113,25 @@ async function checkLicense() {
     const row = await fetchByKey(cfg.url, cfg.anonKey, licenseKey)
 
     if (!row) {
+      writeStoredKey(null)
       writeCache(null)
       return { valid: false, reason: 'not_found', offline: false }
     }
 
-    writeCache({ ...row, last_check: new Date().toISOString() })
-
-    if (!row.activo) return { valid: false, reason: 'disabled', offline: false, clientName: row.cliente_nombre }
+    if (!row.activo) {
+      writeStoredKey(null)
+      writeCache(null)
+      return { valid: false, reason: 'disabled', offline: false, clientName: row.cliente_nombre }
+    }
 
     const days = daysUntil(row.vence_en)
-    if (days < 0) return { valid: false, reason: 'expired', offline: false, vence_en: row.vence_en, clientName: row.cliente_nombre }
+    if (days < 0) {
+      writeStoredKey(null)
+      writeCache(null)
+      return { valid: false, reason: 'expired', offline: false, vence_en: row.vence_en, clientName: row.cliente_nombre }
+    }
+
+    writeCache({ ...row, last_check: new Date().toISOString() })
 
     return { valid: true, offline: false, daysLeft: days, vence_en: row.vence_en, clientName: row.cliente_nombre, features: row.features || null }
 
@@ -214,8 +229,25 @@ export function setupLicense() {
     const cfg = loadSupabaseConfig()
     if (!cfg?.serviceKey) return { ok: false, error: 'Sin acceso admin' }
     try {
-      const rows = await adminFetch('GET', 'commerces?select=id,nombre,activo&order=nombre.asc', null, cfg.serviceKey, cfg.url)
+      const rows = await adminFetch('GET', 'commerces?select=*&order=created_at.desc', null, cfg.serviceKey, cfg.url)
       return { ok: true, data: rows }
+    } catch (e) {
+      return { ok: false, error: e.message }
+    }
+  })
+
+  ipcMain.handle('license:listCommerceDeactivationHistory', async () => {
+    const cfg = loadSupabaseConfig()
+    if (!cfg?.serviceKey) return { ok: false, error: 'Sin acceso admin' }
+    try {
+      const rows = await adminFetch(
+        'GET',
+        'commerce_deactivation_history?select=*&order=created_at.desc',
+        null,
+        cfg.serviceKey,
+        cfg.url
+      )
+      return { ok: true, data: Array.isArray(rows) ? rows : [] }
     } catch (e) {
       return { ok: false, error: e.message }
     }

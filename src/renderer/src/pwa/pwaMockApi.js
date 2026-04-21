@@ -259,6 +259,7 @@ export function createPwaMockApi() {
       requestUpgrade: async () => ipcOk(true),
       listUpgradeRequests: async () => ipcErr('Panel de licencias solo en la app de escritorio.'),
       listCommerces: async () => ipcErr('Panel de licencias solo en la app de escritorio.'),
+      listCommerceDeactivationHistory: async () => ipcErr('Panel de licencias solo en la app de escritorio.'),
       listDemoOnboarding: async () => ipcErr('Panel de licencias solo en la app de escritorio.'),
       provisionDemoOnboarding: async () => ipcErr('Panel de licencias solo en la app de escritorio.'),
       provisionManualDemo: async () => ipcErr('Panel de licencias solo en la app de escritorio.')

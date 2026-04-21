@@ -135,9 +135,18 @@ async function deleteDemoOnboardingAndLicense(supabaseUrl, serviceKey, payload) 
     : `clave=eq.${encodeURIComponent(activationKey)}&es_demo=eq.true`
   const deletedLicRows = await postgrestDelete(supabaseUrl, serviceKey, 'licencias', qLic)
 
+  const commerceIdsToDeactivate = new Set()
+  if (commerceId) commerceIdsToDeactivate.add(commerceId)
+  for (const r of deletedReqRows || []) {
+    const cid = String(r?.commerce_id || '').trim()
+    if (cid) commerceIdsToDeactivate.add(cid)
+  }
+  const actorEmail = String(payload?.actorEmail || '').trim().toLowerCase() || null
   for (const lic of deletedLicRows) {
-    await postgrestInsert(supabaseUrl, serviceKey, 'license_deletions_history', {
-      actor_email: String(payload?.actorEmail || '').trim().toLowerCase() || null,
+    const cid = String(lic?.commerce_id || '').trim()
+    if (cid) commerceIdsToDeactivate.add(cid)
+    await tryInsertLicenseDeletionHistory(supabaseUrl, serviceKey, {
+      actor_email: actorEmail,
       source: 'altas',
       reason: 'delete_onboarding_full',
       commerce_id: lic?.commerce_id || null,
@@ -145,6 +154,25 @@ async function deleteDemoOnboardingAndLicense(supabaseUrl, serviceKey, payload) 
       license_snapshot: lic,
       onboarding_snapshot: deletedReqRows?.[0] || null
     })
+    await tryInsertCommerceDeactivationRow(supabaseUrl, serviceKey, {
+      commerce_id: cid || null,
+      actor_email: actorEmail,
+      reason: 'delete_onboarding_full',
+      commerce_snapshot: { license: lic, demo_onboarding: deletedReqRows?.[0] || null }
+    })
+  }
+  if (!deletedLicRows.length) {
+    for (const cid of commerceIdsToDeactivate) {
+      await tryInsertCommerceDeactivationRow(supabaseUrl, serviceKey, {
+        commerce_id: cid || null,
+        actor_email: actorEmail,
+        reason: 'delete_onboarding_full',
+        commerce_snapshot: { demo_onboarding: deletedReqRows?.[0] || null }
+      })
+    }
+  }
+  for (const cid of commerceIdsToDeactivate) {
+    await tryDeactivateCommerce(supabaseUrl, serviceKey, cid)
   }
 }
 
@@ -161,6 +189,8 @@ async function deleteLicenseAndRelatedOnboarding(supabaseUrl, serviceKey, payloa
       : `clave=eq.${encodeURIComponent(activationKey)}`
   const deletedLicRows = await postgrestDelete(supabaseUrl, serviceKey, 'licencias', qLic)
 
+  const actorEmail = String(payload?.actorEmail || '').trim().toLowerCase() || null
+  const demoCommerceIdsToDeactivate = new Set()
   for (const lic of deletedLicRows) {
     const cid = String(lic?.commerce_id || '').trim()
     const key = String(lic?.clave || '').trim()
@@ -172,8 +202,13 @@ async function deleteLicenseAndRelatedOnboarding(supabaseUrl, serviceKey, payloa
     const deletedReqRows = qReq
       ? await postgrestDelete(supabaseUrl, serviceKey, 'demo_onboarding_requests', qReq)
       : []
-    await postgrestInsert(supabaseUrl, serviceKey, 'license_deletions_history', {
-      actor_email: String(payload?.actorEmail || '').trim().toLowerCase() || null,
+    const licDemo =
+      lic?.es_demo === true ||
+      lic?.es_demo === 'true' ||
+      String(lic?.es_demo).toLowerCase() === 't'
+    if (licDemo && cid) demoCommerceIdsToDeactivate.add(cid)
+    await tryInsertLicenseDeletionHistory(supabaseUrl, serviceKey, {
+      actor_email: actorEmail,
       source: 'licencias',
       reason: 'delete_license_full',
       commerce_id: cid || null,
@@ -181,6 +216,15 @@ async function deleteLicenseAndRelatedOnboarding(supabaseUrl, serviceKey, payloa
       license_snapshot: lic,
       onboarding_snapshot: deletedReqRows?.[0] || null
     })
+    await tryInsertCommerceDeactivationRow(supabaseUrl, serviceKey, {
+      commerce_id: cid || null,
+      actor_email: actorEmail,
+      reason: 'delete_license_full',
+      commerce_snapshot: { license: lic }
+    })
+  }
+  for (const cid of demoCommerceIdsToDeactivate) {
+    await tryDeactivateCommerce(supabaseUrl, serviceKey, cid)
   }
 }
 
@@ -312,6 +356,79 @@ async function postgrestInsert(supabaseUrl, serviceKey, table, payload) {
   return Array.isArray(rows) ? rows[0] : rows
 }
 
+function commerceInsertMissingOptionalColumnsError(message) {
+  const m = String(message || '').toLowerCase()
+  if (!m.includes('commerces')) return false
+  return (
+    m.includes('direccion') ||
+    m.includes('dirección') ||
+    m.includes('telefono') ||
+    m.includes('teléfono') ||
+    (m.includes('email') && (m.includes('column') || m.includes('schema'))) ||
+    m.includes('schema cache')
+  )
+}
+
+/** Insert en commerces con email/tel/dirección; si la BD no tiene esas columnas, inserta solo lo mínimo. */
+async function postgrestInsertCommerceRow(supabaseUrl, serviceKey, payload) {
+  try {
+    await postgrestInsert(supabaseUrl, serviceKey, 'commerces', payload)
+  } catch (e) {
+    if (!commerceInsertMissingOptionalColumnsError(e?.message)) throw e
+    await postgrestInsert(supabaseUrl, serviceKey, 'commerces', {
+      id: payload.id,
+      nombre: payload.nombre,
+      activo: payload.activo !== false,
+      plan: payload.plan || 'free'
+    })
+  }
+}
+
+/** Auditoría opcional: si la tabla no existe en Supabase, la baja principal igual debe completarse. */
+async function tryInsertLicenseDeletionHistory(supabaseUrl, serviceKey, payload) {
+  try {
+    await postgrestInsert(supabaseUrl, serviceKey, 'license_deletions_history', payload)
+  } catch {
+    /* sin tabla o sin permisos: ejecutar supabase/license-deletions-history.sql */
+  }
+}
+
+/** Historial de bajas en Comercios: una fila por licencia eliminada o evento de baja (tabla opcional). */
+async function tryInsertCommerceDeactivationRow(supabaseUrl, serviceKey, payload) {
+  try {
+    const rawCid = payload?.commerce_id
+    const commerce_id =
+      rawCid == null || String(rawCid).trim() === '' ? null : String(rawCid).trim()
+    await postgrestInsert(supabaseUrl, serviceKey, 'commerce_deactivation_history', {
+      commerce_id,
+      actor_email: payload?.actor_email ?? null,
+      reason: String(payload?.reason || 'baja').trim() || 'baja',
+      commerce_snapshot: payload?.commerce_snapshot ?? null
+    })
+  } catch (e) {
+    console.warn('[commerce_deactivation_history]', e?.message || e)
+  }
+}
+
+/** Solo marca comercio inactivo; el historial lo escribe tryInsertCommerceDeactivationRow en los flujos de borrado. */
+async function tryDeactivateCommerce(supabaseUrl, serviceKey, commerceId) {
+  const id = String(commerceId || '').trim()
+  if (!id) return
+  const base = String(supabaseUrl || '').replace(/\/$/, '')
+  try {
+    const sel = await fetch(`${base}/rest/v1/commerces?id=eq.${encodeURIComponent(id)}&select=*`, {
+      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` }
+    })
+    if (!sel.ok) return
+    const list = await sel.json()
+    const row = Array.isArray(list) ? list[0] : null
+    if (!row || row.activo === false) return
+    await postgrestPatch(supabaseUrl, serviceKey, 'commerces', `id=eq.${encodeURIComponent(id)}`, { activo: false })
+  } catch {
+    /* sin fila o sin permiso */
+  }
+}
+
 async function postgrestPatch(supabaseUrl, serviceKey, table, query, payload) {
   const res = await fetch(`${supabaseUrl}/rest/v1/${table}?${query}`, {
     method: 'PATCH',
@@ -328,7 +445,14 @@ async function postgrestPatch(supabaseUrl, serviceKey, table, query, payload) {
     const msg = body?.message || body?.details || body?.hint || `HTTP ${res.status}`
     throw new Error(`${table}: ${msg}`)
   }
-  const rows = await res.json()
+  const text = await res.text()
+  if (!text.trim()) return null
+  let rows
+  try {
+    rows = JSON.parse(text)
+  } catch {
+    throw new Error(`${table}: respuesta PATCH inválida`)
+  }
   return Array.isArray(rows) ? rows[0] : rows
 }
 
@@ -459,7 +583,9 @@ async function provisionDemoTenant(supabaseUrl, serviceKey, anonKey, params) {
     createLicense,
     passwordOverride,
     source,
-    demoUrl
+    demoUrl,
+    contactPhone,
+    direccion
   } = params
   const email = normalizeEmail(clientEmail)
   const nombre = String(businessName || '').trim() || email
@@ -517,11 +643,16 @@ async function provisionDemoTenant(supabaseUrl, serviceKey, anonKey, params) {
   }
 
   const commerceId = generateCommerceId()
-  await postgrestInsert(supabaseUrl, serviceKey, 'commerces', {
+  const phone = String(contactPhone || '').trim()
+  const addr = String(direccion || '').trim()
+  await postgrestInsertCommerceRow(supabaseUrl, serviceKey, {
     id: commerceId,
     nombre,
     activo: true,
-    plan: 'free'
+    plan: 'free',
+    email: email || null,
+    telefono: phone || null,
+    direccion: addr || null
   })
   await postgrestInsert(supabaseUrl, serviceKey, 'user_commerces', {
     user_id: user.id,
@@ -639,7 +770,9 @@ module.exports = async function handler(req, res) {
         createLicense,
         passwordOverride,
         source: 'manual',
-        demoUrl
+        demoUrl,
+        contactPhone: body?.contactPhone,
+        direccion: body?.direccion
       })
       try {
         await insertManualDemoAuditRow(supabaseUrl, serviceKey, {
@@ -725,7 +858,9 @@ module.exports = async function handler(req, res) {
       createLicense,
       passwordOverride,
       source: 'request',
-      demoUrl
+      demoUrl,
+      contactPhone: request.contact_phone,
+      direccion: request.direccion
     })
 
     await postgrestPatch(
