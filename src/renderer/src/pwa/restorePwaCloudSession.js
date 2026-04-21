@@ -1,6 +1,16 @@
 import { useAuthStore } from '../store/authStore'
 import { readCloudUserSnapshot, writeCloudUserSnapshot } from './cloudAuthSnapshot.js'
 import { buildCloudUser, persistPrimaryCommerceId } from './cloudSessionShared.js'
+import { GCOM_STORED_LICENSE_KEY } from './supabaseLicenseBridge.js'
+
+function hasStoredGcomLicenseKey() {
+  try {
+    const k = localStorage.getItem(GCOM_STORED_LICENSE_KEY)
+    return Boolean(k && String(k).trim())
+  } catch {
+    return false
+  }
+}
 
 function mergeSnapshotUser(sessionUser, snapCloudUser) {
   return {
@@ -29,6 +39,8 @@ export async function restorePwaCloudSession() {
 
   const { user, setUser } = useAuthStore.getState()
   if (user) return
+
+  if (!hasStoredGcomLicenseKey()) return
 
   const wrapped = await window.api.cloudAuth.getSession()
   if (!wrapped?.ok) return

@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Result, Button, Typography, Space, Alert, Input, Form, Card, Modal, message } from 'antd'
+import { usePwaInstallPrompt } from '../pwa/usePwaInstallPrompt.js'
 import { LockOutlined, WifiOutlined, CalendarOutlined, StopOutlined, KeyOutlined } from '@ant-design/icons'
 import nexoLogo from '../assets/nexo-commerce-logo.png'
 
@@ -9,6 +10,7 @@ const { Text, Title } = Typography
 
 export const ActivationScreen = ({ onActivated }) => {
   const { t } = useTranslation()
+  const { installPrompt, installing, installApp } = usePwaInstallPrompt()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [form] = Form.useForm()
@@ -69,6 +71,15 @@ export const ActivationScreen = ({ onActivated }) => {
             <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 11 }}>
               {t('licenseGate.adminHint')}
             </Text>
+            {installPrompt ? (
+              <Button style={{ marginTop: 12 }} type="default" block loading={installing} onClick={installApp}>
+                {t('login.installApp')}
+              </Button>
+            ) : (
+              <Text type="secondary" style={{ display: 'block', marginTop: 10, fontSize: 11 }}>
+                {t('login.installAppHint')}
+              </Text>
+            )}
           </div>
         ) : null}
       </Card>

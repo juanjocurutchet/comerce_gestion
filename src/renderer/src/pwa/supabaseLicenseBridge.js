@@ -35,7 +35,8 @@ import {
   isEmailInPwaAdminAllowlist
 } from './pwaEnv.js'
 
-const LS_KEY = 'gcom_stored_license_key'
+export const GCOM_STORED_LICENSE_KEY = 'gcom_stored_license_key'
+const LS_KEY = GCOM_STORED_LICENSE_KEY
 const LS_CACHE = 'gcom_license_cache'
 
 function createLocalStorageBackend() {

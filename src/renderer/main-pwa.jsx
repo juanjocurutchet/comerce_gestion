@@ -29,6 +29,32 @@ if (typeof window !== 'undefined') {
   })
 }
 
+function normalizeTrailingSlash(urlPath) {
+  const s = String(urlPath || '/')
+  if (s === '/') return s
+  return s.replace(/\/+$/, '') || '/'
+}
+
+function enforceCanonicalPwaUrl() {
+  if (typeof window === 'undefined') return false
+  const raw = String(import.meta.env.VITE_PWA_CANONICAL_URL || '').trim()
+  if (!raw) return false
+  try {
+    const canonical = new URL(raw)
+    const current = new URL(window.location.href)
+    const sameOrigin = canonical.origin === current.origin
+    const sameBasePath =
+      normalizeTrailingSlash(current.pathname) === normalizeTrailingSlash(canonical.pathname)
+    if (sameOrigin && sameBasePath) return false
+
+    const target = `${canonical.origin}${canonical.pathname}${current.search}${current.hash}`
+    window.location.replace(target)
+    return true
+  } catch {
+    return false
+  }
+}
+
 async function initPWA() {
   const originalSetLanguage = useLanguageStore.getState().setLanguage
   useLanguageStore.setState({
@@ -69,6 +95,7 @@ function Root() {
 }
 
 async function startApp() {
+  if (enforceCanonicalPwaUrl()) return
   await bootPwaApi()
   await initPWA()
   const root = ReactDOM.createRoot(document.getElementById('root'))

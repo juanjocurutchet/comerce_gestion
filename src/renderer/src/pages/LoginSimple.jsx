@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { Form, Input, Button, Card, Typography, message } from 'antd'
 import { useTranslation } from 'react-i18next'
 import { UserOutlined, LockOutlined } from '@ant-design/icons'
@@ -10,14 +10,14 @@ import { looksLikeEmail } from '../pwa/pwaEnv.js'
 import { isLikelyNetworkFailure } from '@shared/web-license.js'
 import { buildCloudUser, persistPrimaryCommerceId } from '../pwa/cloudSessionShared.js'
 import { writeCloudUserSnapshot } from '../pwa/cloudAuthSnapshot.js'
+import { usePwaInstallPrompt } from '../pwa/usePwaInstallPrompt.js'
 
 const { Title, Text } = Typography
 
 const LoginSimple = () => {
   const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
-  const [installPrompt, setInstallPrompt] = useState(null)
-  const [installing, setInstalling] = useState(false)
+  const { installPrompt, installing, installApp } = usePwaInstallPrompt()
   const user = useAuthStore((s) => s.user)
   const setUser = useAuthStore((s) => s.setUser)
   const loadClient = useClientStore((s) => s.load)
@@ -30,35 +30,6 @@ const LoginSimple = () => {
       return t('login.cloudLoginRejected')
     }
     return String(err || '').trim() || t('login.invalidCredentials')
-  }
-
-  useEffect(() => {
-    setInstallPrompt(window.__PWA_INSTALL_PROMPT__ || null)
-    const onBeforeInstallPrompt = () => setInstallPrompt(window.__PWA_INSTALL_PROMPT__ || null)
-    const onInstalled = () => {
-      setInstallPrompt(null)
-      setInstalling(false)
-    }
-    window.addEventListener('gcom:pwa-install-available', onBeforeInstallPrompt)
-    window.addEventListener('gcom:pwa-installed', onInstalled)
-    return () => {
-      window.removeEventListener('gcom:pwa-install-available', onBeforeInstallPrompt)
-      window.removeEventListener('gcom:pwa-installed', onInstalled)
-    }
-  }, [])
-
-  const handleInstallApp = async () => {
-    if (!installPrompt) return
-    setInstalling(true)
-    try {
-      await installPrompt.prompt()
-      await installPrompt.userChoice
-      setInstallPrompt(null)
-    } catch {
-      void 0
-    } finally {
-      setInstalling(false)
-    }
   }
 
   if (user) return <Navigate to="/dashboard" replace />
@@ -190,7 +161,7 @@ const LoginSimple = () => {
                 type="default"
                 block
                 loading={installing}
-                onClick={handleInstallApp}
+                onClick={installApp}
               >
                 {t('login.installApp')}
               </Button>
