@@ -114,7 +114,7 @@ const MainLayout = ({ children }) => {
   return (
     <>
       <MustChangeCloudPasswordModal />
-    <Layout style={{ minHeight: '100vh' }}>
+    <Layout style={{ minHeight: '100vh', minWidth: 0, overflow: 'hidden' }}>
       <Sider
         trigger={null}
         collapsible
@@ -215,15 +215,17 @@ const MainLayout = ({ children }) => {
             </Badge>
 
             <Dropdown menu={userMenu} placement="bottomRight">
-              <Space style={{ cursor: 'pointer' }}>
-                <Avatar style={{ background: '#1677ff' }} icon={<UserOutlined />} size="small" />
-                <Text style={{ fontWeight: 500 }}>{user?.nombre}</Text>
+              <Space style={{ cursor: 'pointer', minWidth: 0, maxWidth: 'min(280px, 38vw)' }}>
+                <Avatar style={{ background: '#1677ff', flexShrink: 0 }} icon={<UserOutlined />} size="small" />
+                <Text style={{ fontWeight: 500 }} ellipsis>
+                  {user?.nombre}
+                </Text>
               </Space>
             </Dropdown>
           </Space>
         </Header>
 
-        <Content style={{ margin: 24, minHeight: 280 }}>
+        <Content style={{ margin: 24, minHeight: 280, minWidth: 0, overflowX: 'auto' }}>
           {children}
         </Content>
       </Layout>

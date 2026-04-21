@@ -22,8 +22,9 @@ body {
 }
 
 #root {
-  /* Alineación de píxeles en layout flex/grid con escalas fraccionarias */
   min-height: 100vh;
+  min-height: 100dvh;
+  min-width: 0;
 }
 
 body.dark {

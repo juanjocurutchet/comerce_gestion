@@ -37,6 +37,7 @@ function normalizeTrailingSlash(urlPath) {
 
 function enforceCanonicalPwaUrl() {
   if (typeof window === 'undefined') return false
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return false
   const raw = String(import.meta.env.VITE_PWA_CANONICAL_URL || '').trim()
   if (!raw) return false
   try {
@@ -105,4 +106,18 @@ async function startApp() {
   }, 500)
 }
 
-startApp().catch(() => {})
+startApp().catch(() => {
+  try {
+    document.body.classList.add('app-loaded')
+    const rootEl = document.getElementById('root')
+    if (rootEl && !rootEl.innerHTML.trim()) {
+      rootEl.innerHTML =
+        '<div style="padding:24px;font-family:system-ui,sans-serif;max-width:480px;margin:40px auto">' +
+        '<p style="margin:0 0 12px"><strong>No se pudo iniciar la aplicación.</strong></p>' +
+        '<p style="margin:0;color:#555">Probá recargar. Si estás sin internet, abrí la app desde el ícono instalado después de haberla usado al menos una vez con conexión.</p>' +
+        '</div>'
+    }
+  } catch {
+    void 0
+  }
+})
