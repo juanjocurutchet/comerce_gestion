@@ -33,6 +33,19 @@ const LoginSimple = () => {
     return String(err || '').trim() || t('login.invalidCredentials')
   }
 
+  const tryOfflineSessionRestore = async (email) => {
+    await restorePwaCloudSession({ requireLicenseKey: false })
+    const restored = useAuthStore.getState().user
+    const restoredEmail = String(restored?.username || restored?.nombre || '').trim().toLowerCase()
+    if (!restored || !restoredEmail || restoredEmail !== String(email || '').trim().toLowerCase()) return false
+    setUser({ ...restored, authSource: restored.authSource || 'cloud' })
+    await loadClient()
+    await checkLicense()
+    message.warning(t('login.offlineModeWarning'))
+    navigate('/dashboard')
+    return true
+  }
+
   if (user) return <Navigate to="/dashboard" replace />
 
   const handleSubmit = async (values) => {
@@ -59,21 +72,16 @@ const LoginSimple = () => {
           message.error(t('login.emailRequired'))
           return
         }
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+          if (await tryOfflineSessionRestore(u)) return
+          message.error(t('login.offlineSignInFailed'))
+          return
+        }
         const cloud = await window.api.cloudAuth.signIn(u, p)
         if (!cloud?.ok) {
           const errRaw = String(cloud?.error || '')
           if (isLikelyNetworkFailure(null, errRaw)) {
-            await restorePwaCloudSession({ requireLicenseKey: false })
-            const restored = useAuthStore.getState().user
-            const restoredEmail = String(restored?.username || restored?.nombre || '').trim().toLowerCase()
-            if (restored && restoredEmail && restoredEmail === u.toLowerCase()) {
-              setUser({ ...restored, authSource: restored.authSource || 'cloud' })
-              await loadClient()
-              await checkLicense()
-              message.warning(t('login.offlineModeWarning'))
-              navigate('/dashboard')
-              return
-            }
+            if (await tryOfflineSessionRestore(u)) return
             message.error(t('login.offlineSignInFailed'))
           } else {
             message.error(mapCloudAuthError(cloud?.error))

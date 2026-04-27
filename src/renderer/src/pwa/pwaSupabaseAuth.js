@@ -2,6 +2,7 @@ import { isLikelyNetworkFailure } from '@shared/web-license.js'
 import { clearCloudUserSnapshot } from './cloudAuthSnapshot.js'
 
 const STORAGE_KEY = 'gcom_supabase_session'
+const AUTH_FETCH_TIMEOUT_MS = 8000
 
 function buildHeaders(apiKey, extra = {}) {
   return {
@@ -30,6 +31,19 @@ function writeStoredSession(session) {
   }
 }
 
+async function fetchWithTimeout(url, options = {}, timeoutMs = AUTH_FETCH_TIMEOUT_MS) {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetch(url, { ...options, signal: controller.signal })
+  } catch (e) {
+    if (e?.name === 'AbortError') throw new Error('network timed out')
+    throw e
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
+
 async function parseJsonResponse(res) {
   if (res.ok) {
     if (res.status === 204) return null
@@ -51,7 +65,7 @@ function isExpired(session) {
 }
 
 async function signInWithPassword(cfg, email, password) {
-  const res = await fetch(`${cfg.url}/auth/v1/token?grant_type=password`, {
+  const res = await fetchWithTimeout(`${cfg.url}/auth/v1/token?grant_type=password`, {
     method: 'POST',
     headers: buildHeaders(cfg.anonKey),
     body: JSON.stringify({ email, password })
@@ -71,7 +85,7 @@ async function signInWithPassword(cfg, email, password) {
 
 async function refreshSession(cfg, refreshToken) {
   if (!refreshToken) return null
-  const res = await fetch(`${cfg.url}/auth/v1/token?grant_type=refresh_token`, {
+  const res = await fetchWithTimeout(`${cfg.url}/auth/v1/token?grant_type=refresh_token`, {
     method: 'POST',
     headers: buildHeaders(cfg.anonKey),
     body: JSON.stringify({ refresh_token: refreshToken })
@@ -125,7 +139,7 @@ export function createPwaSupabaseAuthApi(cfg) {
       clearCloudUserSnapshot()
       if (!configured || !stored?.access_token) return true
       try {
-        await fetch(`${cfg.url}/auth/v1/logout`, {
+        await fetchWithTimeout(`${cfg.url}/auth/v1/logout`, {
           method: 'POST',
           headers: buildHeaders(cfg.anonKey, {
             Authorization: `Bearer ${stored.access_token}`
@@ -148,7 +162,7 @@ export function createPwaSupabaseAuthApi(cfg) {
       if (!stored?.access_token) throw new Error('Sin sesión')
       const pwd = String(newPassword || '').trim()
       if (pwd.length < 6) throw new Error('La contraseña debe tener al menos 6 caracteres')
-      const res = await fetch(`${cfg.url}/auth/v1/user`, {
+      const res = await fetchWithTimeout(`${cfg.url}/auth/v1/user`, {
         method: 'PUT',
         headers: buildHeaders(cfg.anonKey, {
           Authorization: `Bearer ${stored.access_token}`,
@@ -175,7 +189,7 @@ export function createPwaSupabaseAuthApi(cfg) {
       const params = new URLSearchParams()
       params.set('select', 'commerce_id,role,activo')
       params.set('activo', 'eq.true')
-      const res = await fetch(`${cfg.url}/rest/v1/user_commerces?${params.toString()}`, {
+      const res = await fetchWithTimeout(`${cfg.url}/rest/v1/user_commerces?${params.toString()}`, {
         headers: buildHeaders(cfg.anonKey, {
           Authorization: `Bearer ${token}`
         })
@@ -189,7 +203,7 @@ export function createPwaSupabaseAuthApi(cfg) {
       const token = await this.getAccessToken()
       if (!token) return false
       try {
-        const res = await fetch(`${cfg.url}/rest/v1/rpc/license_admin_from_jwt`, {
+        const res = await fetchWithTimeout(`${cfg.url}/rest/v1/rpc/license_admin_from_jwt`, {
           method: 'POST',
           headers: buildHeaders(cfg.anonKey, {
             Authorization: `Bearer ${token}`
