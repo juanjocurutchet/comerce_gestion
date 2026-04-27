@@ -100,6 +100,7 @@
     "apiNotReady": "The app is not ready yet. Reload the page or try again later.",
     "emailRequired": "Please enter a valid email address.",
     "offlineSignInFailed": "We can't verify your email without a connection. Go online, or reopen the app: if you already signed in on this device, your saved session may open automatically.",
+    "offlineModeWarning": "Signed in using the saved offline session on this device.",
     "installApp": "Install app on this device",
     "installAppHint": "If you don't see the button, open the browser menu (⋮) and choose \"Install app\"."
   },

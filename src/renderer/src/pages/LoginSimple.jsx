@@ -11,6 +11,7 @@ import { isLikelyNetworkFailure } from '@shared/web-license.js'
 import { buildCloudUser, persistPrimaryCommerceId } from '../pwa/cloudSessionShared.js'
 import { writeCloudUserSnapshot } from '../pwa/cloudAuthSnapshot.js'
 import { usePwaInstallPrompt } from '../pwa/usePwaInstallPrompt.js'
+import { restorePwaCloudSession } from '../pwa/restorePwaCloudSession.js'
 
 const { Title, Text } = Typography
 
@@ -62,6 +63,17 @@ const LoginSimple = () => {
         if (!cloud?.ok) {
           const errRaw = String(cloud?.error || '')
           if (isLikelyNetworkFailure(null, errRaw)) {
+            await restorePwaCloudSession()
+            const restored = useAuthStore.getState().user
+            const restoredEmail = String(restored?.username || restored?.nombre || '').trim().toLowerCase()
+            if (restored && restoredEmail && restoredEmail === u.toLowerCase()) {
+              setUser({ ...restored, authSource: restored.authSource || 'cloud' })
+              await loadClient()
+              await checkLicense()
+              message.warning(t('login.offlineModeWarning'))
+              navigate('/dashboard')
+              return
+            }
             message.error(t('login.offlineSignInFailed'))
           } else {
             message.error(mapCloudAuthError(cloud?.error))

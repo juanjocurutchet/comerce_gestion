@@ -100,6 +100,7 @@
     "apiNotReady": "La aplicación no está lista. Recargá la página o probá más tarde.",
     "emailRequired": "Ingresá un email válido.",
     "offlineSignInFailed": "Sin conexión no se puede validar el email con el servidor. Conectate a internet o abrí la app otra vez: si ya habías entrado en este dispositivo, puede abrirse sola con la sesión guardada.",
+    "offlineModeWarning": "Ingresaste en modo offline con la sesión guardada de este dispositivo.",
     "installApp": "Instalar app en este equipo",
     "installAppHint": "Si no ves el botón, usá el menú del navegador (⋮) y elegí «Instalar aplicación»."
   },
