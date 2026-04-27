@@ -28,7 +28,7 @@ import { useLicenseStore } from './store/licenseStore'
 import { isPwaAdminBuild } from './pwa/pwaEnv.js'
 import { restorePwaCloudSession } from './pwa/restorePwaCloudSession.js'
 
-const BOOT_TIMEOUT_MS = 8000
+const BOOT_TIMEOUT_MS = 3500
 
 function withTimeout(promise, ms = BOOT_TIMEOUT_MS) {
   return Promise.race([
@@ -49,10 +49,12 @@ function CommercialLicenseGate({ children }) {
   const { status, check } = useLicenseStore()
 
   const isPwa = typeof window !== 'undefined' && window.__IS_PWA__
+  const isCloudUser = user?.authSource === 'cloud'
   const needsCommercialLicense =
     (isPwa && !isPwaAdminBuild() && !isAdmin) || (!isPwa && !isAdmin)
 
   if (needsCommercialLicense) {
+    if (isPwa && isCloudUser) return children
     if (status?.reason === 'no_key' || status?.reason === 'not_found') {
       return <ActivationScreen onActivated={() => check()} />
     }

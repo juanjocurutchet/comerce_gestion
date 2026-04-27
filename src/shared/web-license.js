@@ -1,6 +1,7 @@
 /** Licencia vía Supabase REST (`licencias`); solo anon key, nunca service_role en el bundle. */
 
 export const LICENSE_GRACE_DAYS_DEFAULT = 15
+const LICENSE_FETCH_TIMEOUT_MS = 3000
 
 /** Evita comillas literales pegadas al copiar desde Vercel / .env (`"https://…"`). */
 function unwrapQuotedEnv(value) {
@@ -32,19 +33,19 @@ export function daysUntil(isoDate) {
 
 export async function fetchLicenseRow(url, anonKey, licenseKey) {
   const base = String(url || '').trim().replace(/\/$/, '')
-  const res = await fetch(
-    `${base}/rest/v1/licencias?clave=eq.${encodeURIComponent(licenseKey)}&select=*`,
-    {
-      method: 'GET',
-      mode: 'cors',
-      cache: 'no-store',
-      headers: {
-        apikey: anonKey,
-        Authorization: `Bearer ${anonKey}`,
-        'Content-Type': 'application/json'
-      }
-    }
-  )
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), LICENSE_FETCH_TIMEOUT_MS)
+  const res = await fetch(`${base}/rest/v1/licencias?clave=eq.${encodeURIComponent(licenseKey)}&select=*`, {
+    method: 'GET',
+    mode: 'cors',
+    cache: 'no-store',
+    headers: {
+      apikey: anonKey,
+      Authorization: `Bearer ${anonKey}`,
+      'Content-Type': 'application/json'
+    },
+    signal: controller.signal
+  }).finally(() => clearTimeout(timeoutId))
   const text = await res.text()
   if (!res.ok) {
     let detail = `HTTP ${res.status}`
