@@ -63,7 +63,7 @@ const LoginSimple = () => {
         if (!cloud?.ok) {
           const errRaw = String(cloud?.error || '')
           if (isLikelyNetworkFailure(null, errRaw)) {
-            await restorePwaCloudSession()
+            await restorePwaCloudSession({ requireLicenseKey: false })
             const restored = useAuthStore.getState().user
             const restoredEmail = String(restored?.username || restored?.nombre || '').trim().toLowerCase()
             if (restored && restoredEmail && restoredEmail === u.toLowerCase()) {

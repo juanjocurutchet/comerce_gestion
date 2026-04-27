@@ -34,13 +34,14 @@ function buildOfflineFallbackUser(sessionUser, snapshot = null) {
   }
 }
 
-export async function restorePwaCloudSession() {
+export async function restorePwaCloudSession(options = {}) {
+  const requireLicenseKey = options.requireLicenseKey !== false
   if (typeof window === 'undefined' || !window.__IS_PWA__ || !window.api?.cloudAuth?.getSession) return
 
   const { user, setUser } = useAuthStore.getState()
   if (user) return
 
-  if (!hasStoredGcomLicenseKey()) return
+  if (requireLicenseKey && !hasStoredGcomLicenseKey()) return
 
   const wrapped = await window.api.cloudAuth.getSession()
   if (!wrapped?.ok) return
