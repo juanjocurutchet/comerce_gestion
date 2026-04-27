@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import MainLayout from './layout/MainLayout'
 import Login from './pages/LoginSimple'
@@ -27,6 +27,15 @@ import { useClientStore } from './store/clientStore'
 import { useLicenseStore } from './store/licenseStore'
 import { isPwaAdminBuild } from './pwa/pwaEnv.js'
 import { restorePwaCloudSession } from './pwa/restorePwaCloudSession.js'
+
+const BOOT_TIMEOUT_MS = 8000
+
+function withTimeout(promise, ms = BOOT_TIMEOUT_MS) {
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('boot_timeout')), ms))
+  ])
+}
 
 function PrivateRoute({ children }) {
   const user = useAuthStore((s) => s.user)
@@ -91,6 +100,7 @@ export default function App() {
   const dark = useThemeStore((s) => s.dark)
   const { loaded: clientLoaded, load: loadClient } = useClientStore()
   const { checked, check } = useLicenseStore()
+  const [bootDone, setBootDone] = useState(false)
 
   useEffect(() => {
     document.body.classList.toggle('dark', dark)
@@ -98,13 +108,42 @@ export default function App() {
 
   useEffect(() => {
     void (async () => {
-      await restorePwaCloudSession()
-      await loadClient()
-      await check()
+      try {
+        await withTimeout(restorePwaCloudSession())
+        await withTimeout(loadClient())
+        await withTimeout(check())
+      } catch {
+        // Evita pantalla negra si alguna llamada queda colgada/offline en el arranque.
+        if (!useClientStore.getState().loaded) useClientStore.setState({ loaded: true })
+        if (!useLicenseStore.getState().checked) {
+          useLicenseStore.setState({
+            checked: true,
+            status: { valid: false, offline: true, reason: 'not_found' }
+          })
+        }
+      } finally {
+        setBootDone(true)
+      }
     })()
   }, [])
 
-  if (!checked || !clientLoaded) return null
+  if (!bootDone || !checked || !clientLoaded) {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'linear-gradient(135deg, #001529 0%, #003a8c 100%)',
+          color: '#fff',
+          fontFamily: 'Inter, system-ui, sans-serif'
+        }}
+      >
+        Iniciando Nexo Commerce...
+      </div>
+    )
+  }
 
   return (
     <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
